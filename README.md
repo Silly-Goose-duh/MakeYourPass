@@ -1,73 +1,96 @@
-# React + TypeScript + Vite
+# MakeYourPass 🎫
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**The all-in-one event management OS.** Create jaw-dropping events, sell tickets, check-in guests, and track analytics — no code, no tech, no designer needed.
 
-Currently, two official plugins are available:
+## Live Demo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+`https://makeyourpass.vercel.app` *(deployed after Phase 17)*
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend:** React 19 + TypeScript + Vite 8
+- **Styling:** Tailwind CSS v4 + CSS Variables
+- **Motion:** Framer Motion
+- **3D:** React Three Fiber + Drei + Three.js
+- **Routing:** React Router v6
+- **Backend:** Supabase (Auth + Postgres + Realtime + Storage)
+- **Payments:** Razorpay + Slice integration-ready
+- **QR:** qrcode.react (generation) + html5-qrcode (scanning)
+- **Charts:** Recharts (analytics dashboards)
+- **Forms:** React Hook Form + Zod
+- **Icons:** Lucide React
+- **Fonts:** Syne (display) + Inter (body) via Fontsource
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open [http://localhost:5173](http://localhost:5173)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Environment Variables
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Copy `.env.example` to `.env.local` and fill in:
+
+```env
+# Supabase Configuration
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# Payment Gateway (Razorpay)
+VITE_RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxx
 ```
+
+## Project Structure
+
+```
+src/
+  components/
+    ui/           Reusable UI components (Button, Card, Input, Modal, etc.)
+    layout/       Layout components (Navbar, Footer, Layout)
+    sections/     Large page sections (Hero, Features, HowItWorks, CTA)
+    3d/           3D scene components (ThreeHero)
+  pages/          Page-level components
+  hooks/          Custom React hooks
+  lib/            External service clients (supabase, utils)
+  types/          TypeScript type definitions
+```
+
+## Features
+
+- 🎪 **Smart Ticketing** — Custom ticket types, pricing, promo codes, group bookings
+- 📱 **QR Check-In** — Fast, contactless entry with real-time validation
+- 📊 **Live Analytics** — Track sales, check-ins, and revenue in real-time
+- 💳 **Payment Processing** — Razorpay + Slice integration
+- 🎨 **Event Branding** — Customizable event pages with your brand
+- 📧 **Automated Notifications** — Email and WhatsApp reminders
+- 🔒 **Fraud Protection** — Anti-scalping, duplicate detection, secure QR codes
+- 🤝 **Attendee Management** — View, search, manage all attendees
+- 👥 **Team Collaboration** — Role-based access for your team
+- 🎯 **Multi-Event Support** — Manage recurring events and multi-day festivals
+
+## Pages
+
+| Page | Path | Description |
+|------|------|-------------|
+| **Landing** | `/` | 3D hero, features, how it works, CTA |
+| **Login** | `/login` | Email/password + social auth |
+| **Signup** | `/signup` | Create free account |
+| **Event Public** | `/event/:slug` | Public event page with ticket purchase |
+| **Dashboard** | `/dashboard` | Event overview, quick actions |
+| **Events** | `/dashboard/events` | Manage all events |
+| **Create Event** | `/dashboard/events/new` | 5-step event builder |
+| **Tickets** | `/dashboard/tickets` | View and manage tickets |
+| **Attendees** | `/dashboard/attendees` | Attendee list with check-in status |
+| **Analytics** | `/dashboard/analytics` | Sales, check-ins, revenue reports |
+| **Settings** | `/dashboard/settings` | Profile, org, payments, API keys, security |
+
+## Deployment
+
+Deployed on [Vercel](https://vercel.com). Push to `main` triggers auto-deploy.
+
+## License
+
+MIT
