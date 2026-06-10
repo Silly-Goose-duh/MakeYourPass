@@ -1,13 +1,13 @@
 import { useRef, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Float, MeshDistortMaterial, Environment, Lightformer, Stars, PerspectiveCamera } from '@react-three/drei'
-import { Mesh, Vector3, Color, Group } from 'three'
+import * as THREE from 'three'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 // ---------- Floating Torus Knot ----------
 function TorusKnot() {
-  const meshRef = useRef<Mesh>(null!)
+  const meshRef = useRef<THREE.Mesh>(null!)
 
   useFrame((state, delta) => {
     if (!meshRef.current) return
@@ -43,8 +43,8 @@ function FloatingIcosahedron({ position, color, scale = 0.5, speed = 0.5 }: {
   scale?: number
   speed?: number
 }) {
-  const ref = useRef<Mesh>(null!)
-  const initialPos = useMemo(() => new Vector3(...position), [position])
+  const ref = useRef<THREE.Mesh>(null!)
+  const initialPos = useMemo(() => new THREE.Vector3(...position), [position])
 
   useFrame((state) => {
     if (!ref.current) return
@@ -70,27 +70,21 @@ function FloatingIcosahedron({ position, color, scale = 0.5, speed = 0.5 }: {
 
 // ---------- Glowing Particles ----------
 function Particles() {
-  const count = 200
-  const positions = useMemo(() => {
-    const pos = new Float32Array(count * 3)
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry()
+    const count = 200
+    const positions = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 20
-      pos[i * 3 + 1] = (Math.random() - 0.5) * 20
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 20
+      positions[i * 3] = (Math.random() - 0.5) * 20
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 20
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 20
     }
-    return pos
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    return geo
   }, [])
 
   return (
-    <points>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={positions}
-          itemSize={3}
-        />
-      </bufferGeometry>
+    <points args={[geometry]}>
       <pointsMaterial
         size={0.03}
         color="#f5d700"
@@ -105,7 +99,7 @@ function Particles() {
 
 // ---------- Rotating Geometric Rings ----------
 function GeometricRings() {
-  const groupRef = useRef<Group>(null!)
+  const groupRef = useRef<THREE.Group>(null!)
 
   useFrame((_, delta) => {
     if (!groupRef.current) return

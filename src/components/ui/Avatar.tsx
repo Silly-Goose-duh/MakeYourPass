@@ -1,7 +1,25 @@
-import { cn } from '@/lib/utils'
-import { getInitials } from '@/lib/utils'
+import React, { forwardRef, HTMLAttributes } from 'react'
+import { cn, getInitials } from '@/lib/utils'
 
-export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
+const sizeMap = {
+  xs: 'h-6 w-6 text-xs',
+  sm: 'h-8 w-8 text-sm',
+  md: 'h-10 w-10 text-base',
+  lg: 'h-12 w-12 text-lg',
+  xl: 'h-16 w-16 text-xl',
+  '2xl': 'h-24 w-24 text-2xl',
+}
+
+const statusSizeMap = {
+  xs: 'h-1.5 w-1.5',
+  sm: 'h-2 w-2',
+  md: 'h-2.5 w-2.5',
+  lg: 'h-3 w-3',
+  xl: 'h-4 w-4',
+  '2xl': 'h-5 w-5',
+}
+
+export interface AvatarProps extends HTMLAttributes<HTMLDivElement> {
   src?: string | null
   alt?: string
   name?: string
@@ -22,24 +40,6 @@ export function Avatar({
   statusPosition = 'bottom-right',
   ...props
 }: AvatarProps) {
-  const sizes = {
-    xs: 'h-6 w-6 text-xs',
-    sm: 'h-8 w-8 text-sm',
-    md: 'h-10 w-10 text-base',
-    lg: 'h-12 w-12 text-lg',
-    xl: 'h-16 w-16 text-xl',
-    '2xl': 'h-24 w-24 text-2xl',
-  }
-
-  const statusSizes = {
-    xs: 'h-1.5 w-1.5',
-    sm: 'h-2 w-2',
-    md: 'h-2.5 w-2.5',
-    lg: 'h-3 w-3',
-    xl: 'h-4 w-4',
-    '2xl': 'h-5 w-5',
-  }
-
   const shapeClasses = shape === 'circle' ? 'rounded-full' : 'rounded-xl'
 
   const statusColors = {
@@ -60,7 +60,7 @@ export function Avatar({
 
   return (
     <div className={cn('relative inline-flex shrink-0', className)} {...props}>
-      <div className={cn(sizes[size], shapeClasses, 'overflow-hidden bg-surface-elevated flex items-center justify-center')}>
+      <div className={cn(sizeMap[size], shapeClasses, 'overflow-hidden bg-surface-elevated flex items-center justify-center')}>
         {src ? (
           <img
             src={src}
@@ -78,7 +78,7 @@ export function Avatar({
         <span
           className={cn(
             'absolute rounded-full border-2 border-background',
-            statusSizes[size],
+            statusSizeMap[size],
             statusColors[status],
             statusPositions[statusPosition]
           )}
@@ -93,25 +93,25 @@ export function AvatarGroup({
   className,
   children,
   max = 5,
-  overlap = true,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { max?: number; overlap?: boolean }) {
+}: React.HTMLAttributes<HTMLDivElement> & { max?: number }) {
   const kids = React.Children.toArray(children)
   const visible = kids.slice(0, max)
   const remaining = kids.length - max
 
   return (
-    <div className={cn('flex items-center', overlap && '-space-x-2', className)} {...props}>
-      {visible.map((child, index) =>
-        React.cloneElement(child as React.ReactElement, {
-          key: child.key || index,
-          className: cn((child as React.ReactElement).props.className, 'ring-2 ring-background'),
+    <div className={cn('flex items-center -space-x-2', className)} {...props}>
+      {visible.map((child, index) => {
+        const element = child as React.ReactElement<{ className?: string; key?: React.Key | null }>
+        return React.cloneElement(element, {
+          key: element.key ?? index,
+          className: cn(element.props.className, 'ring-2 ring-background'),
         })
-      )}
+      })}
       {remaining > 0 && (
         <div
           className={cn(
-            sizes.md,
+            sizeMap.md,
             'rounded-full bg-surface-elevated border-2 border-background flex items-center justify-center font-medium text-text-secondary'
           )}
         >
