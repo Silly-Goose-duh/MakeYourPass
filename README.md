@@ -4,7 +4,7 @@
 
 ## Live Demo
 
-`https://makeyourpass.vercel.app` *(deployed after Phase 17)*
+[https://makeyourpass.vercel.app](https://makeyourpass.vercel.app)
 
 ## Tech Stack
 
