@@ -5,7 +5,7 @@ import type { User } from '@supabase/supabase-js'
 import {
   Sparkles, LayoutDashboard, Calendar, Ticket, BarChart3,
   Users, Settings, LogOut, Menu, X, Plus, Bell, Search,
-  ChevronDown, CreditCard
+  ChevronDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -19,7 +19,6 @@ const sidebarLinks = [
   { label: 'Tickets', href: '/dashboard/tickets', icon: Ticket },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { label: 'Attendees', href: '/dashboard/attendees', icon: Users },
-  { label: 'Payments', href: '/dashboard/payments', icon: CreditCard },
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 
