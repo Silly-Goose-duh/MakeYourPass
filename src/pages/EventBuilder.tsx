@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { DatePicker } from '@/components/ui/DatePicker'
 import { cn } from '@/lib/utils'
 
 interface StepProps {
@@ -182,18 +183,17 @@ export function EventBuilderPage() {
           {currentStep === 1 && (
             <div className="space-y-5">
               <div className="grid sm:grid-cols-2 gap-4">
-                <Input
+                <DatePicker
                   label="Start Date"
-                  type="date"
                   value={eventData.startDate}
-                  onChange={(e) => updateField('startDate', e.target.value)}
+                  onChange={(v) => updateField('startDate', v)}
                   required
                 />
-                <Input
+                <DatePicker
                   label="End Date"
-                  type="date"
                   value={eventData.endDate}
-                  onChange={(e) => updateField('endDate', e.target.value)}
+                  onChange={(v) => updateField('endDate', v)}
+                  minDate={eventData.startDate ? new Date(eventData.startDate) : undefined}
                   required
                 />
               </div>
