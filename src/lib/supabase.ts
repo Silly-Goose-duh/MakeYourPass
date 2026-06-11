@@ -1,27 +1,82 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Event, TicketType } from '@/types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-if (!supabaseUrl || !supabaseAnonKey) {
+const hasCredentials = !!(supabaseUrl && supabaseAnonKey)
+
+if (!hasCredentials) {
   console.warn(
     '⚠️ Supabase credentials not found. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local'
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
+/**
+ * Create a Supabase client, or a mock proxy that returns graceful errors
+ * when credentials haven't been configured yet.
+ */
+function createSupabaseClient(): SupabaseClient {
+  if (hasCredentials) {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+    })
+  }
+
+  // Mock proxy that returns promises rejecting with a helpful message
+  const noop = () => Promise.resolve({ data: null, error: new Error('Supabase not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local') })
+  const chainProxy = new Proxy(noop, {
+    get(_target, prop) {
+      if (prop === 'then' || prop === 'catch' || prop === 'finally') return undefined
+      if (prop === Symbol.toPrimitive || prop === 'toString' || prop === 'valueOf') return undefined
+      return chainProxy
     },
-  },
-})
+    apply() {
+      return Promise.resolve({ data: null, error: new Error('Supabase not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local') })
+    },
+  })
+
+  return new Proxy({} as SupabaseClient, {
+    get(_, prop) {
+      if (prop === 'auth') {
+        return new Proxy({} as SupabaseClient['auth'], {
+          get(_, method) {
+            return (...args: any[]) => {
+              console.warn(`Supabase.auth.${String(method)}() — not available (missing credentials)`)
+              return Promise.resolve({ data: null, error: new Error('Supabase not configured') })
+            }
+          },
+        })
+      }
+      if (prop === 'storage') {
+        return new Proxy({} as SupabaseClient['storage'], {
+          get(_, bucket) {
+            return new Proxy({} as any, {
+              get(_, method) {
+                return (...args: any[]) => {
+                  console.warn(`Supabase.storage.${String(bucket)}.${String(method)}() — not available (missing credentials)`)
+                  return Promise.resolve({ data: null, error: new Error('Supabase not configured') })
+                }
+              },
+            })
+          },
+        })
+      }
+      return chainProxy
+    },
+  })
+}
+
+export const supabase = createSupabaseClient()
 
 // ==================== Auth Helpers ====================
 
