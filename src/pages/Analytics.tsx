@@ -76,7 +76,6 @@ export function AnalyticsPage() {
         ))}
       </div>
 
-      {/* Chart placeholder */}
       <Card variant="glass" padding="lg" className="mb-8">
         <CardHeader>
           <CardTitle>Sales Overview</CardTitle>

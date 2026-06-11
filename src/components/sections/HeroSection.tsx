@@ -1,17 +1,10 @@
 import { Suspense, lazy } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, Sparkles, Users, Calendar } from 'lucide-react'
+import { ArrowRight, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
 
 const Scene3D = lazy(() => import('@/components/3d/ThreeHero').then(m => ({ default: m.Scene3D })))
-
-const stats = [
-  { label: 'Organizers', value: '1.2K+' },
-  { label: 'Events Hosted', value: '5K+' },
-  { label: 'Tickets Sold', value: '50K+' },
-]
 
 export function HeroSection() {
   return (
@@ -45,7 +38,7 @@ export function HeroSection() {
             className="inline-flex items-center gap-2 px-4 py-2 glass rounded-full text-yellow-400 text-sm font-medium mb-8"
           >
             <Sparkles className="h-4 w-4" />
-            <span>The all-in-one event OS</span>
+            <span>The all-in-one event platform</span>
           </motion.div>
 
           {/* Main heading */}
@@ -78,7 +71,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link to="/signup">
               <Button variant="primary" size="xl" className="group">
@@ -91,21 +84,6 @@ export function HeroSection() {
                 How It Works
               </Button>
             </a>
-          </motion.div>
-
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.65 }}
-            className="flex flex-wrap items-center justify-center gap-8 sm:gap-16"
-          >
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-yellow-400">{stat.value}</div>
-                <div className="text-sm text-text-muted">{stat.label}</div>
-              </div>
-            ))}
           </motion.div>
         </div>
       </div>

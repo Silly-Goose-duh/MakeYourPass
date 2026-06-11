@@ -255,7 +255,6 @@ export function DashboardHome() {
         </div>
       </div>
 
-      {/* Recent events placeholder */}
       <div className="text-center py-16">
         <div className="h-16 w-16 rounded-2xl bg-yellow-400/20 mx-auto mb-4 flex items-center justify-center">
           <Calendar className="h-8 w-8 text-yellow-400" />

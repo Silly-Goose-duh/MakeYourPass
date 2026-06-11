@@ -53,13 +53,6 @@ export function Navbar() {
               </a>
             ))}
 
-            {/* Pricing placeholder */}
-            <Link
-              to="/pricing"
-              className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-white rounded-lg hover:bg-white/5 transition-all"
-            >
-              Pricing
-            </Link>
           </div>
 
           {/* Desktop CTA */}
@@ -112,14 +105,6 @@ export function Navbar() {
                     {link.label}
                   </a>
                 ))}
-                <Link
-                  to="/pricing"
-                  onClick={() => setIsMobileOpen(false)}
-                  className="block px-4 py-3 text-sm font-medium text-text-secondary hover:text-white rounded-lg hover:bg-white/5 transition-all"
-                >
-                  Pricing
-                </Link>
-
                 <hr className="border-border my-3" />
 
                 {!isAuthPage && (
