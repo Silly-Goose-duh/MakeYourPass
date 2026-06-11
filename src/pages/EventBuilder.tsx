@@ -7,7 +7,8 @@ import { Input, Textarea } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { DatePicker } from '@/components/ui/DatePicker'
-import { cn } from '@/lib/utils'
+import { cn, generateSlug } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
 
 interface StepProps {
   title: string
@@ -52,6 +53,9 @@ export function EventBuilderPage() {
     },
   })
 
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
   const handleNext = () => {
     if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1)
   }
@@ -60,10 +64,101 @@ export function EventBuilderPage() {
     if (currentStep > 0) setCurrentStep(currentStep - 1)
   }
 
-  const handlePublish = () => {
-    // In production this saves to Supabase
-    alert('Event created successfully!')
-    navigate('/dashboard/events')
+  const handlePublish = async () => {
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        navigate('/login')
+        return
+      }
+
+      // Get or create organization
+      let { data: orgs } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('owner_id', user.id)
+        .limit(1)
+
+      let orgId: string
+      if (!orgs || orgs.length === 0) {
+        const { data: newOrg, error: orgError } = await supabase
+          .from('organizations')
+          .insert({
+            name: `${user.user_metadata?.full_name || 'My'} Organization`,
+            slug: generateSlug(user.email?.split('@')[0] || 'my-org'),
+            owner_id: user.id,
+          })
+          .select('id')
+          .single()
+
+        if (orgError) { setSaveError(orgError.message); setSaving(false); return }
+        orgId = newOrg!.id
+
+        // Also add as member
+        await supabase.from('org_members').insert({
+          org_id: orgId,
+          user_id: user.id,
+          role: 'owner',
+          status: 'active',
+        })
+      } else {
+        orgId = orgs[0].id
+      }
+
+      // Create the event
+      const slug = generateSlug(eventData.title)
+      const { data: event, error: eventError } = await supabase
+        .from('events')
+        .insert({
+          org_id: orgId,
+          title: eventData.title,
+          slug,
+          description: eventData.description || '',
+          short_description: eventData.shortDescription || null,
+          venue_name: eventData.venueName || null,
+          venue_address: eventData.venueAddress || null,
+          city: eventData.city || null,
+          state: eventData.state || null,
+          start_date: eventData.startDate,
+          end_date: eventData.endDate,
+          start_time: eventData.startTime,
+          end_time: eventData.endTime,
+          category: eventData.category || 'other',
+          status: 'published',
+          visibility: 'public',
+          max_attendees: eventData.maxAttendees ? parseInt(eventData.maxAttendees) : null,
+        })
+        .select('id')
+        .single()
+
+      if (eventError) { setSaveError(eventError.message); setSaving(false); return }
+
+      // Create ticket type
+      const ticketQty = eventData.ticketing.quantity ? parseInt(eventData.ticketing.quantity) : 0
+      const ticketPrice = eventData.ticketing.isFree ? 0 : (parseInt(eventData.ticketing.price) || 0)
+
+      const { error: ticketError } = await supabase
+        .from('ticket_types')
+        .insert({
+          event_id: event.id,
+          name: eventData.ticketing.isFree ? 'Free Entry' : 'General Admission',
+          price: ticketPrice,
+          quantity: ticketQty,
+          max_per_order: 5,
+          is_active: true,
+          sort_order: 0,
+        })
+
+      if (ticketError) { setSaveError(ticketError.message); setSaving(false); return }
+
+      navigate(`/dashboard/events`)
+    } catch {
+      setSaveError('Something went wrong. Please try again.')
+      setSaving(false)
+    }
   }
 
   const updateField = (field: string, value: string) => {
@@ -406,15 +501,21 @@ export function EventBuilderPage() {
               )}
             </Button>
 
+            {saveError && (
+              <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm mb-4">
+                {saveError}
+              </div>
+            )}
+
             {currentStep < steps.length - 1 ? (
               <Button variant="primary" onClick={handleNext}>
                 Continue
                 <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button variant="primary" onClick={handlePublish} className="bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/30">
+              <Button variant="primary" onClick={handlePublish} loading={saving} className="bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/30">
                 <Save className="h-4 w-4" />
-                Publish Event
+                {saving ? 'Publishing...' : 'Publish Event'}
               </Button>
             )}
           </div>
