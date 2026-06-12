@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, ChevronDown, Sparkles, Ticket } from 'lucide-react'
+import { Menu, X, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 
@@ -14,9 +14,16 @@ const navLinks = [
 
 export function Navbar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const location = useLocation()
   const isHome = location.pathname === '/'
   const isAuthPage = location.pathname.startsWith('/login') || location.pathname.startsWith('/signup')
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const handleNavClick = (href: string) => {
     setIsMobileOpen(false)
@@ -25,19 +32,32 @@ export function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div className="relative">
-        {/* Glass backdrop */}
-        <div className="absolute inset-0 bg-background/70 backdrop-blur-2xl border-b border-border" />
+        {/* Glass backdrop — morphs from subtle to strong on scroll */}
+        <div
+          className={cn(
+            'absolute inset-0 border-b transition-all duration-500',
+            scrolled
+              ? 'bg-black/80 backdrop-blur-2xl border-white/10'
+              : 'bg-black/40 backdrop-blur-lg border-transparent'
+          )}
+        />
 
         <nav className="relative mx-auto flex items-center justify-between px-6 py-4 max-w-7xl">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="h-10 w-10 rounded-xl bg-yellow-400 flex items-center justify-center shadow-lg shadow-yellow-400/30 group-hover:shadow-yellow-400/50 transition-all">
-              <Sparkles className="h-5 w-5 text-black" />
+          {/* Logo — bolder, more distinctive */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-yellow-400 via-yellow-300 to-accent-pink flex items-center justify-center shadow-lg shadow-yellow-400/30 group-hover:shadow-yellow-400/50 transition-all duration-300 group-hover:scale-105 overflow-hidden">
+              {/* Inner glow ring */}
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent" />
+              <Zap className="h-5 w-5 text-black relative z-10" />
             </div>
-            <span className="text-xl font-bold tracking-tight">
-              <span className="text-white">MakeYour</span>
-              <span className="text-yellow-400">Pass</span>
-            </span>
+            <div className="flex flex-col leading-none">
+              <span className="text-lg font-bold tracking-tight text-white">
+                MakeYour<span className="text-yellow-400">Pass</span>
+              </span>
+              <span className="text-[10px] font-medium text-text-muted tracking-widest uppercase -mt-0.5">
+                Event OS
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Nav */}
@@ -47,12 +67,12 @@ export function Navbar() {
                 key={link.label}
                 href={link.href}
                 onClick={() => handleNavClick(link.href)}
-                className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-white rounded-lg hover:bg-white/5 transition-all"
+                className="relative px-4 py-2 text-sm font-medium text-text-secondary hover:text-white rounded-lg hover:bg-white/[0.04] transition-all group"
               >
                 {link.label}
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-yellow-400 rounded-full transition-all duration-300 group-hover:w-3/4" />
               </a>
             ))}
-
           </div>
 
           {/* Desktop CTA */}
@@ -65,7 +85,7 @@ export function Navbar() {
                   </Button>
                 </Link>
                 <Link to="/signup">
-                  <Button variant="primary" size="sm">
+                  <Button variant="gradient" size="sm" glow>
                     Get Started Free
                   </Button>
                 </Link>
@@ -92,20 +112,23 @@ export function Navbar() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden border-b border-border bg-background/95 backdrop-blur-2xl"
+              className="md:hidden border-b border-white/10 bg-black/95 backdrop-blur-2xl"
             >
               <div className="px-6 py-4 space-y-1">
-                {navLinks.map((link) => (
-                  <a
+                {navLinks.map((link, i) => (
+                  <motion.a
                     key={link.label}
                     href={link.href}
                     onClick={() => handleNavClick(link.href)}
-                    className="block px-4 py-3 text-sm font-medium text-text-secondary hover:text-white rounded-lg hover:bg-white/5 transition-all"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="block px-4 py-3 text-sm font-medium text-text-secondary hover:text-white rounded-lg hover:bg-white/[0.04] transition-all"
                   >
                     {link.label}
-                  </a>
+                  </motion.a>
                 ))}
-                <hr className="border-border my-3" />
+                <hr className="border-white/10 my-3" />
 
                 {!isAuthPage && (
                   <div className="space-y-2 px-1">
@@ -115,7 +138,7 @@ export function Navbar() {
                       </Button>
                     </Link>
                     <Link to="/signup" onClick={() => setIsMobileOpen(false)}>
-                      <Button variant="primary" fullWidth size="sm">
+                      <Button variant="gradient" fullWidth size="sm">
                         Get Started Free
                       </Button>
                     </Link>

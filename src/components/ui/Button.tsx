@@ -2,14 +2,15 @@ import { forwardRef, ButtonHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'pink' | 'cyan' | 'gradient'
   size?: 'sm' | 'md' | 'lg' | 'xl'
   loading?: boolean
   fullWidth?: boolean
+  glow?: boolean
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', loading, fullWidth, disabled, children, ...props }, ref) => {
+  ({ className, variant = 'primary', size = 'md', loading, fullWidth, glow, disabled, children, ...props }, ref) => {
     const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed'
 
     const variants = {
@@ -18,6 +19,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       outline: 'border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/10 active:bg-yellow-400/20 focus-visible:ring-yellow-400',
       ghost: 'text-white/80 hover:text-white hover:bg-white/10 active:bg-white/20 focus-visible:ring-white',
       danger: 'bg-red-500 text-white hover:bg-red-400 active:bg-red-600 shadow-lg shadow-red-500/30 focus-visible:ring-red-500',
+      pink: 'bg-accent-pink text-white hover:bg-pink-400 active:bg-pink-600 shadow-lg shadow-accent-pink/30 focus-visible:ring-accent-pink',
+      cyan: 'bg-accent-cyan text-black hover:bg-cyan-300 active:bg-cyan-500 shadow-lg shadow-accent-cyan/30 focus-visible:ring-accent-cyan',
+      gradient: 'bg-gradient-to-r from-yellow-400 via-accent-pink to-accent-cyan text-black font-bold hover:opacity-90 active:opacity-80 shadow-xl focus-visible:ring-yellow-400 animate-gradient',
     }
 
     const sizes = {
@@ -27,10 +31,24 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       xl: 'px-10 py-5 text-xl gap-3',
     }
 
+    const glowStyles: Record<string, string> = {
+      primary: 'glow-yellow',
+      pink: 'glow-pink',
+      cyan: 'glow-cyan',
+      gradient: 'shadow-glow-yellow',
+    }
+
     return (
       <button
         ref={ref}
-        className={cn(baseStyles, variants[variant], sizes[size], fullWidth && 'w-full', className)}
+        className={cn(
+          baseStyles,
+          variants[variant],
+          sizes[size],
+          fullWidth && 'w-full',
+          glow && glowStyles[variant],
+          className
+        )}
         disabled={disabled || loading}
         {...props}
       >
