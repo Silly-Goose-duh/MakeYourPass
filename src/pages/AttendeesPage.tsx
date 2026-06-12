@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Search, Download, Users, Check, X, Calendar, QrCode } from 'lucide-react'
+import { Search, Download, Users, QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { cn, formatDate, formatTime } from '@/lib/utils'
+import { cn, formatTime } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import type { Event } from '@/types'
 
@@ -33,10 +33,6 @@ export function AttendeesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<string>('all')
   const [selectedEventId, setSelectedEventId] = useState<string>('all')
-
-  useEffect(() => {
-    loadData()
-  }, [])
 
   async function loadData() {
     setLoading(true)
@@ -97,6 +93,10 @@ export function AttendeesPage() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadData()
+  }, [])
 
   const filteredAttendees = attendees.filter(a => {
     if (selectedEventId !== 'all' && a.event_id !== selectedEventId) return false

@@ -21,11 +21,6 @@ export function EventsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [ticketCounts, setTicketCounts] = useState<Record<string, { sold: number; total: number }>>({})
 
-  useEffect(() => {
-    if (mode === 'my-events') loadMyEvents()
-    else loadPublicEvents()
-  }, [mode])
-
   async function loadMyEvents() {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
@@ -70,6 +65,11 @@ export function EventsPage() {
     if (data) setPublicEvents(data)
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (mode === 'my-events') loadMyEvents()
+    else loadPublicEvents()
+  }, [mode])
 
   const filteredMyEvents = myEvents.filter(e => {
     if (filterStatus !== 'all' && e.status !== filterStatus) return false

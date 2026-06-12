@@ -3,9 +3,8 @@ import { motion } from 'framer-motion'
 import { BarChart3, Calendar, TrendingUp, Users, DollarSign, Ticket } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { cn, formatCurrency } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import type { Event } from '@/types'
 
 interface AnalyticsData {
   totalEvents: number
@@ -28,10 +27,6 @@ export function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<'all' | 'month' | 'week'>('all')
-
-  useEffect(() => {
-    loadAnalytics()
-  }, [])
 
   async function loadAnalytics() {
     setLoading(true)
@@ -105,6 +100,10 @@ export function AnalyticsPage() {
     })
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadAnalytics()
+  }, [])
 
   if (loading) {
     return (

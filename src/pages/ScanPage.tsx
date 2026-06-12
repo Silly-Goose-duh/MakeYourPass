@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Check, X, Calendar, MapPin, Clock, Ticket as TicketIcon, ArrowLeft, User, Shield } from 'lucide-react'
+import { Check, X, Calendar, MapPin, Ticket as TicketIcon, ArrowLeft, User, Shield } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -18,11 +18,6 @@ export function ScanPage() {
   const [checkingIn, setCheckingIn] = useState(false)
   const [checkedIn, setCheckedIn] = useState(false)
   const [checkInError, setCheckInError] = useState('')
-
-  useEffect(() => {
-    if (!qrCode) { setError('No QR code provided'); setLoading(false); return }
-    loadTicket()
-  }, [qrCode])
 
   async function loadTicket() {
     setLoading(true)
@@ -55,6 +50,11 @@ export function ScanPage() {
       setCheckedIn(true)
     }
   }
+
+  useEffect(() => {
+    if (!qrCode) { setError('No QR code provided'); setLoading(false); return }
+    loadTicket()
+  }, [qrCode])
 
   async function handleCheckIn() {
     if (!ticket) return

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Search, Download, Ticket, User, Check, X, ExternalLink } from 'lucide-react'
+import { Search, Download, Ticket, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { cn, formatDateTime } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import type { Ticket as TicketType, Event } from '@/types'
+import type { Ticket as TicketType } from '@/types'
 
 interface TicketWithEvent {
   id: string
@@ -25,10 +25,6 @@ export function TicketsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
-
-  useEffect(() => {
-    loadTickets()
-  }, [])
 
   async function loadTickets() {
     setLoading(true)
@@ -73,6 +69,10 @@ export function TicketsPage() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadTickets()
+  }, [])
 
   const filtered = tickets.filter(t => {
     if (filterStatus !== 'all' && t.status !== filterStatus) return false
