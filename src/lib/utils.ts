@@ -28,6 +28,19 @@ export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOpt
   })
 }
 
+export function formatTime(time: string): string {
+  if (!time) return ''
+  try {
+    const [hours, minutes] = time.split(':')
+    const h = parseInt(hours)
+    const ampm = h >= 12 ? 'PM' : 'AM'
+    const hour12 = h % 12 || 12
+    return `${hour12}:${minutes} ${ampm}`
+  } catch {
+    return time
+  }
+}
+
 export function formatDateTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleString('en-IN', {

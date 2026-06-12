@@ -5,6 +5,7 @@ import { HomePage } from '@/pages/Home'
 import { LoginPage } from '@/pages/Login'
 import { SignupPage } from '@/pages/Signup'
 import { EventPage } from '@/pages/EventPage'
+import { PublicEventsPage } from '@/pages/PublicEventsPage'
 import { DashboardLayout, DashboardHome } from '@/pages/Dashboard'
 import { EventsPage } from '@/pages/Events'
 import { EventBuilderPage } from '@/pages/EventBuilder'
@@ -21,6 +22,7 @@ function App() {
           {/* Public routes */}
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
+            <Route path="events" element={<PublicEventsPage />} />
             <Route path="event/:eventSlug" element={<EventPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />

@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 
 const navLinks = [
+  { label: 'Explore Events', href: '/events' },
   { label: 'Features', href: '/#features' },
   { label: 'How It Works', href: '/#how-it-works' },
-  { label: 'Blog', href: '/#blogs' },
   { label: 'Docs', href: '/docs' },
 ]
 

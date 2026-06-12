@@ -108,6 +108,24 @@ export async function resetPassword(email: string) {
   return { data, error }
 }
 
+export async function getPublicEvents(limit = 12, category?: string) {
+  let query = supabase
+    .from('events')
+    .select('*')
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gte('end_date', new Date().toISOString().split('T')[0])
+    .order('start_date', { ascending: true })
+    .limit(limit)
+
+  if (category && category !== 'all') {
+    query = query.eq('category', category)
+  }
+
+  const { data, error } = await query
+  return { data: data as Event[] | null, error }
+}
+
 export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser()
   return user

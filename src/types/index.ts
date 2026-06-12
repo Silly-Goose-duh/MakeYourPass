@@ -53,6 +53,8 @@ export interface Event {
   status: EventStatus
   visibility: 'public' | 'private' | 'unlisted'
   max_attendees?: number
+  form_link?: string
+  use_external_form?: boolean
   created_at: string
   updated_at: string
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Check, Sparkles, Save } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Sparkles, Save, Ticket, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -46,6 +46,8 @@ export function EventBuilderPage() {
     city: '',
     state: '',
     maxAttendees: '',
+    useExternalForm: false,
+    formLink: '',
     ticketing: {
       isFree: true,
       price: '',
@@ -130,6 +132,8 @@ export function EventBuilderPage() {
           status: 'published',
           visibility: 'public',
           max_attendees: eventData.maxAttendees ? parseInt(eventData.maxAttendees) : null,
+          use_external_form: eventData.useExternalForm,
+          form_link: eventData.formLink || null,
         })
         .select('id')
         .single()
@@ -251,6 +255,49 @@ export function EventBuilderPage() {
                 onChange={(e) => updateField('shortDescription', e.target.value)}
                 hint="Shown on cards and social sharing"
               />
+
+              {/* Registration Method */}
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-3">Registration Method</label>
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setEventData(prev => ({ ...prev, useExternalForm: false, formLink: '' }))}
+                    className={cn(
+                      'px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
+                      !eventData.useExternalForm
+                        ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
+                        : 'border-border text-text-secondary hover:border-white/30'
+                    )}
+                  >
+                    <Ticket className="h-4 w-4 mx-auto mb-1" />
+                    Use MakeYourPass Ticketing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEventData(prev => ({ ...prev, useExternalForm: true }))}
+                    className={cn(
+                      'px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
+                      eventData.useExternalForm
+                        ? 'bg-accent-pink/20 border-accent-pink text-accent-pink'
+                        : 'border-border text-text-secondary hover:border-white/30'
+                    )}
+                  >
+                    <ExternalLink className="h-4 w-4 mx-auto mb-1" />
+                    Use External Form
+                  </button>
+                </div>
+                {eventData.useExternalForm && (
+                  <Input
+                    label="Form Link"
+                    type="url"
+                    placeholder="https://forms.google.com/..."
+                    value={eventData.formLink}
+                    onChange={(e) => updateField('formLink', e.target.value)}
+                    hint="Attendees will be redirected to this link to register"
+                  />
+                )}
+              </div>
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">Category</label>
                 <div className="flex flex-wrap gap-2">
@@ -475,6 +522,18 @@ export function EventBuilderPage() {
                   <span className="text-text-muted">Venue</span>
                   <span className="text-white">{eventData.venueName || 'Not set'}</span>
                 </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-text-muted">Registration</span>
+                  <span className="text-white">
+                    {eventData.useExternalForm ? 'External Form' : 'MakeYourPass Ticketing'}
+                  </span>
+                </div>
+                {eventData.useExternalForm && eventData.formLink && (
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-text-muted">Form Link</span>
+                    <span className="text-accent-cyan text-sm truncate max-w-[200px]">{eventData.formLink}</span>
+                  </div>
+                )}
                 <div className="flex justify-between py-2 border-b border-border">
                   <span className="text-text-muted">Tickets</span>
                   <span className="text-white">

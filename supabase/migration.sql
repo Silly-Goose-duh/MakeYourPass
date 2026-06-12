@@ -284,3 +284,10 @@ create trigger update_events_updated_at
 
 create trigger update_orders_updated_at
   before update on orders for each row execute function update_updated_at();
+
+-- ============================================
+-- Migration 2: Add form_link and use_external_form to events
+-- ============================================
+alter table events
+  add column if not exists form_link text,
+  add column if not exists use_external_form boolean default false;
