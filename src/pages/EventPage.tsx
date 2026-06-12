@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { formatDate, formatTime, cn } from '@/lib/utils'
 import { supabase, createOrder, createTickets, updateTicketTypeSales } from '@/lib/supabase'
+import { sendConfirmationEmail } from '@/lib/email'
 import type { Event, TicketType } from '@/types'
 
 export function EventPage() {
@@ -114,7 +115,24 @@ export function EventPage() {
       const newSold = (activeTicket.quantity_sold || 0) + quantity
       await updateTicketTypeSales(activeTicket.id, newSold)
 
-      // 5. Show success with QR codes
+      // 5. Send confirmation email (fire & forget — don't block on failure)
+      const qrCodeUrls = (tickets || ticketData).map((t: any) =>
+        `${window.location.origin}/scan/${t.qr_code}`
+      )
+      sendConfirmationEmail({
+        to_name: buyerName,
+        to_email: buyerEmail,
+        event_title: event.title,
+        event_date: formatDate(event.start_date),
+        event_time: `${formatTime(event.start_time)} - ${formatTime(event.end_time)}`,
+        event_venue: [event.venue_name, event.city].filter(Boolean).join(', '),
+        ticket_type: activeTicket.name,
+        quantity,
+        qr_code_url: qrCodeUrls[0] || '',
+        event_url: `${window.location.origin}/event/${event.slug}`,
+      })
+
+      // 6. Show success with QR codes
       setPurchasedTickets(tickets || ticketData)
       
     } catch (err: any) {
