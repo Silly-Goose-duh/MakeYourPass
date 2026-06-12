@@ -56,6 +56,12 @@ export function EventPage() {
 
   const activeTicket = ticketTypes.find(t => t.id === selectedTicket)
 
+  // Overall ticket capacity summary
+  const totalTickets = ticketTypes.reduce((sum, t) => sum + t.quantity, 0)
+  const totalSold = ticketTypes.reduce((sum, t) => sum + t.quantity_sold, 0)
+  const totalRemaining = totalTickets - totalSold
+  const sellOutPercent = totalTickets > 0 ? Math.min(100, (totalSold / totalTickets) * 100) : 0
+
   const handlePurchase = async () => {
     if (!event || !activeTicket) return
     setIsPurchasing(true)
@@ -327,6 +333,47 @@ export function EventPage() {
                 )}
               </div>
 
+              {/* Overall ticket availability */}
+              {totalTickets > 0 && (
+                <div className="mb-6 p-4 rounded-xl bg-white/[0.03] border border-white/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Ticket className="h-4 w-4 text-yellow-400" />
+                      <span className="text-text-secondary">Ticket Availability</span>
+                    </div>
+                    <span className={cn(
+                      'text-sm font-semibold',
+                      totalRemaining === 0
+                        ? 'text-red-400'
+                        : totalRemaining / totalTickets < 0.25
+                          ? 'text-yellow-400'
+                          : 'text-green-400'
+                    )}>
+                      {totalRemaining === 0
+                        ? 'Sold Out'
+                        : `${totalRemaining} of ${totalTickets} left`}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full rounded-full transition-all',
+                        totalRemaining === 0
+                          ? 'bg-red-500'
+                          : totalRemaining / totalTickets < 0.25
+                            ? 'bg-yellow-400'
+                            : 'bg-gradient-to-r from-yellow-400 to-green-400'
+                      )}
+                      style={{ width: `${sellOutPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-text-muted text-xs mt-2">
+                    {totalSold} of {totalTickets} tickets booked
+                    {totalRemaining > 0 && ` — ${totalRemaining} remaining`}
+                  </p>
+                </div>
+              )}
+
               <Button variant="secondary" size="sm">
                 <Share2 className="h-4 w-4" />
                 Share Event
@@ -338,6 +385,33 @@ export function EventPage() {
               <Card variant="glass" padding="lg" className="sticky top-24">
                 <CardContent>
                   <h3 className="text-lg font-bold text-white mb-4">Get Tickets</h3>
+
+                  {/* Overall availability bar in card */}
+                  {totalTickets > 0 && (
+                    <div className="mb-5 p-3 rounded-xl bg-white/[0.03] border border-white/10">
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="text-text-muted">Overall availability</span>
+                        <span className={cn(
+                          'font-semibold',
+                          totalRemaining === 0 ? 'text-red-400' : 'text-text-secondary'
+                        )}>
+                          {totalRemaining === 0 ? 'Sold Out' : `${totalRemaining} left`}
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-full',
+                            totalRemaining === 0 ? 'bg-red-500' : 'bg-gradient-to-r from-yellow-400 to-cyan-400'
+                          )}
+                          style={{ width: `${sellOutPercent}%` }}
+                        />
+                      </div>
+                      <p className="text-text-muted text-[10px] mt-1.5">
+                        {totalSold} / {totalTickets} booked
+                      </p>
+                    </div>
+                  )}
 
                   {ticketTypes.length > 0 ? (
                     <>

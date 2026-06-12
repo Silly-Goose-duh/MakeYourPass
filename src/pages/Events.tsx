@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { PublicEventModal } from '@/components/ui/PublicEventModal'
 import { cn, formatDate } from '@/lib/utils'
-import { supabase, getPublicEvents } from '@/lib/supabase'
+import { supabase, getPublicEvents, getTicketCountsForEvents } from '@/lib/supabase'
 import type { Event } from '@/types'
 
 type TabMode = 'my-events' | 'public-events'
@@ -19,6 +19,7 @@ export function EventsPage() {
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [ticketCounts, setTicketCounts] = useState<Record<string, { sold: number; total: number }>>({})
 
   useEffect(() => {
     if (mode === 'my-events') loadMyEvents()
@@ -42,7 +43,23 @@ export function EventsPage() {
         .in('org_id', orgs.map(o => o.id))
         .order('created_at', { ascending: false })
 
-      if (data) setMyEvents(data as Event[])
+      if (data) {
+        const events = data as Event[]
+        setMyEvents(events)
+
+        // Fetch ticket counts for all events
+        const eventIds = events.map(e => e.id)
+        const { data: ticketData } = await getTicketCountsForEvents(eventIds)
+        if (ticketData) {
+          const counts: Record<string, { sold: number; total: number }> = {}
+          for (const row of ticketData) {
+            if (!counts[row.event_id]) counts[row.event_id] = { sold: 0, total: 0 }
+            counts[row.event_id].sold += row.quantity_sold
+            counts[row.event_id].total += row.quantity
+          }
+          setTicketCounts(counts)
+        }
+      }
     }
     setLoading(false)
   }
@@ -162,7 +179,7 @@ export function EventsPage() {
       {!loading && (
         <AnimatePresence mode="wait">
           {mode === 'my-events' ? (
-            <MyEventsView key="my" events={filteredMyEvents} />
+            <MyEventsView key="my" events={filteredMyEvents} ticketCounts={ticketCounts} />
           ) : (
             <PublicEventsView key="public" events={filteredPublicEvents} />
           )}
@@ -173,7 +190,7 @@ export function EventsPage() {
 }
 
 /* ===== MY EVENTS VIEW ===== */
-function MyEventsView({ events }: { events: Event[] }) {
+function MyEventsView({ events, ticketCounts }: { events: Event[]; ticketCounts: Record<string, { sold: number; total: number }> }) {
   if (events.length === 0) {
     return (
       <motion.div
@@ -232,6 +249,43 @@ function MyEventsView({ events }: { events: Event[] }) {
                   </div>
                 )}
               </div>
+
+              {/* Ticket fill progress */}
+              {ticketCounts[event.id] && ticketCounts[event.id].total > 0 && (
+                <div className="mb-3">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-text-muted">
+                      <Ticket className="h-3 w-3 inline-block mr-1 -mt-0.5" />
+                      {ticketCounts[event.id].sold} / {ticketCounts[event.id].total} tickets
+                    </span>
+                    <span className={cn(
+                      'font-medium',
+                      ticketCounts[event.id].sold >= ticketCounts[event.id].total
+                        ? 'text-red-400'
+                        : ticketCounts[event.id].sold / ticketCounts[event.id].total > 0.75
+                          ? 'text-yellow-400'
+                          : 'text-green-400'
+                    )}>
+                      {ticketCounts[event.id].sold >= ticketCounts[event.id].total
+                        ? 'Sold Out'
+                        : `${Math.round((1 - ticketCounts[event.id].sold / ticketCounts[event.id].total) * 100)}% left`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full rounded-full transition-all',
+                        ticketCounts[event.id].sold >= ticketCounts[event.id].total
+                          ? 'bg-red-500'
+                          : 'bg-gradient-to-r from-yellow-400 to-cyan-400'
+                      )}
+                      style={{
+                        width: `${Math.min(100, (ticketCounts[event.id].sold / ticketCounts[event.id].total) * 100)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-1.5 pt-3 border-t border-white/10">
                 <Link to={`/event/${event.slug}`} className="flex-1">

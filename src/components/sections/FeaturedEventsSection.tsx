@@ -1,24 +1,39 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar, MapPin, ArrowRight, ExternalLink, Sparkles } from 'lucide-react'
+import { Calendar, MapPin, ArrowRight, ExternalLink, Sparkles, Ticket } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { PublicEventModal } from '@/components/ui/PublicEventModal'
 import { formatDate } from '@/lib/utils'
-import { getPublicEvents } from '@/lib/supabase'
+import { getPublicEvents, getTicketCountsForEvents } from '@/lib/supabase'
 import type { Event } from '@/types'
+import { cn } from '@/lib/utils'
 
 export function FeaturedEventsSection() {
   const [events, setEvents] = useState<Event[]>([])
+  const [ticketCounts, setTicketCounts] = useState<Record<string, { sold: number; total: number }>>({})
   const [loading, setLoading] = useState(true)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 
   useEffect(() => {
     async function load() {
       const { data } = await getPublicEvents(3)
-      if (data) setEvents(data)
+      if (data) {
+        setEvents(data)
+        // Fetch ticket counts for featured events
+        const { data: ticketData } = await getTicketCountsForEvents(data.map(e => e.id))
+        if (ticketData) {
+          const counts: Record<string, { sold: number; total: number }> = {}
+          for (const row of ticketData) {
+            if (!counts[row.event_id]) counts[row.event_id] = { sold: 0, total: 0 }
+            counts[row.event_id].sold += row.quantity_sold
+            counts[row.event_id].total += row.quantity
+          }
+          setTicketCounts(counts)
+        }
+      }
       setLoading(false)
     }
     load()
@@ -114,6 +129,39 @@ export function FeaturedEventsSection() {
                       <div className="flex items-center gap-2 text-sm text-text-muted">
                         <MapPin className="h-3.5 w-3.5" />
                         <span className="truncate">{event.city || event.venue_name}</span>
+                      </div>
+                    )}
+
+                    {/* Ticket availability on featured card */}
+                    {ticketCounts[event.id] && ticketCounts[event.id].total > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-text-muted">
+                            <Ticket className="h-3 w-3 inline-block mr-0.5 -mt-0.5" />
+                            {ticketCounts[event.id].sold}/{ticketCounts[event.id].total} booked
+                          </span>
+                          <span className={cn(
+                            ticketCounts[event.id].sold >= ticketCounts[event.id].total
+                              ? 'text-red-400' : 'text-yellow-400'
+                          )}>
+                            {ticketCounts[event.id].sold >= ticketCounts[event.id].total
+                              ? 'Sold Out'
+                              : `${ticketCounts[event.id].total - ticketCounts[event.id].sold} left`}
+                          </span>
+                        </div>
+                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              'h-full rounded-full',
+                              ticketCounts[event.id].sold >= ticketCounts[event.id].total
+                                ? 'bg-red-500'
+                                : 'bg-gradient-to-r from-yellow-400 to-cyan-400'
+                            )}
+                            style={{
+                              width: `${Math.min(100, (ticketCounts[event.id].sold / ticketCounts[event.id].total) * 100)}%`
+                            }}
+                          />
+                        </div>
                       </div>
                     )}
 

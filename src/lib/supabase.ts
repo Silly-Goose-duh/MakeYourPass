@@ -265,6 +265,15 @@ export async function getTicketsForEvent(eventId: string) {
   return { data: data as Ticket[] | null, error }
 }
 
+export async function getTicketCountsForEvents(eventIds: string[]) {
+  if (eventIds.length === 0) return { data: [], error: null }
+  const { data, error } = await supabase
+    .from('ticket_types')
+    .select('event_id, quantity, quantity_sold')
+    .in('event_id', eventIds)
+  return { data: data as { event_id: string; quantity: number; quantity_sold: number }[] | null, error }
+}
+
 export async function updateTicketTypeSales(ticketTypeId: string, quantitySold: number) {
   const { error } = await supabase
     .from('ticket_types')
