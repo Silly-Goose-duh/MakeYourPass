@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar, MapPin, Search, ExternalLink, Ticket, Filter, ChevronDown } from 'lucide-react'
+import { Calendar, MapPin, Search, ExternalLink, Ticket } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { PublicEventModal } from '@/components/ui/PublicEventModal'
 import { cn, formatDate } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import type { Event } from '@/types'
@@ -27,7 +28,7 @@ export function PublicEventsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [showFilters, setShowFilters] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -123,6 +124,13 @@ export function PublicEventsPage() {
           </div>
         )}
 
+        {/* Public Event Modal */}
+        <PublicEventModal
+          event={selectedEvent!}
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+        />
+
         {/* Events grid */}
         {!loading && (
           <>
@@ -135,7 +143,10 @@ export function PublicEventsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                   >
-                    <Link to={`/event/${event.slug}`} className="block group">
+                    <button
+                      onClick={() => setSelectedEvent(event)}
+                      className="w-full text-left group"
+                    >
                       <Card
                         variant="glass"
                         padding="md"
@@ -192,13 +203,13 @@ export function PublicEventsPage() {
                           {/* Action */}
                           <div className="pt-3 border-t border-white/10">
                             <span className="text-yellow-400 text-sm font-medium flex items-center gap-1.5 group-hover:gap-2 transition-all">
-                              View Details
+                              Quick View
                               <ExternalLink className="h-3.5 w-3.5" />
                             </span>
                           </div>
                         </CardContent>
                       </Card>
-                    </Link>
+                    </button>
                   </motion.div>
                 ))}
               </div>

@@ -5,6 +5,7 @@ import { Plus, Calendar, MapPin, MoreHorizontal, Edit, Eye, Copy, Sparkles, Exte
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
+import { PublicEventModal } from '@/components/ui/PublicEventModal'
 import { cn, formatDate } from '@/lib/utils'
 import { supabase, getPublicEvents } from '@/lib/supabase'
 import type { Event } from '@/types'
@@ -262,6 +263,7 @@ function MyEventsView({ events }: { events: Event[] }) {
 
 /* ===== PUBLIC EVENTS VIEW ===== */
 function PublicEventsView({ events }: { events: Event[] }) {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   if (events.length === 0) {
     return (
       <motion.div
@@ -279,83 +281,77 @@ function PublicEventsView({ events }: { events: Event[] }) {
   }
 
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {events.map((event, i) => (
-        <motion.div
-          key={event.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.03 }}
-        >
-          <Card variant="glass-cyan" hover glow="cyan" className="group h-full">
-            <CardContent>
-              {/* Top: category + external badge */}
-              <div className="flex items-center gap-2 mb-3">
-                <Badge variant="cyan" size="sm">
-                  {event.category.replace('_', ' ')}
-                </Badge>
-                {event.use_external_form && event.form_link && (
-                  <Badge variant="pink" size="sm" className="ml-auto">
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    External Form
-                  </Badge>
-                )}
-              </div>
+    <>
+      {/* Public Event Modal */}
+      <PublicEventModal
+        event={selectedEvent!}
+        isOpen={!!selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+      />
 
-              <h3 className="text-base font-semibold text-white mb-1.5 line-clamp-2 group-hover:text-accent-cyan transition-colors">
-                {event.title}
-              </h3>
-
-              {event.short_description && (
-                <p className="text-text-secondary text-xs line-clamp-2 mb-3">
-                  {event.short_description}
-                </p>
-              )}
-
-              {/* Date & location */}
-              <div className="space-y-1 text-xs text-text-muted mb-4">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-3 w-3" />
-                  <span>{formatDate(event.start_date)}</span>
-                </div>
-                {(event.venue_name || event.city) && (
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="h-3 w-3" />
-                    <span className="truncate">{event.city || event.venue_name}</span>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {events.map((event, i) => (
+          <motion.div
+            key={event.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03 }}
+          >
+            <button
+              onClick={() => setSelectedEvent(event)}
+              className="w-full text-left group"
+            >
+              <Card variant="glass-cyan" hover glow="cyan" className="group h-full">
+                <CardContent>
+                  {/* Top: category + external badge */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="cyan" size="sm">
+                      {event.category.replace('_', ' ')}
+                    </Badge>
+                    {event.use_external_form && event.form_link && (
+                      <Badge variant="pink" size="sm" className="ml-auto">
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        External Form
+                      </Badge>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-1.5 pt-3 border-t border-white/10">
-                <Link to={`/event/${event.slug}`} className="flex-1">
-                  <Button variant="ghost" size="sm" fullWidth className="text-xs">
-                    <Eye className="h-3.5 w-3.5" /> Details
-                  </Button>
-                </Link>
-                {event.use_external_form && event.form_link && (
-                  <a
-                    href={event.form_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1"
-                  >
-                    <Button variant="pink" size="sm" fullWidth className="text-xs">
-                      <ExternalLink className="h-3.5 w-3.5" /> Register
-                    </Button>
-                  </a>
-                )}
-                <Link to={`/event/${event.slug}`} className="flex-1">
-                  <Button variant="cyan" size="sm" fullWidth className="text-xs">
-                    <Ticket className="h-3.5 w-3.5" /> Tickets
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ))}
-    </div>
+                  <h3 className="text-base font-semibold text-white mb-1.5 line-clamp-2 group-hover:text-accent-cyan transition-colors">
+                    {event.title}
+                  </h3>
+
+                  {event.short_description && (
+                    <p className="text-text-secondary text-xs line-clamp-2 mb-3">
+                      {event.short_description}
+                    </p>
+                  )}
+
+                  {/* Date & location */}
+                  <div className="space-y-1 text-xs text-text-muted mb-4">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-3 w-3" />
+                      <span>{formatDate(event.start_date)}</span>
+                    </div>
+                    {(event.venue_name || event.city) && (
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3 w-3" />
+                        <span className="truncate">{event.city || event.venue_name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-3 border-t border-white/10">
+                    <span className="text-accent-cyan text-sm font-medium flex items-center gap-1.5">
+                      <Eye className="h-3.5 w-3.5" /> Quick View
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </button>
+          </motion.div>
+        ))}
+      </div>
+    </>
   )
 }
 

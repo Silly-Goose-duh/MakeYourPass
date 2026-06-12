@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { Card, CardContent, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { PublicEventModal } from '@/components/ui/PublicEventModal'
 import { formatDate } from '@/lib/utils'
 import { getPublicEvents } from '@/lib/supabase'
 import type { Event } from '@/types'
@@ -12,6 +13,7 @@ import type { Event } from '@/types'
 export function FeaturedEventsSection() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -31,6 +33,13 @@ export function FeaturedEventsSection() {
         <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-accent-cyan/5 rounded-full blur-[120px]" />
         <div className="absolute bottom-1/3 left-1/4 w-72 h-72 bg-accent-pink/5 rounded-full blur-[100px]" />
       </div>
+
+      {/* Public Event Modal */}
+      <PublicEventModal
+        event={selectedEvent!}
+        isOpen={!!selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+      />
 
       <div className="relative mx-auto px-6 max-w-7xl">
         {/* Section header */}
@@ -70,7 +79,10 @@ export function FeaturedEventsSection() {
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
             >
-              <Link to={`/event/${event.slug}`} className="block group">
+              <button
+                onClick={() => setSelectedEvent(event)}
+                className="w-full text-left group"
+              >
                 <Card variant="glass-cyan" hover glow="cyan" className="h-full">
                   <CardContent>
                     {/* Gradient header */}
@@ -107,12 +119,12 @@ export function FeaturedEventsSection() {
 
                     <div className="pt-4 mt-4 border-t border-white/10">
                       <span className="text-accent-cyan text-sm font-medium flex items-center gap-1.5 group-hover:gap-2 transition-all">
-                        View Details <ExternalLink className="h-3.5 w-3.5" />
+                        Quick View <ExternalLink className="h-3.5 w-3.5" />
                       </span>
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
+              </button>
             </motion.div>
           ))}
         </div>

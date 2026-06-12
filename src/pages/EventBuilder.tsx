@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Check, Sparkles, Save, Ticket, ExternalLink } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Sparkles, Save, Ticket, ExternalLink, Upload, FileText, Globe, Lock, Wand2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/Badge'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { cn, generateSlug } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { parseEventDocument } from '@/lib/groq'
+import type { ExtractedEventData } from '@/lib/groq'
 
 interface StepProps {
   title: string
@@ -16,6 +18,7 @@ interface StepProps {
 }
 
 const steps: StepProps[] = [
+  { title: 'Event Type', subtitle: 'Visibility and auto-fill from brochure' },
   { title: 'Event Details', subtitle: 'Basic information about your event' },
   { title: 'Date & Venue', subtitle: 'When and where is your event?' },
   { title: 'Tickets', subtitle: 'Set up ticket types and pricing' },
@@ -31,7 +34,12 @@ const eventCategories = [
 
 export function EventBuilderPage() {
   const navigate = useNavigate()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [currentStep, setCurrentStep] = useState(0)
+  const [isPublic, setIsPublic] = useState(true)
+  const [isParsing, setIsParsing] = useState(false)
+  const [parseProgress, setParseProgress] = useState('')
+  const [parseError, setParseError] = useState('')
   const [eventData, setEventData] = useState({
     title: '',
     description: '',
@@ -64,6 +72,49 @@ export function EventBuilderPage() {
 
   const handleBack = () => {
     if (currentStep > 0) setCurrentStep(currentStep - 1)
+  }
+
+  // --- Document upload & AI parsing ---
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsParsing(true)
+    setParseProgress('Reading document...')
+    setParseError('')
+
+    try {
+      const data = await parseEventDocument(file, (msg) => setParseProgress(msg))
+      if (data) {
+        applyExtractedData(data)
+        setParseProgress('✨ Fields auto-filled! Review and adjust if needed.')
+        setTimeout(() => setParseProgress(''), 3000)
+      }
+    } catch (err: any) {
+      setParseError(err.message || 'Failed to parse document')
+    } finally {
+      setIsParsing(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  const applyExtractedData = (data: ExtractedEventData) => {
+    setEventData(prev => ({
+      ...prev,
+      title: data.title || prev.title,
+      description: data.description || prev.description,
+      shortDescription: data.shortDescription || prev.shortDescription,
+      category: data.category || prev.category,
+      startDate: data.startDate || prev.startDate,
+      endDate: data.endDate || prev.endDate,
+      startTime: data.startTime || prev.startTime,
+      endTime: data.endTime || prev.endTime,
+      venueName: data.venueName || prev.venueName,
+      venueAddress: data.venueAddress || prev.venueAddress,
+      city: data.city || prev.city,
+      state: data.state || prev.state,
+      maxAttendees: data.maxAttendees || prev.maxAttendees,
+    }))
   }
 
   const handlePublish = async () => {
@@ -99,7 +150,6 @@ export function EventBuilderPage() {
         if (orgError) { setSaveError(orgError.message); setSaving(false); return }
         orgId = newOrg!.id
 
-        // Also add as member
         await supabase.from('org_members').insert({
           org_id: orgId,
           user_id: user.id,
@@ -130,7 +180,7 @@ export function EventBuilderPage() {
           end_time: eventData.endTime,
           category: eventData.category || 'other',
           status: 'published',
-          visibility: 'public',
+          visibility: isPublic ? 'public' : 'private',
           max_attendees: eventData.maxAttendees ? parseInt(eventData.maxAttendees) : null,
           use_external_form: eventData.useExternalForm,
           form_link: eventData.formLink || null,
@@ -188,13 +238,13 @@ export function EventBuilderPage() {
       </div>
 
       {/* Steps progress */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+      <div className="mb-8 overflow-x-auto">
+        <div className="flex items-center justify-between min-w-[600px]">
           {steps.map((step, index) => (
             <div key={step.title} className="flex items-center flex-1">
               <div className="flex flex-col items-center">
                 <div className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2',
+                  'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2 shrink-0',
                   index < currentStep && 'bg-yellow-400 border-yellow-400 text-black',
                   index === currentStep && 'bg-yellow-400/20 border-yellow-400 text-yellow-400',
                   index > currentStep && 'bg-surface border-border text-text-muted'
@@ -206,7 +256,7 @@ export function EventBuilderPage() {
                   )}
                 </div>
                 <span className={cn(
-                  'text-xs mt-2 hidden sm:block',
+                  'text-xs mt-2 hidden sm:block text-center whitespace-nowrap',
                   index <= currentStep ? 'text-yellow-400 font-medium' : 'text-text-muted'
                 )}>
                   {step.title}
@@ -231,8 +281,125 @@ export function EventBuilderPage() {
         </CardHeader>
 
         <CardContent>
-          {/* Step 1: Event Details */}
+          {/* Step 0: Event Type + Document Upload */}
           {currentStep === 0 && (
+            <div className="space-y-6">
+              {/* Public/Private Toggle */}
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-3">
+                  Who can see your event?
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsPublic(true)}
+                    className={cn(
+                      'px-6 py-4 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
+                      isPublic
+                        ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400 shadow-[0_0_20px_rgba(245,215,0,0.1)]'
+                        : 'border-border text-text-secondary hover:border-white/30'
+                    )}
+                  >
+                    <Globe className="h-5 w-5 mx-auto mb-1.5" />
+                    Public Event
+                    <p className="text-[10px] font-normal mt-1 text-text-muted">
+                      Listed on /events & landing page
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPublic(false)}
+                    className={cn(
+                      'px-6 py-4 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
+                      !isPublic
+                        ? 'bg-accent-pink/20 border-accent-pink text-accent-pink shadow-[0_0_20px_rgba(255,45,149,0.1)]'
+                        : 'border-border text-text-secondary hover:border-white/30'
+                    )}
+                  >
+                    <Lock className="h-5 w-5 mx-auto mb-1.5" />
+                    Private Event
+                    <p className="text-[10px] font-normal mt-1 text-text-muted">
+                      Only visible via direct link
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              <hr className="border-border" />
+
+              {/* Document Upload */}
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2 flex items-center gap-1.5">
+                  <Wand2 className="h-4 w-4 text-yellow-400" />
+                  Auto-Fill from Brochure / Document
+                </label>
+                <p className="text-text-muted text-xs mb-4">
+                  Upload a PDF, image of a brochure, or flyer — we&apos;ll extract event details and pre-fill the form using AI.
+                </p>
+
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    'relative p-8 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all',
+                    isParsing
+                      ? 'border-yellow-400/50 bg-yellow-400/5'
+                      : parseProgress && !parseError
+                        ? 'border-green-500/50 bg-green-500/5'
+                        : 'border-border hover:border-yellow-400/50 hover:bg-white/[0.02]'
+                  )}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,image/*,.txt"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={isParsing}
+                  />
+
+                  {isParsing ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-10 w-10 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                      <p className="text-yellow-400 font-medium text-sm">{parseProgress}</p>
+                    </div>
+                  ) : parseProgress && !parseError ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Check className="h-8 w-8 text-green-400" />
+                      <p className="text-green-400 font-medium text-sm">{parseProgress}</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload className="h-8 w-8 text-text-muted" />
+                      <p className="text-text-secondary font-medium text-sm">
+                        Click to upload event brochure, flyer, or PDF
+                      </p>
+                      <p className="text-text-muted text-xs">
+                        Supports PDF, PNG, JPG, TXT
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {parseError && (
+                  <div className="mt-3 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>{parseError}</span>
+                  </div>
+                )}
+
+                <div className="mt-3 p-3 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-xs text-yellow-400/80 flex items-start gap-2">
+                  <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>
+                    Upload a brochure and we&apos;ll fill in the title, description, dates, venue, and more automatically.
+                    You can edit everything before publishing.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 1: Event Details */}
+          {currentStep === 1 && (
             <div className="space-y-5">
               <Input
                 label="Event Title"
@@ -322,7 +489,7 @@ export function EventBuilderPage() {
           )}
 
           {/* Step 2: Date & Venue */}
-          {currentStep === 1 && (
+          {currentStep === 2 && (
             <div className="space-y-5">
               <div className="grid sm:grid-cols-2 gap-4">
                 <DatePicker
@@ -394,83 +561,95 @@ export function EventBuilderPage() {
           )}
 
           {/* Step 3: Tickets */}
-          {currentStep === 2 && (
+          {currentStep === 3 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-3 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, isFree: true } }))}
-                  className={cn(
-                    'px-6 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
-                    eventData.ticketing.isFree
-                      ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
-                      : 'border-border text-text-secondary hover:border-white/30'
-                  )}
-                >
-                  <Check className="h-4 w-4 mx-auto mb-1" />
-                  Free Event
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, isFree: false } }))}
-                  className={cn(
-                    'px-6 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
-                    !eventData.ticketing.isFree
-                      ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
-                      : 'border-border text-text-secondary hover:border-white/30'
-                  )}
-                >
-                  Paid Event
-                </button>
-              </div>
-
-              {!eventData.ticketing.isFree && (
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Ticket Price (₹)"
-                    type="number"
-                    placeholder="e.g., 499"
-                    value={eventData.ticketing.price}
-                    onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, price: e.target.value } }))}
-                  />
-                  <Input
-                    label="Number of Tickets"
-                    type="number"
-                    placeholder="e.g., 100"
-                    value={eventData.ticketing.quantity}
-                    onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, quantity: e.target.value } }))}
-                  />
+              {eventData.useExternalForm ? (
+                <div className="p-6 bg-accent-pink/10 border border-accent-pink/20 rounded-2xl text-center">
+                  <ExternalLink className="h-10 w-10 text-accent-pink mx-auto mb-3" />
+                  <p className="text-white font-semibold mb-1">External Form Mode</p>
+                  <p className="text-text-secondary text-sm">
+                    Ticket management is handled by your external form provider.
+                    Skip this step.
+                  </p>
                 </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, isFree: true } }))}
+                      className={cn(
+                        'px-6 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
+                        eventData.ticketing.isFree
+                          ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
+                          : 'border-border text-text-secondary hover:border-white/30'
+                      )}
+                    >
+                      <Check className="h-4 w-4 mx-auto mb-1" />
+                      Free Event
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, isFree: false } }))}
+                      className={cn(
+                        'px-6 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
+                        !eventData.ticketing.isFree
+                          ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
+                          : 'border-border text-text-secondary hover:border-white/30'
+                      )}
+                    >
+                      Paid Event
+                    </button>
+                  </div>
+
+                  {!eventData.ticketing.isFree && (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <Input
+                        label="Ticket Price (₹)"
+                        type="number"
+                        placeholder="e.g., 499"
+                        value={eventData.ticketing.price}
+                        onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, price: e.target.value } }))}
+                      />
+                      <Input
+                        label="Number of Tickets"
+                        type="number"
+                        placeholder="e.g., 100"
+                        value={eventData.ticketing.quantity}
+                        onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, quantity: e.target.value } }))}
+                      />
+                    </div>
+                  )}
+
+                  {eventData.ticketing.isFree && (
+                    <Input
+                      label="Number of Tickets"
+                      type="number"
+                      placeholder="e.g., 100"
+                      value={eventData.ticketing.quantity}
+                      onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, quantity: e.target.value } }))}
+                      hint="How many free tickets are available?"
+                    />
+                  )}
+
+                  <div className="p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm text-yellow-400">
+                    <p className="font-medium mb-1">💡 Payment Processing</p>
+                    <p className="text-yellow-400/80">
+                      For paid events, tickets are processed securely via Razorpay. 
+                      The payment gateway fee (2% + GST) is deducted from each transaction.
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-text-muted">
+                    Need multiple ticket types (e.g., VIP, Early Bird)? You can add more after creating the event.
+                  </p>
+                </>
               )}
-
-              {eventData.ticketing.isFree && (
-                <Input
-                  label="Number of Tickets"
-                  type="number"
-                  placeholder="e.g., 100"
-                  value={eventData.ticketing.quantity}
-                  onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, quantity: e.target.value } }))}
-                  hint="How many free tickets are available?"
-                />
-              )}
-
-              <div className="p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm text-yellow-400">
-                <p className="font-medium mb-1">💡 Payment Processing</p>
-                <p className="text-yellow-400/80">
-                  For paid events, tickets are processed securely via Razorpay. 
-                  The payment gateway fee (2% + GST) is deducted from each transaction.
-                  You can configure other payment methods in Settings.
-                </p>
-              </div>
-
-              <p className="text-xs text-text-muted">
-                Need multiple ticket types (e.g., VIP, Early Bird, Group)? You can add more after creating the event.
-              </p>
             </div>
           )}
 
           {/* Step 4: Branding */}
-          {currentStep === 3 && (
+          {currentStep === 4 && (
             <div className="space-y-5">
               <div className="p-8 border-2 border-dashed border-border rounded-2xl text-center">
                 <div className="h-16 w-16 rounded-2xl bg-yellow-400/20 mx-auto mb-4 flex items-center justify-center">
@@ -492,7 +671,7 @@ export function EventBuilderPage() {
           )}
 
           {/* Step 5: Review */}
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             <div className="space-y-6">
               <div className="flex items-center justify-between p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl">
                 <div className="flex items-center gap-3">
@@ -506,6 +685,12 @@ export function EventBuilderPage() {
               </div>
 
               <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-text-muted">Visibility</span>
+                  <span className={cn('font-medium', isPublic ? 'text-yellow-400' : 'text-accent-pink')}>
+                    {isPublic ? '🌍 Public' : '🔒 Private'}
+                  </span>
+                </div>
                 <div className="flex justify-between py-2 border-b border-border">
                   <span className="text-text-muted">Title</span>
                   <span className="text-white font-medium">{eventData.title || 'Not set'}</span>
@@ -537,9 +722,8 @@ export function EventBuilderPage() {
                 <div className="flex justify-between py-2 border-b border-border">
                   <span className="text-text-muted">Tickets</span>
                   <span className="text-white">
-                    {eventData.ticketing.isFree ? 'Free' : `₹${eventData.ticketing.price}`}
-                    {' — '}
-                    {eventData.ticketing.quantity || 'Unlimited'} available
+                    {eventData.useExternalForm ? 'N/A (External Form)' : eventData.ticketing.isFree ? 'Free' : `₹${eventData.ticketing.price}`}
+                    {!eventData.useExternalForm && ` — ${eventData.ticketing.quantity || 'Unlimited'} available`}
                   </span>
                 </div>
               </div>
@@ -561,7 +745,7 @@ export function EventBuilderPage() {
             </Button>
 
             {saveError && (
-              <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm mb-4">
+              <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
                 {saveError}
               </div>
             )}
