@@ -6,6 +6,7 @@ import { LoginPage } from '@/pages/Login'
 import { SignupPage } from '@/pages/Signup'
 import { EventPage } from '@/pages/EventPage'
 import { PublicEventsPage } from '@/pages/PublicEventsPage'
+import { ScanPage } from '@/pages/ScanPage'
 import { DashboardLayout, DashboardHome } from '@/pages/Dashboard'
 import { EventsPage } from '@/pages/Events'
 import { EventBuilderPage } from '@/pages/EventBuilder'
@@ -13,6 +14,7 @@ import { AnalyticsPage } from '@/pages/Analytics'
 import { TicketsPage } from '@/pages/TicketsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { AttendeesPage } from '@/pages/AttendeesPage'
+import { ScannerPage } from '@/pages/ScannerPage'
 
 function App() {
   return (
@@ -24,6 +26,7 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="events" element={<PublicEventsPage />} />
             <Route path="event/:eventSlug" element={<EventPage />} />
+            <Route path="scan/:qrCode" element={<ScanPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
           </Route>
@@ -37,6 +40,7 @@ function App() {
             <Route path="tickets" element={<TicketsPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="attendees" element={<AttendeesPage />} />
+            <Route path="scan" element={<ScannerPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
 

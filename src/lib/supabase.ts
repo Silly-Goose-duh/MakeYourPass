@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { Event, TicketType } from '@/types'
+import type { Event, TicketType, Order, Ticket } from '@/types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
@@ -192,6 +192,86 @@ export async function updateEvent(id: string, updates: Partial<Event>) {
     .select()
     .single()
   return { data, error }
+}
+
+// ==================== Order & Ticket Helpers ====================
+
+export async function createOrder(order: {
+  event_id: string
+  ticket_type_id: string
+  buyer_name: string
+  buyer_email: string
+  buyer_phone?: string
+  quantity: number
+  total_amount: number
+  currency?: string
+  payment_method?: string
+  status?: string
+}) {
+  const { data, error } = await supabase
+    .from('orders')
+    .insert({
+      event_id: order.event_id,
+      ticket_type_id: order.ticket_type_id,
+      buyer_name: order.buyer_name,
+      buyer_email: order.buyer_email,
+      buyer_phone: order.buyer_phone || null,
+      quantity: order.quantity,
+      total_amount: order.total_amount,
+      currency: order.currency || 'INR',
+      payment_method: order.payment_method || 'free',
+      status: order.status || 'confirmed',
+    })
+    .select()
+    .single()
+
+  return { data: data as Order | null, error }
+}
+
+export async function createTickets(tickets: {
+  order_id: string
+  event_id: string
+  ticket_type_id: string
+  qr_code: string
+  qr_code_url: string
+  attendee_name?: string
+  attendee_email?: string
+}[]) {
+  const { data, error } = await supabase
+    .from('tickets')
+    .insert(tickets)
+    .select()
+
+  return { data: data as Ticket[] | null, error }
+}
+
+export async function getOrdersForEvent(eventId: string) {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false })
+
+  return { data: data as Order[] | null, error }
+}
+
+export async function getTicketsForEvent(eventId: string) {
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false })
+
+  return { data: data as Ticket[] | null, error }
+}
+
+export async function updateTicketTypeSales(ticketTypeId: string, quantitySold: number) {
+  const { error } = await supabase
+    .from('ticket_types')
+    .update({ quantity_sold: quantitySold })
+    .eq('id', ticketTypeId)
+
+  return { error }
 }
 
 export async function getTicketTypes(eventId: string) {
