@@ -32,10 +32,22 @@ export async function parseEventDocument(
 
   // Step 1: Extract text from the document
   let documentText = ''
+  const fileName = file.name.toLowerCase()
+  const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf')
+  const isImage = file.type.startsWith('image/') || ['.png', '.jpg', '.jpeg', '.webp'].some(ext => fileName.endsWith(ext))
+  const isText = file.type === 'text/plain' || fileName.endsWith('.txt')
 
-  if (file.type === 'application/pdf') {
-    documentText = await extractTextFromPDF(file)
-  } else if (file.type.startsWith('image/')) {
+  if (isPdf) {
+    try {
+      documentText = await extractTextFromPDF(file)
+    } catch (pdfErr: any) {
+      // If pdfjs fails, try reading as text or report the specific error
+      if (pdfErr?.message?.includes('worker') || pdfErr?.message?.includes('Worker')) {
+        throw new Error('PDF worker failed to load. Please try uploading as an image or text file instead.')
+      }
+      throw new Error(`Could not read PDF: ${pdfErr?.message || 'Unknown error'}. Try uploading as an image.`)
+    }
+  } else if (isImage) {
     // For images, we'll use Groq vision directly
     onProgress?.('Analyzing image with AI...')
     return await analyzeImageWithGroq(file)
@@ -73,11 +85,9 @@ async function extractTextFromPDF(file: File): Promise<string> {
   // Dynamic import of pdfjs
   const pdfjsLib = await import('pdfjs-dist')
   
-  // Set the worker source
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-  ).toString()
+  // Use CDN-hosted worker for reliability in production
+  const pdfVersion = pdfjsLib.version || '4.0.379'
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfVersion}/build/pdf.worker.min.mjs`
 
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
   const pages: string[] = []

@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calendar, Clock, MapPin, Users, Share2, Check,
-  ArrowLeft, ExternalLink, Ticket, Sparkles, Download
+  ArrowLeft, ExternalLink, Ticket, Sparkles, Download, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { Modal } from '@/components/ui/Modal'
 import { formatDate, formatTime, cn } from '@/lib/utils'
 import { supabase, createOrder, createTickets, updateTicketTypeSales } from '@/lib/supabase'
 import { sendConfirmationEmail } from '@/lib/email'
@@ -132,7 +133,7 @@ export function EventPage() {
         event_url: `${window.location.origin}/event/${event.slug}`,
       })
 
-      // 6. Show success with QR codes
+      // 6. Show success modal
       setPurchasedTickets(tickets || ticketData)
       
     } catch (err: any) {
@@ -142,87 +143,18 @@ export function EventPage() {
     }
   }
 
-  // ===== PURCHASED STATE =====
-  if (purchasedTickets.length > 0) {
-    return (
-      <div className="min-h-screen bg-background" ref={printRef}>
-        <div className="mx-auto px-6 max-w-3xl py-12">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center mb-10"
-          >
-            <div className="h-20 w-20 rounded-2xl bg-green-500/20 mx-auto mb-6 flex items-center justify-center">
-              <Check className="h-10 w-10 text-green-400" />
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-              Registration Successful! 🎉
-            </h1>
-            <p className="text-text-secondary text-lg mb-2">
-              {purchasedTickets.length} ticket{purchasedTickets.length > 1 ? 's' : ''} confirmed for <span className="text-white font-semibold">{event?.title}</span>
-            </p>
-            <p className="text-text-muted text-sm mb-8">
-              Show the QR code below at the entrance for check-in.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
-              <Link to="/">
-                <Button variant="ghost">Back to Home</Button>
-              </Link>
-              <Button variant="primary" onClick={() => window.print()}>
-                <Download className="h-4 w-4" />
-                Download Tickets
-              </Button>
-            </div>
-          </motion.div>
-
-          {/* QR Code Tickets */}
-          <div className="space-y-6">
-            {purchasedTickets.map((ticket: any, idx: number) => (
-              <motion.div
-                key={ticket.id || ticket.qr_code}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1 }}
-              >
-                <Card variant="glass-yellow" glow="yellow" padding="lg">
-                  <CardContent>
-                    <div className="flex flex-col sm:flex-row items-center gap-6">
-                      {/* QR Code */}
-                      <div className="bg-white p-3 rounded-2xl shrink-0">
-                        <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticket.qr_code_url || `https://makeyourpass.vercel.app/scan/${ticket.qr_code}`)}`}
-                          alt="QR Code"
-                          className="w-36 h-36"
-                        />
-                      </div>
-
-                      {/* Ticket Info */}
-                      <div className="flex-1 text-center sm:text-left">
-                        <Badge variant="yellow" size="sm" className="mb-2">Entry Ticket</Badge>
-                        <h3 className="text-xl font-bold text-white mb-1">
-                          {event?.title || 'Event'}
-                        </h3>
-                        <p className="text-text-secondary text-sm mb-1">
-                          {activeTicket?.name || 'General Admission'}
-                        </p>
-                        <p className="text-text-muted text-xs">
-                          {event?.start_date && formatDate(event.start_date)}
-                          {event?.start_time && ` • ${formatTime(event.start_time)}`}
-                        </p>
-                        <p className="text-text-muted text-xs mt-1">
-                          Ticket #{idx + 1} of {purchasedTickets.length}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // ===== SUCCESS MODAL =====
+  // (renders on top of the event page instead of replacing it)
+  const successModalOpen = purchasedTickets.length > 0
+  const handleCloseSuccess = useCallback(() => {
+    setPurchasedTickets([])
+    setSelectedTicket(null)
+    setShowCheckout(false)
+    setBuyerName('')
+    setBuyerEmail('')
+    setBuyerPhone('')
+    setQuantity(1)
+  }, [])
 
   // Loading state
   if (loading) {
@@ -588,6 +520,61 @@ export function EventPage() {
           <p className="text-text-secondary leading-relaxed whitespace-pre-line">{event.description}</p>
         </div>
       )}
+
+      {/* Success Modal */}
+      <Modal isOpen={successModalOpen} onClose={handleCloseSuccess} size="lg" showCloseButton>
+        <div className="text-center py-4">
+          <div className="h-16 w-16 rounded-2xl bg-green-500/20 mx-auto mb-4 flex items-center justify-center">
+            <Check className="h-8 w-8 text-green-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Registration Successful! 🎉
+          </h2>
+          <p className="text-text-secondary text-sm mb-1">
+            {purchasedTickets.length} ticket{purchasedTickets.length > 1 ? 's' : ''} confirmed for <span className="text-white font-semibold">{event?.title}</span>
+          </p>
+          <p className="text-text-muted text-xs mb-6">
+            Show the QR code at the entrance for check-in.
+          </p>
+
+          {/* QR Code Tickets */}
+          <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            {purchasedTickets.map((ticket: any, idx: number) => (
+              <div key={ticket.id || ticket.qr_code} className="p-4 rounded-xl bg-yellow-400/10 border border-yellow-400/20">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white p-2 rounded-xl shrink-0">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(ticket.qr_code_url || `https://makeyourpass.vercel.app/scan/${ticket.qr_code}`)}`}
+                      alt="QR"
+                      className="w-16 h-16"
+                    />
+                  </div>
+                  <div className="text-left flex-1 min-w-0">
+                    <Badge variant="yellow" size="sm" className="mb-1">Ticket #{idx + 1}</Badge>
+                    <p className="text-white font-semibold text-sm truncate">{event?.title}</p>
+                    <p className="text-text-muted text-xs">{activeTicket?.name}</p>
+                    <p className="text-text-muted text-[10px]">
+                      {event?.start_date && formatDate(event.start_date)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-center gap-3 mt-6">
+            {event && (
+              <Link to={`/event/${event.slug}`} onClick={handleCloseSuccess}>
+                <Button variant="ghost" size="sm">Done</Button>
+              </Link>
+            )}
+            <Button variant="primary" size="sm" onClick={() => window.print()}>
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
