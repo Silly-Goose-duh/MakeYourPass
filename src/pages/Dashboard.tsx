@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { User } from '@supabase/supabase-js'
 import {
@@ -28,18 +28,16 @@ export function DashboardLayout() {
   const [user, setUser] = useState<any>(null)
   const [orgName] = useState('My Organization')
   const location = useLocation()
-  const navigate = useNavigate()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) navigate('/login')
-      else setUser(user)
+      setUser(user)
     })
-  }, [navigate])
+  }, [])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    navigate('/login')
+    // ProtectedRoute wrapper will auto-redirect to /login via auth listener
   }
 
   return (

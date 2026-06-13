@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Layout } from '@/components/layout/Layout'
 import { HomePage } from '@/pages/Home'
@@ -15,6 +15,7 @@ import { TicketsPage } from '@/pages/TicketsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { AttendeesPage } from '@/pages/AttendeesPage'
 import { ScannerPage } from '@/pages/ScannerPage'
+import { ProtectedRoute, PublicOnlyRoute } from '@/components/auth/RouteGuards'
 
 function App() {
   return (
@@ -27,12 +28,12 @@ function App() {
             <Route path="events" element={<PublicEventsPage />} />
             <Route path="event/:eventSlug" element={<EventPage />} />
             <Route path="scan/:qrCode" element={<ScanPage />} />
-            <Route path="login" element={<LoginPage />} />
-            <Route path="signup" element={<SignupPage />} />
+            <Route path="login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+            <Route path="signup" element={<PublicOnlyRoute><SignupPage /></PublicOnlyRoute>} />
           </Route>
 
-          {/* Dashboard routes */}
-          <Route path="/dashboard" element={<DashboardLayout />}>
+          {/* Dashboard routes (protected) */}
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
             <Route index element={<DashboardHome />} />
             <Route path="events" element={<EventsPage />} />
             <Route path="events/new" element={<EventBuilderPage />} />
