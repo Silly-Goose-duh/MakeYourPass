@@ -373,7 +373,7 @@ export function EventBuilderPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            className="min-h-screen flex flex-col"
+            className="min-h-screen flex flex-col -mt-[4.625rem]"
           >
             {/* Back button — pinned top */}
             <div className="px-4 pt-8 max-w-5xl mx-auto w-full">
@@ -387,7 +387,7 @@ export function EventBuilderPage() {
             </div>
 
             {/* Center content */}
-            <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-[4.625rem]">
+            <div className="flex-1 flex flex-col items-center justify-center px-4">
               <div className="max-w-5xl w-full">
 
                 {/* Header */}
