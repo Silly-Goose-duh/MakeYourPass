@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Calendar, MapPin, MoreHorizontal, Edit, Eye, Copy, Sparkles, ExternalLink, Search, Ticket, FlaskConical } from 'lucide-react'
+import { Plus, Calendar, MapPin, Edit, Eye, Sparkles, ExternalLink, Search, Ticket, FlaskConical } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -308,9 +308,6 @@ function MyEventsView({ events, ticketCounts }: { events: Event[]; ticketCounts:
                 >
                   {event.status}
                 </Badge>
-                <button className="p-1.5 text-text-muted hover:text-white transition-colors rounded-lg hover:bg-white/10 opacity-0 group-hover:opacity-100">
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
               </div>
 
               <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2">{event.title}</h3>
@@ -365,9 +362,9 @@ function MyEventsView({ events, ticketCounts }: { events: Event[]; ticketCounts:
               )}
 
               <div className="flex items-center gap-1.5 pt-3 border-t border-white/10">
-                <Link to={`/event/${event.slug}`} className="flex-1">
-                  <Button variant="ghost" size="sm" fullWidth className="text-xs">
-                    <Eye className="h-3.5 w-3.5" /> View
+                <Link to={`/dashboard/events/${event.id}`} className="flex-1">
+                  <Button variant="primary" size="sm" fullWidth className="text-xs">
+                    <Eye className="h-3.5 w-3.5" /> Dashboard
                   </Button>
                 </Link>
                 <Link to={`/dashboard/events/${event.id}/edit`} className="flex-1">
@@ -375,14 +372,6 @@ function MyEventsView({ events, ticketCounts }: { events: Event[]; ticketCounts:
                     <Edit className="h-3.5 w-3.5" /> Edit
                   </Button>
                 </Link>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/event/${event.slug}`)}
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
               </div>
             </CardContent>
           </Card>

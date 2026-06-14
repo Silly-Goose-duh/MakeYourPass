@@ -10,11 +10,8 @@ import { ScanPage } from '@/pages/ScanPage'
 import { DashboardLayout } from '@/pages/Dashboard'
 import { EventsPage } from '@/pages/Events'
 import { EventBuilderPage } from '@/pages/EventBuilder'
-import { AnalyticsPage } from '@/pages/Analytics'
-import { TicketsPage } from '@/pages/TicketsPage'
+import { EventDashboard } from '@/pages/EventDashboard'
 import { SettingsPage } from '@/pages/SettingsPage'
-import { AttendeesPage } from '@/pages/AttendeesPage'
-import { ScannerPage } from '@/pages/ScannerPage'
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/auth/RouteGuards'
 
 function App() {
@@ -37,11 +34,8 @@ function App() {
             <Route index element={<Navigate to="events" replace />} />
             <Route path="events" element={<EventsPage />} />
             <Route path="events/new" element={<EventBuilderPage />} />
+            <Route path="events/:id" element={<EventDashboard />} />
             <Route path="events/:id/edit" element={<EventBuilderPage />} />
-            <Route path="tickets" element={<TicketsPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="attendees" element={<AttendeesPage />} />
-            <Route path="scan" element={<ScannerPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
 
