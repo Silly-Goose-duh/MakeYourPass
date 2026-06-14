@@ -45,7 +45,7 @@ export function SettingsPage() {
           <Input label="Organization Name" placeholder="My Organization" defaultValue="" />
           <Input label="Website" type="url" placeholder="https://example.com" defaultValue="" />
           <Input label="Description" placeholder="Tell us about your organization..." defaultValue="" />
-          <div className="p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm text-yellow-400">
+          <div className="p-4 bg-primary-muted border border-primary/20 rounded-xl text-sm text-primary">
             Your organization details appear on public event pages.
           </div>
           <Button variant="primary">
@@ -63,14 +63,14 @@ export function SettingsPage() {
         <div className="space-y-5">
           {['Email ticket confirmations', 'Email check-in alerts', 'WhatsApp reminders', 'Weekly summary reports'].map((item) => (
             <label key={item} className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" defaultChecked className="w-4 h-4 accent-yellow-400" />
+              <input type="checkbox" defaultChecked className="w-4 h-4 accent-primary" />
               <span className="text-white text-sm">{item}</span>
             </label>
           ))}
           <div className="pt-4">
             <p className="text-text-muted text-sm mb-2">Notification templates</p>
             <p className="text-text-secondary text-xs">
-              Customize email and WhatsApp templates in the <span className="text-yellow-400 cursor-pointer">Templates</span> section.
+              Customize email and WhatsApp templates in the <span className="text-primary cursor-pointer">Templates</span> section.
             </p>
           </div>
         </div>
@@ -82,10 +82,10 @@ export function SettingsPage() {
       icon: CreditCard,
       content: (
         <div className="space-y-5">
-          <div className="p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl">
+          <div className="p-4 bg-primary-muted border border-primary/20 rounded-xl">
             <div className="flex items-center gap-3 mb-2">
-              <CreditCard className="h-5 w-5 text-yellow-400" />
-              <span className="font-medium text-white">Razorpay</span>
+              <CreditCard className="h-5 w-5 text-primary" />
+              <span className="font-medium text-text-primary">Razorpay</span>
               <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">Connected</span>
             </div>
             <p className="text-text-muted text-sm">
@@ -97,7 +97,7 @@ export function SettingsPage() {
               <div className="flex items-center gap-3">
                 <CreditCard className="h-5 w-5 text-text-muted" />
                 <span className="font-medium text-white">Slice</span>
-                <span className="px-2 py-0.5 bg-yellow-400/20 text-yellow-400 text-xs rounded-full">Coming Soon</span>
+                <span className="px-2 py-0.5 bg-primary-muted text-primary text-xs rounded-full">Coming Soon</span>
               </div>
             </div>
             <p className="text-text-muted text-sm">
@@ -119,7 +119,7 @@ export function SettingsPage() {
           <Input label="Razorpay Key ID" type="password" placeholder="rzp_live_..." />
           <Input label="Razorpay Secret" type="password" placeholder="Enter secret key" />
           <Input label="Supabase URL" value={import.meta.env.VITE_SUPABASE_URL || ''} disabled hint="Set in .env.local" />
-          <div className="p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm text-yellow-400">
+          <div className="p-4 bg-primary-muted border border-primary/20 rounded-xl text-sm text-primary">
             API keys are stored securely. Never share your secret keys.
           </div>
           <Button variant="primary">
@@ -139,7 +139,7 @@ export function SettingsPage() {
           <Input label="New Password" type="password" />
           <Input label="Confirm New Password" type="password" />
           <div className="flex items-center gap-3">
-            <input type="checkbox" className="w-4 h-4 accent-yellow-400" />
+            <input type="checkbox" className="w-4 h-4 accent-primary" />
             <span className="text-sm text-text-secondary">Enable two-factor authentication</span>
           </div>
           <Button variant="primary">
@@ -176,7 +176,7 @@ export function SettingsPage() {
                   className={cn(
                     'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-left',
                     isActive
-                      ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
+                      ? 'bg-primary-muted text-primary border border-primary/30'
                       : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                   )}
                 >

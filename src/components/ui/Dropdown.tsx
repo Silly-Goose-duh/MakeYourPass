@@ -104,7 +104,7 @@ export function Dropdown({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full px-3 py-2 bg-primary/50 border border-border rounded-lg text-text-primary placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
+                  className="w-full px-3 py-2 bg-primary/50 border border-border rounded-lg text-text-primary placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   autoFocus
                 />
               </div>
@@ -125,7 +125,7 @@ export function Dropdown({
                       'w-full px-3 py-2.5 rounded-lg text-left transition-colors',
                       'flex items-center gap-3',
                       value === option.value
-                        ? 'bg-yellow-400/20 text-yellow-400'
+                        ? 'bg-primary-muted text-primary'
                         : 'text-text-secondary hover:bg-white/5 hover:text-text-primary',
                       option.disabled && 'opacity-50 cursor-not-allowed'
                     )}
@@ -138,7 +138,7 @@ export function Dropdown({
                       </span>
                     )}
                     {value === option.value && (
-                      <Check className="h-4 w-4 text-yellow-400 flex-shrink-0" />
+                      <Check className="h-4 w-4 text-primary flex-shrink-0" />
                     )}
                   </button>
                 ))

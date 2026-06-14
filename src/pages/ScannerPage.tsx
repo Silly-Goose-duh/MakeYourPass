@@ -146,7 +146,7 @@ export function ScannerPage() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-2xl mx-auto px-6">
       <button
         onClick={() => navigate('/dashboard/attendees')}
-        className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-4 text-sm"
+        className="inline-flex items-center gap-2 text-text-secondary hover:text-primary transition-colors mb-4 text-sm"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Attendees
@@ -160,8 +160,8 @@ export function ScannerPage() {
         <Card variant="glass" padding="lg" className="mb-4">
           <CardContent>
             <div className="text-center py-6">
-              <div className="h-20 w-20 rounded-3xl bg-yellow-400/20 mx-auto mb-4 flex items-center justify-center">
-                <Camera className="h-10 w-10 text-yellow-400" />
+              <div className="h-20 w-20 rounded-3xl bg-primary-muted mx-auto mb-4 flex items-center justify-center">
+                <Camera className="h-10 w-10 text-primary" />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Start Scanning</h3>
               <p className="text-text-secondary text-sm mb-6">
@@ -186,9 +186,9 @@ export function ScannerPage() {
               playsInline
               className="w-full h-64 object-cover bg-black"
             />
-            <div className="absolute inset-0 border-2 border-yellow-400/50 rounded-2xl pointer-events-none" />
+            <div className="absolute inset-0 border-2 border-primary/50 rounded-2xl pointer-events-none" />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-40 h-40 border-2 border-yellow-400/80 rounded-xl" />
+              <div className="w-40 h-40 border-2 border-primary/80 rounded-xl" />
             </div>
             <button
               onClick={stopScanner}
@@ -208,7 +208,7 @@ export function ScannerPage() {
         <Card variant="glass" padding="md">
           <CardContent>
             <p className="text-sm font-medium text-white mb-3 flex items-center gap-2">
-              <Search className="h-4 w-4 text-yellow-400" />
+              <Search className="h-4 w-4 text-primary" />
               Manual Entry
             </p>
             <div className="flex gap-2">
@@ -236,7 +236,7 @@ export function ScannerPage() {
 
       {/* Ticket result */}
       {ticket && (
-        <Card variant={checkedIn ? 'glass-yellow' : 'glass'} glow={checkedIn ? 'yellow' : 'none'} padding="lg">
+        <Card variant={checkedIn ? 'glass-primary' : 'glass'} glow={checkedIn ? 'primary' : 'none'} padding="lg">
           <CardContent className="text-center">
             {checkedIn ? (
               <>

@@ -55,14 +55,14 @@ export function SignupPage() {
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-yellow-400/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="glass-strong rounded-2xl p-10 max-w-md w-full text-center"
         >
-          <div className="h-16 w-16 rounded-2xl bg-yellow-400 flex items-center justify-center mx-auto mb-6">
-            <Sparkles className="h-8 w-8 text-black" />
+          <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="h-8 w-8 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-3">Check your email!</h2>
           <p className="text-text-secondary mb-6">
@@ -82,11 +82,11 @@ export function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-yellow-400/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-yellow-400/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="relative w-full max-w-md">
-        <Link to="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-8 text-sm">
+        <Link to="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-primary-hover transition-colors mb-8 text-sm">
           <ArrowLeft className="h-4 w-4" />
           Back to home
         </Link>
@@ -100,12 +100,12 @@ export function SignupPage() {
           {/* Logo */}
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2.5 mb-4">
-              <div className="h-10 w-10 rounded-xl bg-yellow-400 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-black" />
+              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold">
                 <span className="text-white">MakeYour</span>
-                <span className="text-yellow-400">Pass</span>
+                <span className="text-primary">Pass</span>
               </span>
             </Link>
             <h1 className="text-2xl font-bold text-white mb-2">Create your account</h1>
@@ -169,9 +169,9 @@ export function SignupPage() {
           {/* Terms */}
           <p className="text-center mt-4 text-xs text-text-muted">
             By signing up, you agree to our{' '}
-            <Link to="/terms" className="text-yellow-400 hover:text-yellow-300">Terms of Service</Link>
+            <Link to="/terms" className="text-primary hover:text-primary-hover">Terms of Service</Link>
             {' '}and{' '}
-            <Link to="/privacy" className="text-yellow-400 hover:text-yellow-300">Privacy Policy</Link>
+            <Link to="/privacy" className="text-primary hover:text-primary-hover">Privacy Policy</Link>
           </p>
 
           <div className="relative my-6">
@@ -196,7 +196,7 @@ export function SignupPage() {
 
           <p className="text-center mt-6 text-sm text-text-muted">
             Already have an account?{' '}
-            <Link to="/login" className="text-yellow-400 hover:text-yellow-300 font-medium transition-colors">
+            <Link to="/login" className="text-primary hover:text-primary-hover font-medium transition-colors">
               Sign in
             </Link>
           </p>

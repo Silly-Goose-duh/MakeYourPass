@@ -43,12 +43,12 @@ function ToggleSwitch({
       onClick={() => onChange(!enabled)}
       className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all duration-300 group cursor-pointer"
       style={{
-        borderColor: enabled ? 'rgba(245, 215, 0, 0.3)' : 'rgba(255,255,255,0.06)',
-        background: enabled ? 'rgba(245, 215, 0, 0.04)' : 'rgba(255,255,255,0.02)',
+        borderColor: enabled ? 'rgba(99, 102, 241, 0.3)' : 'rgba(0,0,0,0.06)',
+        background: enabled ? 'rgba(99, 102, 241, 0.04)' : 'rgba(0,0,0,0.02)',
       }}
     >
       <div className="text-left">
-        <p className="text-sm font-semibold text-white group-hover:text-yellow-400 transition-colors">
+        <p className="text-sm font-semibold text-text-primary group-hover:text-primary transition-colors">
           {label}
         </p>
         {description && (
@@ -59,9 +59,9 @@ function ToggleSwitch({
         className="relative w-12 h-7 rounded-full transition-all duration-300 shrink-0 ml-4"
         style={{
           background: enabled
-            ? 'linear-gradient(135deg, #f5d700, #ff2d95)'
-            : 'rgba(255,255,255,0.1)',
-          boxShadow: enabled ? '0 0 20px rgba(245, 215, 0, 0.2)' : 'none',
+            ? 'linear-gradient(135deg, #6366F1, #8B5CF6)'
+            : 'rgba(0,0,0,0.08)',
+          boxShadow: enabled ? '0 0 20px rgba(99, 102, 241, 0.2)' : 'none',
         }}
       >
         <motion.div
@@ -86,9 +86,9 @@ function StepDots({ current, total }: { current: number; total: number }) {
             width: i === current ? 24 : 8,
             height: 8,
             background: i <= current
-              ? 'linear-gradient(135deg, #f5d700, #ff2d95)'
-              : 'rgba(255,255,255,0.1)',
-            boxShadow: i === current ? '0 0 12px rgba(245, 215, 0, 0.3)' : 'none',
+              ? 'linear-gradient(135deg, #6366F1, #8B5CF6)'
+              : 'rgba(0,0,0,0.08)',
+            boxShadow: i === current ? '0 0 12px rgba(99, 102, 241, 0.3)' : 'none',
           }}
           layout
         />
@@ -104,9 +104,9 @@ const visibilityCards = [
     icon: Globe,
     title: 'Public Event',
     subtitle: 'Listed on the events page & discoverable by everyone',
-    gradient: 'from-yellow-400/20 via-yellow-400/5 to-transparent',
-    borderGlow: 'rgba(245, 215, 0, 0.3)',
-    accentColor: '#f5d700',
+    gradient: 'from-primary/20 via-primary/5 to-transparent',
+    borderGlow: 'rgba(99, 102, 241, 0.3)',
+    accentColor: '#6366F1',
     features: [
       'Appears on /events and landing page',
       'SEO indexed for search discovery',
@@ -119,9 +119,9 @@ const visibilityCards = [
     icon: Lock,
     title: 'Private Event',
     subtitle: 'Hidden from listings — only accessible via direct link',
-    gradient: 'from-accent-pink/20 via-accent-cyan/5 to-transparent',
-    borderGlow: 'rgba(255, 45, 149, 0.3)',
-    accentColor: '#ff2d95',
+    gradient: 'from-accent-rose/20 via-accent-teal/5 to-transparent',
+    borderGlow: 'rgba(244, 63, 94, 0.3)',
+    accentColor: '#F43F5E',
     features: [
       'Hidden from all public listings',
       'Shareable secret link only',
@@ -346,7 +346,7 @@ export function EventBuilderPage() {
     }
   }
 
-  const accentColor = selectedVisibility === 'public' ? '#f5d700' : '#ff2d95'
+  const accentColor = selectedVisibility === 'public' ? '#6366F1' : '#F43F5E'
 
   // ===== ANIMATION VARIANTS =====
   const containerVariants = {
@@ -369,8 +369,8 @@ export function EventBuilderPage() {
       style={{
         background: `
           radial-gradient(ellipse 80% 60% at 50% 40%, rgba(30,30,30,1) 0%, rgba(10,10,10,1) 60%, rgba(5,5,5,1) 100%),
-          radial-gradient(ellipse at 50% 0%, rgba(245,215,0,0.08) 0%, transparent 60%),
-          radial-gradient(ellipse at 80% 80%, rgba(255,45,149,0.05) 0%, transparent 50%)
+          radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.08) 0%, transparent 60%),
+          radial-gradient(ellipse at 80% 80%, rgba(244,63,94,0.05) 0%, transparent 50%)
         `,
         backgroundColor: '#050505',
       }}
@@ -390,7 +390,7 @@ export function EventBuilderPage() {
             <div className="px-6 sm:px-10 pt-14 w-full">
               <button
                 onClick={() => navigate('/dashboard/events')}
-                className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors text-sm"
+                className="inline-flex items-center gap-2 text-text-secondary hover:text-primary transition-colors text-sm"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to events
@@ -411,11 +411,11 @@ export function EventBuilderPage() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                    className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-400/20 to-accent-pink/20 border border-yellow-400/20 mx-auto mb-6 flex items-center justify-center"
+                    className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent-rose/20 border border-primary/20 mx-auto mb-6 flex items-center justify-center"
                   >
-                    <PartyPopper className="h-8 w-8 text-yellow-400" />
+                    <PartyPopper className="h-8 w-8 text-primary" />
                   </motion.div>
-                  <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+                  <h1 className="text-3xl sm:text-4xl font-bold text-text-primary mb-3">
                     Create Your Event
                   </h1>
                   <p className="text-text-secondary text-lg max-w-md mx-auto">
@@ -598,7 +598,7 @@ export function EventBuilderPage() {
                 <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                 Change visibility
               </button>
-              <Badge variant={selectedVisibility === 'public' ? 'yellow' : 'pink'}>
+              <Badge variant={selectedVisibility === 'public' ? 'primary' : 'accent'}>
                 {selectedVisibility === 'public' ? '🌍 Public' : '🔒 Private'}
               </Badge>
             </div>
@@ -610,7 +610,7 @@ export function EventBuilderPage() {
               transition={{ delay: 0.1 }}
               className="mb-8"
             >
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-2">
                 {selectedVisibility === 'public'
                   ? 'Share with the World'
                   : 'Create Something Exclusive'}
@@ -627,9 +627,9 @@ export function EventBuilderPage() {
             <div className="mb-8">
               <StepDots current={formStep} total={3} />
               <div className="flex justify-between mt-3 text-xs text-text-muted px-2">
-                <span className={formStep >= 0 ? 'text-yellow-400 font-medium' : ''}>Brochure</span>
-                <span className={formStep >= 1 ? 'text-yellow-400 font-medium' : ''}>Details</span>
-                <span className={formStep >= 2 ? 'text-yellow-400 font-medium' : ''}>Payment</span>
+                <span className={formStep >= 0 ? 'text-primary font-medium' : ''}>Brochure</span>
+                <span className={formStep >= 1 ? 'text-primary font-medium' : ''}>Details</span>
+                <span className={formStep >= 2 ? 'text-primary font-medium' : ''}>Payment</span>
               </div>
             </div>
 
@@ -657,20 +657,20 @@ export function EventBuilderPage() {
                         'relative overflow-hidden p-10 sm:p-14 rounded-3xl border-2 border-dashed text-center cursor-pointer transition-all duration-300',
                         isParsing && 'pointer-events-none',
                         parsedSuccess
-                          ? 'border-green-500/40 bg-green-500/5'
-                          : 'hover:border-yellow-400/40 hover:bg-white/[0.02]',
+                          ? 'border-success/40 bg-success/5'
+                          : 'hover:border-primary/40 hover:bg-white/[0.02]',
                       )}
                       style={{
                         borderColor: parsedSuccess
-                          ? 'rgba(34,197,94,0.4)'
+                          ? 'rgba(16, 185, 129, 0.4)'
                           : isParsing
                             ? `${accentColor}50`
-                            : 'rgba(255,255,255,0.08)',
+                            : 'rgba(0,0,0,0.08)',
                         background: isParsing
                           ? `${accentColor}08`
                           : parsedSuccess
-                            ? 'rgba(34,197,94,0.05)'
-                            : 'rgba(255,255,255,0.02)',
+                            ? 'rgba(16, 185, 129, 0.05)'
+                            : 'rgba(0,0,0,0.02)',
                       }}
                     >
                       <input
@@ -718,10 +718,10 @@ export function EventBuilderPage() {
                             animate={{ opacity: 1, scale: 1 }}
                             className="flex flex-col items-center gap-3"
                           >
-                            <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center">
-                              <Check className="h-8 w-8 text-green-400" />
+                            <div className="h-16 w-16 rounded-full bg-success/20 flex items-center justify-center">
+                              <Check className="h-8 w-8 text-success" />
                             </div>
-                            <p className="text-green-400 font-semibold text-base">✨ Brochure parsed successfully!</p>
+                            <p className="text-success font-semibold text-base">✨ Brochure parsed successfully!</p>
                             <p className="text-text-muted text-xs">All fields filled below — scroll down to review</p>
                             <Button
                               size="sm"
@@ -769,12 +769,12 @@ export function EventBuilderPage() {
 
                             <div className="flex items-center gap-4 text-xs text-text-muted">
                               <span className="flex items-center gap-1">
-                                <Sparkles className="h-3 w-3 text-yellow-400" />
+                                <Sparkles className="h-3 w-3 text-primary" />
                                 AI auto-fill
                               </span>
                               <span className="w-1 h-1 rounded-full bg-text-muted" />
                               <span className="flex items-center gap-1">
-                                <Check className="h-3 w-3 text-green-400" />
+                                <Check className="h-3 w-3 text-success" />
                                 No account needed
                               </span>
                             </div>
@@ -869,7 +869,7 @@ export function EventBuilderPage() {
 
                   {/* Auto-filled indicator */}
                   {parsedSuccess && (
-                    <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm flex items-center gap-2">
+                    <div className="p-3 rounded-xl bg-success/10 border border-success/20 text-success text-sm flex items-center gap-2">
                       <Check className="h-4 w-4" />
                       Auto-filled from brochure — edit any field below
                     </div>
@@ -917,7 +917,7 @@ export function EventBuilderPage() {
                           className={cn(
                             'px-4 py-2 rounded-full text-sm font-medium transition-all border',
                             eventData.category === cat.toLowerCase()
-                              ? 'border-yellow-400 bg-yellow-400/20 text-yellow-400 shadow-[0_0_15px_rgba(245,215,0,0.1)]'
+                              ? 'border-primary bg-primary/20 text-primary shadow-[0_0_15px_rgba(99,102,241,0.1)]'
                               : 'bg-surface border-border text-text-secondary hover:text-white hover:border-white/30'
                           )}
                         >
@@ -930,7 +930,7 @@ export function EventBuilderPage() {
                   {/* Date & Time */}
                   <div className="p-5 rounded-2xl border border-border bg-surface/50">
                     <div className="flex items-center gap-2 mb-4">
-                      <Calendar className="h-4 w-4 text-yellow-400" />
+                      <Calendar className="h-4 w-4 text-primary" />
                       <span className="text-sm font-semibold text-white">Date & Time</span>
                     </div>
                     <div className="grid sm:grid-cols-2 gap-4">
@@ -969,7 +969,7 @@ export function EventBuilderPage() {
                   {/* Venue */}
                   <div className="p-5 rounded-2xl border border-border bg-surface/50">
                     <div className="flex items-center gap-2 mb-4">
-                      <MapPin className="h-4 w-4 text-accent-pink" />
+                      <MapPin className="h-4 w-4 text-accent-rose" />
                       <span className="text-sm font-semibold text-white">Venue</span>
                     </div>
                     <div className="space-y-4">
@@ -1005,7 +1005,7 @@ export function EventBuilderPage() {
                   {/* Registration Method */}
                   <div className="p-5 rounded-2xl border border-border bg-surface/50">
                     <div className="flex items-center gap-2 mb-4">
-                      <Ticket className="h-4 w-4 text-accent-cyan" />
+                      <Ticket className="h-4 w-4 text-accent-teal" />
                       <span className="text-sm font-semibold text-white">Registration Method</span>
                     </div>
                     <div className="flex items-center gap-3 mb-3">
@@ -1015,7 +1015,7 @@ export function EventBuilderPage() {
                         className={cn(
                           'px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
                           !eventData.useExternalForm
-                            ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
+                            ? 'bg-primary/20 border-primary text-primary'
                             : 'border-border text-text-secondary hover:border-white/30'
                         )}
                       >
@@ -1028,7 +1028,7 @@ export function EventBuilderPage() {
                         className={cn(
                           'px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
                           eventData.useExternalForm
-                            ? 'bg-accent-pink/20 border-accent-pink text-accent-pink'
+                            ? 'bg-accent-rose/20 border-accent-rose text-accent-rose'
                             : 'border-border text-text-secondary hover:border-white/30'
                         )}
                       >
@@ -1090,8 +1090,8 @@ export function EventBuilderPage() {
                   </div>
 
                   {eventData.useExternalForm ? (
-                    <div className="p-8 bg-accent-pink/10 border border-accent-pink/20 rounded-3xl text-center">
-                      <ExternalLink className="h-12 w-12 text-accent-pink mx-auto mb-4" />
+                    <div className="p-8 bg-accent-rose/10 border border-accent-rose/20 rounded-3xl text-center">
+                      <ExternalLink className="h-12 w-12 text-accent-rose mx-auto mb-4" />
                       <p className="text-white font-semibold text-lg mb-2">External Form Mode</p>
                       <p className="text-text-secondary text-sm max-w-sm mx-auto">
                         Ticket management is handled by your external form provider.
@@ -1108,20 +1108,20 @@ export function EventBuilderPage() {
                           className={cn(
                             'relative p-6 rounded-2xl border-2 text-center transition-all duration-300 overflow-hidden',
                             eventData.ticketing.isFree
-                              ? 'bg-green-500/10 border-green-500 text-green-400 shadow-[0_0_30px_rgba(34,197,94,0.1)]'
+                              ? 'bg-success/10 border-success text-success shadow-[0_0_30px_rgba(16,185,129,0.1)]'
                               : 'bg-surface border-border text-text-secondary hover:border-white/30'
                           )}
                         >
                           {eventData.ticketing.isFree && (
                             <motion.div
                               layoutId="tick-bg"
-                              className="absolute inset-0 bg-gradient-to-b from-green-500/10 to-transparent"
+                              className="absolute inset-0 bg-gradient-to-b from-success/10 to-transparent"
                               initial={false}
                             />
                           )}
                           <div className="relative">
-                            <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center mx-auto mb-3">
-                              <Ticket className="h-5 w-5 text-green-400" />
+                            <div className="w-10 h-10 rounded-xl bg-success/20 flex items-center justify-center mx-auto mb-3">
+                              <Ticket className="h-5 w-5 text-success" />
                             </div>
                             <p className="font-bold text-lg mb-1">Free</p>
                             <p className="text-xs opacity-60">No cost to attend</p>
@@ -1134,20 +1134,20 @@ export function EventBuilderPage() {
                           className={cn(
                             'relative p-6 rounded-2xl border-2 text-center transition-all duration-300 overflow-hidden',
                             !eventData.ticketing.isFree
-                              ? 'bg-yellow-400/10 border-yellow-400 text-yellow-400 shadow-[0_0_30px_rgba(245,215,0,0.1)]'
+                              ? 'bg-primary/10 border-primary text-primary shadow-[0_0_30px_rgba(99,102,241,0.1)]'
                               : 'bg-surface border-border text-text-secondary hover:border-white/30'
                           )}
                         >
                           {!eventData.ticketing.isFree && (
                             <motion.div
                               layoutId="tick-bg"
-                              className="absolute inset-0 bg-gradient-to-b from-yellow-400/10 to-transparent"
+                              className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent"
                               initial={false}
                             />
                           )}
                           <div className="relative">
-                            <div className="w-10 h-10 rounded-xl bg-yellow-400/20 flex items-center justify-center mx-auto mb-3">
-                              <IndianRupee className="h-5 w-5 text-yellow-400" />
+                            <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center mx-auto mb-3">
+                              <IndianRupee className="h-5 w-5 text-secondary" />
                             </div>
                             <p className="font-bold text-lg mb-1">Paid</p>
                             <p className="text-xs opacity-60">Sell tickets online</p>

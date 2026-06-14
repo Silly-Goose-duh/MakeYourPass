@@ -277,7 +277,7 @@ export function EventPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -287,10 +287,10 @@ export function EventPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="h-16 w-16 rounded-2xl bg-white/5 mx-auto mb-4 flex items-center justify-center">
+          <div className="h-16 w-16 rounded-2xl bg-surface mx-auto mb-4 flex items-center justify-center">
             <Sparkles className="h-8 w-8 text-text-muted" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Event not found</h1>
+          <h1 className="text-2xl font-bold text-text-primary mb-2">Event not found</h1>
           <p className="text-text-secondary mb-6">This event doesn&apos;t exist or has been removed</p>
           <Link to="/events">
             <Button variant="primary">Browse Events</Button>
@@ -304,14 +304,14 @@ export function EventPage() {
   if (event.use_external_form && event.form_link) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="relative bg-gradient-to-b from-yellow-400/10 via-background to-background pt-20 pb-16">
+          <div className="relative bg-gradient-to-b from-primary/10 via-background to-background pt-20 pb-16">
           <div className="mx-auto px-6 sm:px-10 max-w-6xl">
-            <Link to="/events" className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-6 text-sm">
+            <Link to="/events" className="inline-flex items-center gap-2 text-text-secondary hover:text-primary transition-colors mb-6 text-sm">
               <ArrowLeft className="h-4 w-4" />
               Back to Events
             </Link>
             <div className="text-center mb-10">
-              <Badge variant="pink" size="lg" className="mb-4">
+              <Badge variant="accent" size="lg" className="mb-4">
                 <ExternalLink className="h-4 w-4 mr-1" />
                 External Registration
               </Badge>
@@ -325,12 +325,12 @@ export function EventPage() {
               )}
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-text-secondary mb-8">
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-yellow-400" />
+                  <Calendar className="h-4 w-4 text-primary" />
                   {formatDate(event.start_date)}
                 </span>
                 {(event.venue_name || event.city) && (
                   <span className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4 text-yellow-400" />
+                    <MapPin className="h-4 w-4 text-primary" />
                     {event.city || event.venue_name}
                   </span>
                 )}
@@ -344,7 +344,7 @@ export function EventPage() {
             </div>
             {event.description && (
               <div className="max-w-3xl mx-auto">
-                <h2 className="text-2xl font-bold text-white mb-4">About This Event</h2>
+                <h2 className="text-2xl font-bold text-text-primary mb-4">About This Event</h2>
                 <p className="text-text-secondary leading-relaxed whitespace-pre-line">{event.description}</p>
               </div>
             )}
@@ -357,9 +357,9 @@ export function EventPage() {
   // ===== NORMAL TICKETING MODE =====
   return (
     <div className="min-h-screen bg-background">
-      <div className="relative bg-gradient-to-b from-yellow-400/10 via-background to-background pt-20 pb-16">
+      <div className="relative bg-gradient-to-b from-primary/10 via-background to-background pt-20 pb-16">
         <div className="mx-auto px-6 sm:px-10 max-w-7xl">
-          <Link to="/events" className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-6 text-sm">
+          <Link to="/events" className="inline-flex items-center gap-2 text-text-secondary hover:text-primary transition-colors mb-6 text-sm">
             <ArrowLeft className="h-4 w-4" />
             Back to Events
           </Link>
@@ -367,7 +367,7 @@ export function EventPage() {
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
             {/* Event Info */}
             <div className="flex-1">
-              <Badge variant="yellow" size="sm" className="mb-3">
+              <Badge variant="primary" size="sm" className="mb-3">
                 {event.category.replace('_', ' ')}
               </Badge>
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 leading-[1.1]">
@@ -379,22 +379,22 @@ export function EventPage() {
               
               <div className="space-y-3 mb-8">
                 <div className="flex items-center gap-3 text-text-secondary">
-                  <Calendar className="h-5 w-5 text-yellow-400" />
+                  <Calendar className="h-5 w-5 text-primary" />
                   <span>{formatDate(event.start_date)}</span>
                 </div>
                 <div className="flex items-center gap-3 text-text-secondary">
-                  <Clock className="h-5 w-5 text-yellow-400" />
+                  <Clock className="h-5 w-5 text-primary" />
                   <span>{formatTime(event.start_time)} - {formatTime(event.end_time)}</span>
                 </div>
                 {event.venue_name && (
                   <div className="flex items-center gap-3 text-text-secondary">
-                    <MapPin className="h-5 w-5 text-yellow-400" />
+                    <MapPin className="h-5 w-5 text-primary" />
                     <span>{event.venue_name}{event.city ? `, ${event.city}` : ''}</span>
                   </div>
                 )}
                 {event.max_attendees && (
                   <div className="flex items-center gap-3 text-text-secondary">
-                    <Users className="h-5 w-5 text-yellow-400" />
+                    <Users className="h-5 w-5 text-primary" />
                     <span>{event.max_attendees} max attendees</span>
                   </div>
                 )}
@@ -402,10 +402,10 @@ export function EventPage() {
 
               {/* Overall ticket availability */}
               {totalTickets > 0 && (
-                <div className="mb-6 p-4 rounded-xl bg-white/[0.03] border border-white/10">
+                <div className="mb-6 p-4 rounded-xl bg-surface border border-border">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 text-sm">
-                      <TicketIcon className="h-4 w-4 text-yellow-400" />
+                      <TicketIcon className="h-4 w-4 text-primary" />
                       <span className="text-text-secondary">Ticket Availability</span>
                     </div>
                     <span className={cn(
@@ -413,23 +413,23 @@ export function EventPage() {
                       totalRemaining === 0
                         ? 'text-red-400'
                         : totalRemaining / totalTickets < 0.25
-                          ? 'text-yellow-400'
-                          : 'text-green-400'
+                          ? 'text-secondary'
+                          : 'text-success'
                     )}>
                       {totalRemaining === 0
                         ? 'Sold Out'
                         : `${totalRemaining} of ${totalTickets} left`}
                     </span>
                   </div>
-                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-2 bg-surface rounded-full overflow-hidden">
                     <div
                       className={cn(
                         'h-full rounded-full transition-all',
                         totalRemaining === 0
                           ? 'bg-red-500'
                           : totalRemaining / totalTickets < 0.25
-                            ? 'bg-yellow-400'
-                            : 'bg-gradient-to-r from-yellow-400 to-green-400'
+                            ? 'bg-primary'
+                            : 'bg-gradient-to-r from-primary to-success'
                       )}
                       style={{ width: `${sellOutPercent}%` }}
                     />
@@ -451,11 +451,11 @@ export function EventPage() {
             <div className="w-full lg:w-[380px]">
               <Card variant="glass" padding="lg" className="sticky top-24">
                 <CardContent>
-                  <h3 className="text-lg font-bold text-white mb-4">Get Tickets</h3>
+                  <h3 className="text-lg font-bold text-text-primary mb-4">Get Tickets</h3>
 
                   {/* Overall availability bar in card */}
                   {totalTickets > 0 && (
-                    <div className="mb-5 p-3 rounded-xl bg-white/[0.03] border border-white/10">
+                    <div className="mb-5 p-3 rounded-xl bg-surface border border-border">
                       <div className="flex items-center justify-between text-xs mb-1.5">
                         <span className="text-text-muted">Overall availability</span>
                         <span className={cn(
@@ -465,11 +465,11 @@ export function EventPage() {
                           {totalRemaining === 0 ? 'Sold Out' : `${totalRemaining} left`}
                         </span>
                       </div>
-                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-surface rounded-full overflow-hidden">
                         <div
                           className={cn(
                             'h-full rounded-full',
-                            totalRemaining === 0 ? 'bg-red-500' : 'bg-gradient-to-r from-yellow-400 to-cyan-400'
+                            totalRemaining === 0 ? 'bg-red-500' : 'bg-gradient-to-r from-primary to-accent-teal'
                           )}
                           style={{ width: `${sellOutPercent}%` }}
                         />
@@ -491,7 +491,7 @@ export function EventPage() {
                             className={cn(
                               'w-full p-4 rounded-xl border-2 text-left transition-all',
                               selectedTicket === ticket.id
-                                ? 'border-yellow-400 bg-yellow-400/10'
+                                ? 'border-primary bg-primary-muted'
                                 : 'border-border hover:border-white/30 bg-surface'
                             )}
                           >
@@ -499,7 +499,7 @@ export function EventPage() {
                               <span className="font-semibold text-white">{ticket.name}</span>
                               <span className={cn(
                                 'font-bold',
-                                ticket.price === 0 ? 'text-green-400' : 'text-yellow-400'
+                                ticket.price === 0 ? 'text-success' : 'text-secondary'
                               )}>
                                 {ticket.price === 0 ? 'Free' : `₹${ticket.price}`}
                               </span>
@@ -582,7 +582,7 @@ export function EventPage() {
                             )}
                             <div className="flex justify-between mt-2 pt-2 border-t border-border">
                               <span className="font-semibold text-white">Total</span>
-                              <span className="font-bold text-yellow-400">
+                              <span className="font-bold text-secondary">
                                 {activeTicket?.price === 0 
                                   ? 'Free' 
                                   : `₹${(activeTicket?.price || 0) * quantity + Math.round((activeTicket?.price || 0) * quantity * 0.02)}`}
@@ -591,7 +591,7 @@ export function EventPage() {
                           </div>
 
                           {activeTicket && activeTicket.price > 0 && (
-                            <div className="p-3 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-xs text-yellow-400/80">
+                            <div className="p-3 bg-primary-muted border border-primary/20 rounded-xl text-xs text-primary/80">
                               ⚡ Razorpay checkout coming soon. For now, registration is free-flowing.
                             </div>
                           )}
@@ -637,7 +637,7 @@ export function EventPage() {
       {/* Full description */}
       {event.description && (
         <div className="mx-auto px-6 sm:px-10 max-w-7xl pb-20">
-          <h2 className="text-2xl font-bold text-white mb-4">About This Event</h2>
+          <h2 className="text-2xl font-bold text-text-primary mb-4">About This Event</h2>
           <p className="text-text-secondary leading-relaxed whitespace-pre-line">{event.description}</p>
         </div>
       )}
@@ -645,8 +645,8 @@ export function EventPage() {
       {/* Success Modal */}
       <Modal isOpen={successModalOpen} onClose={handleCloseSuccess} size="lg" showCloseButton>
         <div className="text-center py-4">
-          <div className="h-16 w-16 rounded-2xl bg-green-500/20 mx-auto mb-4 flex items-center justify-center">
-            <Check className="h-8 w-8 text-green-400" />
+          <div className="h-16 w-16 rounded-2xl bg-success/20 mx-auto mb-4 flex items-center justify-center">
+            <Check className="h-8 w-8 text-success" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">
             Registration Successful! 🎉
@@ -661,7 +661,7 @@ export function EventPage() {
           {/* QR Code Tickets */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
             {purchasedTickets.map((ticket: Ticket, idx: number) => (
-              <div key={ticket.id} className="p-4 rounded-xl bg-yellow-400/10 border border-yellow-400/20">
+              <div key={ticket.id} className="p-4 rounded-xl bg-primary-muted border border-primary/20">
                 <div className="flex items-center gap-4">
                   <div className="bg-white p-2 rounded-xl shrink-0">
                     <QRCodeSVG
@@ -673,7 +673,7 @@ export function EventPage() {
                     />
                   </div>
                   <div className="text-left flex-1 min-w-0">
-                    <Badge variant="yellow" size="sm" className="mb-1">Ticket #{idx + 1}</Badge>
+                    <Badge variant="primary" size="sm" className="mb-1">Ticket #{idx + 1}</Badge>
                     <p className="text-white font-semibold text-sm truncate">{event?.title}</p>
                     <p className="text-text-muted text-xs">{activeTicket?.name}</p>
                     <p className="text-text-muted text-[10px]">

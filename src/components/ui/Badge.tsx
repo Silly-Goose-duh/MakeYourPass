@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'yellow' | 'pink' | 'cyan' | 'outline'
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'primary' | 'accent' | 'outline'
   size?: 'sm' | 'md' | 'lg'
   dot?: boolean
 }
@@ -17,14 +17,13 @@ export function Badge({
   const baseStyles = 'inline-flex items-center gap-1.5 font-medium rounded-full'
 
   const variants = {
-    default: 'bg-white/10 text-text-secondary border border-border',
-    success: 'bg-green-500/20 text-green-400 border border-green-500/30',
-    warning: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
-    error: 'bg-red-500/20 text-red-400 border border-red-500/30',
-    info: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-    yellow: 'bg-yellow-400 text-black border border-yellow-400',
-    pink: 'bg-accent-pink/20 text-accent-pink border border-accent-pink/30',
-    cyan: 'bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30',
+    default: 'bg-surface text-text-secondary border border-border',
+    success: 'bg-success/10 text-success border border-success/20',
+    warning: 'bg-warning/10 text-warning border border-warning/20',
+    error: 'bg-error/10 text-error border border-error/20',
+    info: 'bg-accent-teal/10 text-accent-teal border border-accent-teal/20',
+    primary: 'bg-primary text-white border border-primary',
+    accent: 'bg-secondary text-white border border-secondary',
     outline: 'bg-transparent text-text-secondary border border-border-light',
   }
 
@@ -40,11 +39,12 @@ export function Badge({
         <span
           className={cn(
             'h-1.5 w-1.5 rounded-full',
-            variant === 'success' && 'bg-green-400',
-            variant === 'warning' && 'bg-yellow-400',
-            variant === 'error' && 'bg-red-400',
-            variant === 'info' && 'bg-blue-400',
-            variant === 'yellow' && 'bg-black',
+            variant === 'success' && 'bg-success',
+            variant === 'warning' && 'bg-warning',
+            variant === 'error' && 'bg-error',
+            variant === 'info' && 'bg-accent-teal',
+            variant === 'primary' && 'bg-white',
+            variant === 'accent' && 'bg-white',
             variant === 'default' && 'bg-text-muted',
             variant === 'outline' && 'bg-text-muted'
           )}

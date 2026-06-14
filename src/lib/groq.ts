@@ -117,34 +117,40 @@ async function extractTextFromPDF(file: File): Promise<string> {
 }
 
 /**
- * Render the first page of a PDF as an image and analyze it with Groq vision
+ * Render ALL pages of a PDF as individual images and analyze with Groq vision
+ * (Max 5 pages per request due to Groq's 5-image limit)
  */
 async function analyzePdfPageAsImage(file: File): Promise<ExtractedEventData> {
   const arrayBuffer = await file.arrayBuffer()
 
-  // Load pdfjs from CDN (browser cache serves instantly since extractTextFromPDF already loaded it)
+  // Load pdfjs from CDN
   // @ts-expect-error — URL import resolved at runtime
   const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs')
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs'
 
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  const page = await pdf.getPage(1)
+  const totalPages = Math.min(pdf.numPages, 5) // Groq allows max 5 images
 
-  // Set viewport at 2x scale for decent resolution
-  const viewport = page.getViewport({ scale: 2 })
-  const canvas = document.createElement('canvas')
-  canvas.width = viewport.width
-  canvas.height = viewport.height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Browser canvas context not available')
+  const base64Images: string[] = []
 
-  await page.render({ canvasContext: ctx, viewport }).promise
+  for (let i = 1; i <= totalPages; i++) {
+    const page = await pdf.getPage(i)
+    // Use 1x scale to keep total under 4MB base64 limit
+    const viewport = page.getViewport({ scale: 1 })
+    const canvas = document.createElement('canvas')
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Browser canvas context not available')
 
-  // Convert canvas to JPEG base64
-  const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1]
-  canvas.remove()
+    await page.render({ canvasContext: ctx, viewport }).promise
+    // Use quality 0.8 to reduce size
+    const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
+    canvas.remove()
+    base64Images.push(b64)
+  }
 
-  return sendToGroqVision(base64, 'image/jpeg')
+  return sendToGroqVision(base64Images, 'image/jpeg')
 }
 
 /**
@@ -153,35 +159,28 @@ async function analyzePdfPageAsImage(file: File): Promise<ExtractedEventData> {
 async function analyzeImageWithGroq(file: File): Promise<ExtractedEventData> {
   const base64 = await fileToBase64(file)
   const mimeType = file.type || 'image/png'
-  return sendToGroqVision(base64, mimeType)
+  return sendToGroqVision([base64], mimeType)
 }
 
 /**
- * Shared function: send a base64 image to Groq vision API using JSON mode
- * Uses response_format: json_object to force structured JSON output from the model
+ * Send one or more base64 images to Groq vision API
+ * Uses response_format: json_object to force structured JSON output
+ * @param base64Images Array of base64-encoded images (max 5 per Groq limits)
  */
-async function sendToGroqVision(base64: string, mimeType: string): Promise<ExtractedEventData> {
+async function sendToGroqVision(base64Images: string[], mimeType: string): Promise<ExtractedEventData> {
   if (!GROQ_API_KEY) {
     throw new Error('Groq API key not configured. Set VITE_GROQ_API_KEY in .env.local')
   }
 
-  const response = await fetch(GROQ_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `You are an event detail extraction AI. Read EVERY piece of text in this image carefully.
+  // Build content array: text prompt + all page images
+  const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+    {
+      type: 'text',
+      text: `You are an event detail extraction AI. This is a multi-page event brochure.
 
-Extract ALL visible event details and return them as a JSON object with these exact fields. Fill every field you can find from the image. Use empty string "" for anything not found:
+Read EVERY piece of text from ALL pages/images carefully. Extract ALL visible event details and return them as a JSON object.
+
+Fill every field you can find. Use empty string "" for anything not found:
 - title: the full event name
 - description: the complete event description, agenda, or details
 - shortDescription: a one-line tagline or subtitle
@@ -196,15 +195,26 @@ Extract ALL visible event details and return them as a JSON object with these ex
 - state: the state or region
 - maxAttendees: the maximum number of attendees, or empty string
 
-Look carefully at ALL text in the image — headers, body text, footers, fine print. Extract dates, times, location, description, ticket prices, every detail you can see. If you see a date like "June 15, 2026", format it as "2026-06-15".`,
-            },
-            {
-              type: 'image_url',
-              image_url: { url: `data:${mimeType};base64,${base64}` },
-            },
-          ],
-        },
-      ],
+Look through ALL pages — headers, body text, footers, fine print. Extract dates, times, location, description, every detail you can see across all pages. If you see a date like "June 15, 2026", format it as "2026-06-15".`,
+    },
+  ]
+
+  for (const b64 of base64Images) {
+    content.push({
+      type: 'image_url',
+      image_url: { url: `data:${mimeType};base64,${b64}` },
+    })
+  }
+
+  const response = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+      messages: [{ role: 'user', content }],
       temperature: 0.1,
       max_tokens: 2048,
       response_format: { type: 'json_object' },
@@ -217,8 +227,8 @@ Look carefully at ALL text in the image — headers, body text, footers, fine pr
   }
 
   const result = await response.json()
-  const content = result.choices?.[0]?.message?.content || '{}'
-  return parseGroqResponse(content)
+  const responseContent = result.choices?.[0]?.message?.content || '{}'
+  return parseGroqResponse(responseContent)
 }
 
 /**

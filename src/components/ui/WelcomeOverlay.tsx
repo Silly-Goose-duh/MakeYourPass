@@ -72,7 +72,7 @@ export function WelcomeOverlay() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', duration: 0.6 }}
-            className="relative w-full max-w-lg glass-strong rounded-2xl p-6 sm:p-8 z-10 border border-yellow-400/20"
+            className="relative w-full max-w-lg glass-strong rounded-2xl p-6 sm:p-8 z-10 border border-primary/20"
           >
             {/* Close button */}
             <button
@@ -84,12 +84,12 @@ export function WelcomeOverlay() {
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-6">
-              <div className="h-10 w-10 rounded-xl bg-yellow-400 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-black" />
+              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-white" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white">
-                  Welcome to <span className="text-yellow-400">MakeYour</span>Pass
+                  Welcome to <span className="text-primary">MakeYour</span>Pass
                 </h2>
                 <p className="text-sm text-text-muted">Here's your quick headstart</p>
               </div>
@@ -98,9 +98,9 @@ export function WelcomeOverlay() {
             {/* Tips */}
             <div className="space-y-3 mb-6">
               {tips.map((tip) => (
-                <div key={tip.title} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-                  <div className="h-9 w-9 rounded-lg bg-yellow-400/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <tip.icon className="h-4 w-4 text-yellow-400" />
+                <div key={tip.title} className="flex items-start gap-3 p-3 rounded-xl bg-surface border border-border">
+                  <div className="h-9 w-9 rounded-lg bg-primary-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <tip.icon className="h-4 w-4 text-primary" />
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-white">{tip.title}</h3>

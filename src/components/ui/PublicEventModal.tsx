@@ -57,9 +57,9 @@ export function PublicEventModal({ event, isOpen, onClose }: PublicEventModalPro
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto"
           >
-            <div className="relative rounded-3xl border border-white/10 bg-black/90 backdrop-blur-2xl shadow-2xl shadow-yellow-400/10 overflow-hidden">
+            <div className="relative rounded-3xl border border-border bg-surface backdrop-blur-2xl shadow-2xl shadow-primary/10 overflow-hidden">
               {/* Glow accents */}
-              <div className="absolute -top-20 -right-20 w-40 h-40 bg-yellow-400/10 rounded-full blur-[60px]" />
+              <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-[60px]" />
               <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-accent-pink/10 rounded-full blur-[60px]" />
 
               {/* Close button */}
@@ -73,12 +73,12 @@ export function PublicEventModal({ event, isOpen, onClose }: PublicEventModalPro
               {/* Content */}
               <div className="p-6 sm:p-8">
                 {/* Gradient header area */}
-                <div className="h-24 -mx-8 -mt-8 mb-6 bg-gradient-to-br from-yellow-400/20 via-accent-pink/10 to-accent-cyan/20 flex items-end px-8 pb-4">
-                  <Badge variant="yellow" size="md">
+                <div className="h-24 -mx-8 -mt-8 mb-6 bg-gradient-to-br from-primary/20 via-accent-rose/10 to-accent-teal/20 flex items-end px-8 pb-4">
+                  <Badge variant="primary" size="md">
                     {event.category.replace('_', ' ')}
                   </Badge>
                   {event.use_external_form && event.form_link && (
-                    <Badge variant="pink" size="sm" className="ml-2">
+                    <Badge variant="accent" size="sm" className="ml-2">
                       <ExternalLink className="h-3 w-3 mr-1" />
                       External
                     </Badge>
@@ -99,19 +99,19 @@ export function PublicEventModal({ event, isOpen, onClose }: PublicEventModalPro
                 {/* Event details */}
                 <div className="space-y-2.5 mb-6 text-sm">
                   <div className="flex items-center gap-2.5 text-text-secondary">
-                    <Calendar className="h-4 w-4 text-yellow-400" />
+                    <Calendar className="h-4 w-4 text-primary" />
                     <span>{formatDate(event.start_date)}</span>
                     {event.end_date && event.end_date !== event.start_date && (
                       <span>— {formatDate(event.end_date)}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2.5 text-text-secondary">
-                    <Clock className="h-4 w-4 text-yellow-400" />
+                    <Clock className="h-4 w-4 text-primary" />
                     <span>{formatTime(event.start_time)} - {formatTime(event.end_time)}</span>
                   </div>
                   {(event.venue_name || event.city) && (
                     <div className="flex items-center gap-2.5 text-text-secondary">
-                      <MapPin className="h-4 w-4 text-yellow-400" />
+                      <MapPin className="h-4 w-4 text-primary" />
                       <span className="truncate">
                         {event.venue_name}{event.venue_name && event.city ? ', ' : ''}{event.city}
                       </span>

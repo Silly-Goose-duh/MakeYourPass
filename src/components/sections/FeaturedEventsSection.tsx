@@ -22,7 +22,6 @@ export function FeaturedEventsSection() {
       const { data } = await getPublicEvents(3)
       if (data) {
         setEvents(data)
-        // Fetch ticket counts for featured events
         const { data: ticketData } = await getTicketCountsForEvents(data.map(e => e.id))
         if (ticketData) {
           const counts: Record<string, { sold: number; total: number }> = {}
@@ -43,12 +42,6 @@ export function FeaturedEventsSection() {
 
   return (
     <section className="relative py-24 sm:py-32 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-accent-cyan/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/3 left-1/4 w-72 h-72 bg-accent-pink/5 rounded-full blur-[100px]" />
-      </div>
-
       {/* Public Event Modal */}
       <PublicEventModal
         event={selectedEvent!}
@@ -56,7 +49,7 @@ export function FeaturedEventsSection() {
         onClose={() => setSelectedEvent(null)}
       />
 
-      <div className="relative mx-auto px-6 max-w-7xl">
+      <div className="relative mx-auto px-8 lg:px-12 max-w-7xl">
         {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -65,11 +58,11 @@ export function FeaturedEventsSection() {
           className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-12"
         >
           <div>
-            <Badge variant="cyan" size="lg" className="mb-4">
+            <Badge variant="primary" size="lg" className="mb-4">
               <Sparkles className="h-4 w-4" />
               Live Now
             </Badge>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white">
+            <h2 className="left-accent text-3xl sm:text-4xl md:text-5xl font-bold text-text-primary">
               Featured <span className="gradient-text">Events</span>
             </h2>
             <p className="text-text-secondary text-lg mt-2">
@@ -98,10 +91,10 @@ export function FeaturedEventsSection() {
                 onClick={() => setSelectedEvent(event)}
                 className="w-full text-left group"
               >
-                <Card variant="glass-cyan" hover glow="cyan" className="h-full">
+                <Card variant="glass-primary" hover glow="primary" className="h-full">
                   <CardContent>
                     {/* Gradient header */}
-                    <div className="h-32 -mx-6 -mt-6 mb-4 rounded-t-2xl bg-gradient-to-br from-accent-cyan/20 via-accent-pink/10 to-yellow-400/20 flex items-center justify-center">
+                    <div className="h-32 -mx-6 -mt-6 mb-4 rounded-t-2xl bg-gradient-to-br from-primary/10 via-accent-rose/5 to-secondary/10 flex items-center justify-center">
                       {event.cover_image_url ? (
                         <img src={event.cover_image_url} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -113,11 +106,11 @@ export function FeaturedEventsSection() {
                       )}
                     </div>
 
-                    <Badge variant="cyan" size="sm" className="mb-3">
+                    <Badge variant="primary" size="sm" className="mb-3">
                       {event.category.replace('_', ' ')}
                     </Badge>
 
-                    <CardTitle className="text-lg mb-2 line-clamp-2 group-hover:text-accent-cyan transition-colors">
+                    <CardTitle className="text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
                       {event.title}
                     </CardTitle>
 
@@ -134,7 +127,7 @@ export function FeaturedEventsSection() {
 
                     {/* Ticket availability on featured card */}
                     {ticketCounts[event.id] && ticketCounts[event.id].total > 0 && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
+                      <div className="mt-3 pt-3 border-t border-border">
                         <div className="flex items-center justify-between text-xs mb-1">
                           <span className="text-text-muted">
                             <Ticket className="h-3 w-3 inline-block mr-0.5 -mt-0.5" />
@@ -142,7 +135,7 @@ export function FeaturedEventsSection() {
                           </span>
                           <span className={cn(
                             ticketCounts[event.id].sold >= ticketCounts[event.id].total
-                              ? 'text-red-400' : 'text-yellow-400'
+                              ? 'text-error' : 'text-secondary'
                           )}>
                             {ticketCounts[event.id].sold >= ticketCounts[event.id].total
                               ? 'Sold Out'
@@ -154,8 +147,8 @@ export function FeaturedEventsSection() {
                             className={cn(
                               'h-full rounded-full',
                               ticketCounts[event.id].sold >= ticketCounts[event.id].total
-                                ? 'bg-red-500'
-                                : 'bg-gradient-to-r from-yellow-400 to-cyan-400'
+                                ? 'bg-error'
+                                : 'bg-gradient-to-r from-primary to-accent-teal'
                             )}
                             style={{
                               width: `${Math.min(100, (ticketCounts[event.id].sold / ticketCounts[event.id].total) * 100)}%`
@@ -165,8 +158,8 @@ export function FeaturedEventsSection() {
                       </div>
                     )}
 
-                    <div className="pt-4 mt-4 border-t border-white/10">
-                      <span className="text-accent-cyan text-sm font-medium flex items-center gap-1.5 group-hover:gap-2 transition-all">
+                    <div className="pt-4 mt-4 border-t border-border">
+                      <span className="text-primary text-sm font-medium flex items-center gap-1.5 group-hover:gap-2 transition-all">
                         Quick View <ExternalLink className="h-3.5 w-3.5" />
                       </span>
                     </div>

@@ -2,10 +2,10 @@ import { forwardRef, HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'glass' | 'glass-yellow' | 'glass-pink' | 'glass-cyan' | 'elevated' | 'bordered'
+  variant?: 'default' | 'glass' | 'glass-primary' | 'glass-accent' | 'elevated' | 'bordered'
   padding?: 'none' | 'sm' | 'md' | 'lg'
   hover?: boolean
-  glow?: 'yellow' | 'pink' | 'cyan' | 'none'
+  glow?: 'primary' | 'accent' | 'none'
 }
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
@@ -13,13 +13,12 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     const baseStyles = 'rounded-2xl transition-all duration-300'
 
     const variants = {
-      default: 'bg-surface border border-border',
+      default: 'bg-white border border-border',
       glass: 'glass',
-      'glass-yellow': 'glass-yellow',
-      'glass-pink': 'glass-pink',
-      'glass-cyan': 'glass-cyan',
-      elevated: 'bg-surface-elevated border border-border shadow-xl',
-      bordered: 'bg-surface border-2 border-border-light',
+      'glass-primary': 'glass-primary',
+      'glass-accent': 'glass-accent',
+      elevated: 'bg-white border border-border shadow-lg',
+      bordered: 'bg-white border-2 border-border-light',
     }
 
     const paddings = {
@@ -30,14 +29,13 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     }
 
     const glows = {
-      yellow: 'shadow-[0_0_30px_rgba(245,215,0,0.15)]',
-      pink: 'shadow-[0_0_30px_rgba(255,45,149,0.15)]',
-      cyan: 'shadow-[0_0_30px_rgba(0,240,255,0.15)]',
+      primary: 'shadow-[0_0_20px_rgba(99,102,241,0.12)]',
+      accent: 'shadow-[0_0_20px_rgba(245,158,11,0.12)]',
       none: '',
     }
 
     const hoverStyles = hover
-      ? 'hover:border-yellow-400/50 hover:shadow-lg hover:shadow-yellow-400/10 hover:-translate-y-1 cursor-pointer'
+      ? 'hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-0.5 cursor-pointer'
       : ''
 
     return (

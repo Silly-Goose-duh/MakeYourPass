@@ -95,17 +95,17 @@ export function TabsTrigger({
   const { activeValue, onChange, variant } = useTabsContext()
   const isActive = activeValue === value
 
-  const baseStyles = 'relative px-4 py-2.5 font-medium text-sm rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2'
+  const baseStyles = 'relative px-4 py-2.5 font-medium text-sm rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2'
 
   const variantStyles: Record<string, string> = {
     line: isActive
-      ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/20'
+      ? 'bg-primary text-white shadow-md shadow-primary/20'
       : 'text-text-secondary hover:text-text-primary hover:bg-white/5',
     pills: isActive
-      ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/20'
+      ? 'bg-primary text-white shadow-md shadow-primary/20'
       : 'text-text-secondary hover:text-text-primary hover:bg-white/5',
     underline: isActive
-      ? 'text-yellow-400 border-b-2 border-yellow-400 -mb-px'
+      ? 'text-primary border-b-2 border-primary -mb-px'
       : 'text-text-secondary hover:text-text-primary',
   }
 

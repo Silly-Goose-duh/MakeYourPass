@@ -48,12 +48,12 @@ export function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-yellow-400/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-yellow-400/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="relative w-full max-w-md">
         {/* Back link */}
-        <Link to="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-8 text-sm">
+        <Link to="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-primary-hover transition-colors mb-8 text-sm">
           <ArrowLeft className="h-4 w-4" />
           Back to home
         </Link>
@@ -67,12 +67,12 @@ export function LoginPage() {
           {/* Logo */}
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2.5 mb-4">
-              <div className="h-10 w-10 rounded-xl bg-yellow-400 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-black" />
+              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold">
                 <span className="text-white">MakeYour</span>
-                <span className="text-yellow-400">Pass</span>
+                <span className="text-primary">Pass</span>
               </span>
             </Link>
             <h1 className="text-2xl font-bold text-white mb-2">Welcome back</h1>
@@ -112,7 +112,7 @@ export function LoginPage() {
             </div>
 
             <div className="flex items-center justify-end">
-              <Link to="/reset-password" className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors">
+              <Link to="/reset-password" className="text-sm text-primary hover:text-primary-hover transition-colors">
                 Forgot password?
               </Link>
             </div>
@@ -153,7 +153,7 @@ export function LoginPage() {
           {/* Sign up link */}
           <p className="text-center mt-6 text-sm text-text-muted">
             Don&apos;t have an account?{' '}
-            <Link to="/signup" className="text-yellow-400 hover:text-yellow-300 font-medium transition-colors">
+            <Link to="/signup" className="text-primary hover:text-primary-hover font-medium transition-colors">
               Sign up free
             </Link>
           </p>

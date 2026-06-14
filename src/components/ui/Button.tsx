@@ -2,7 +2,7 @@ import { forwardRef, ButtonHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'pink' | 'cyan' | 'gradient'
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success' | 'gradient'
   size?: 'sm' | 'md' | 'lg' | 'xl'
   loading?: boolean
   fullWidth?: boolean
@@ -14,14 +14,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed'
 
     const variants = {
-      primary: 'bg-yellow-400 text-black hover:bg-yellow-300 active:bg-yellow-500 shadow-lg shadow-yellow-400/30 focus-visible:ring-yellow-400',
-      secondary: 'bg-white/10 text-white border border-white/20 hover:bg-white/20 active:bg-white/30 focus-visible:ring-white',
-      outline: 'border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-400/10 active:bg-yellow-400/20 focus-visible:ring-yellow-400',
-      ghost: 'text-white/80 hover:text-white hover:bg-white/10 active:bg-white/20 focus-visible:ring-white',
-      danger: 'bg-red-500 text-white hover:bg-red-400 active:bg-red-600 shadow-lg shadow-red-500/30 focus-visible:ring-red-500',
-      pink: 'bg-accent-pink text-white hover:bg-pink-400 active:bg-pink-600 shadow-lg shadow-accent-pink/30 focus-visible:ring-accent-pink',
-      cyan: 'bg-accent-cyan text-black hover:bg-cyan-300 active:bg-cyan-500 shadow-lg shadow-accent-cyan/30 focus-visible:ring-accent-cyan',
-      gradient: 'bg-gradient-to-r from-yellow-400 via-accent-pink to-accent-cyan text-black font-bold hover:opacity-90 active:opacity-80 shadow-xl focus-visible:ring-yellow-400 animate-gradient',
+      primary: 'bg-primary text-white hover:bg-primary-hover active:bg-primary-hover shadow-lg shadow-primary/25 focus-visible:ring-primary',
+      secondary: 'bg-secondary text-white hover:bg-secondary-hover active:bg-secondary-hover shadow-lg shadow-secondary/25 focus-visible:ring-secondary',
+      outline: 'border-2 border-primary text-primary hover:bg-primary-muted active:bg-primary/10 focus-visible:ring-primary',
+      ghost: 'text-text-secondary hover:text-text-primary hover:bg-surface active:bg-surface-elevated focus-visible:ring-primary',
+      danger: 'bg-error text-white hover:bg-red-500 active:bg-red-600 focus-visible:ring-error',
+      success: 'bg-success text-white hover:bg-emerald-500 active:bg-emerald-600 focus-visible:ring-success',
+      gradient: 'bg-gradient-to-r from-primary to-violet-600 text-white font-bold hover:opacity-90 active:opacity-80 shadow-xl focus-visible:ring-primary',
     }
 
     const sizes = {
@@ -32,10 +31,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     }
 
     const glowStyles: Record<string, string> = {
-      primary: 'glow-yellow',
-      pink: 'glow-pink',
-      cyan: 'glow-cyan',
-      gradient: 'shadow-glow-yellow',
+      primary: 'glow-primary',
+      secondary: 'glow-accent',
+      gradient: 'shadow-glow-primary',
     }
 
     return (

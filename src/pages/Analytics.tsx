@@ -109,17 +109,17 @@ export function AnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   const statCards = [
-    { label: 'Total Events', value: String(data?.totalEvents || 0), icon: Calendar, glow: 'yellow' as const },
-    { label: 'Orders', value: String(data?.totalOrders || 0), icon: Ticket, glow: 'pink' as const },
-    { label: 'Tickets Sold', value: String(data?.totalTickets || 0), icon: TrendingUp, glow: 'cyan' as const },
-    { label: 'Revenue', value: data?.totalRevenue ? `₹${data.totalRevenue.toLocaleString('en-IN')}` : '₹0', icon: DollarSign, glow: 'yellow' as const },
-    { label: 'Checked In', value: String(data?.totalCheckedIn || 0), icon: Users, glow: 'pink' as const },
+    { label: 'Total Events', value: String(data?.totalEvents || 0), icon: Calendar, glow: 'primary' as const },
+    { label: 'Orders', value: String(data?.totalOrders || 0), icon: Ticket, glow: 'accent' as const },
+    { label: 'Tickets Sold', value: String(data?.totalTickets || 0), icon: TrendingUp, glow: 'primary' as const },
+    { label: 'Revenue', value: data?.totalRevenue ? `₹${data.totalRevenue.toLocaleString('en-IN')}` : '₹0', icon: DollarSign, glow: 'primary' as const },
+    { label: 'Checked In', value: String(data?.totalCheckedIn || 0), icon: Users, glow: 'accent' as const },
   ]
 
   return (
@@ -136,7 +136,7 @@ export function AnalyticsPage() {
               onClick={() => setPeriod(p)}
               className={cn(
                 'px-4 py-1.5 rounded-full text-sm font-medium capitalize transition-all',
-                period === p ? 'bg-yellow-400 text-black' : 'bg-white/5 text-text-secondary hover:text-white'
+                period === p ? 'bg-primary text-white' : 'bg-white/5 text-text-secondary hover:text-white'
               )}
             >
               {p}
@@ -186,13 +186,13 @@ export function AnalyticsPage() {
                     </div>
                     <div>
                       <p className="text-text-muted">Revenue</p>
-                      <p className="text-yellow-400 font-semibold">₹{ev.revenue.toLocaleString('en-IN')}</p>
+                      <p className="text-primary font-semibold">₹{ev.revenue.toLocaleString('en-IN')}</p>
                     </div>
                   </div>
                   {/* Progress bar for check-in rate */}
                   <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-yellow-400 to-green-400 rounded-full transition-all"
+                      className="h-full bg-gradient-to-r from-primary to-green-400 rounded-full transition-all"
                       style={{ width: `${ev.checkInRate}%` }}
                     />
                   </div>
@@ -204,8 +204,8 @@ export function AnalyticsPage() {
       ) : (
         <Card variant="glass" padding="lg">
           <div className="text-center py-16">
-            <div className="h-16 w-16 rounded-2xl bg-yellow-400/20 mx-auto mb-4 flex items-center justify-center">
-              <BarChart3 className="h-8 w-8 text-yellow-400" />
+            <div className="h-16 w-16 rounded-2xl bg-primary-muted mx-auto mb-4 flex items-center justify-center">
+              <BarChart3 className="h-8 w-8 text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">No data yet</h3>
             <p className="text-text-secondary text-sm max-w-md mx-auto">

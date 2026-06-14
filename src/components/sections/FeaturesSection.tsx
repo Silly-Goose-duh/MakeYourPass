@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { 
+import {
   Ticket, QrCode, BarChart3, CreditCard, Users, Bell,
   Palette, Shield, Share2, Zap, Globe, Sparkles
 } from 'lucide-react'
@@ -12,130 +12,125 @@ const features = [
     title: 'Smart Ticketing',
     description: 'Create custom ticket types, set pricing, and sell with built-in payment processing. Group bookings, early bird, and promo codes included.',
     badge: 'Popular',
-    glass: 'glass-yellow',
-    glow: 'yellow' as const,
+    glass: 'glass-primary',
+    glow: 'primary' as const,
   },
   {
     icon: QrCode,
     title: 'QR Check-In',
     description: 'Fast, contactless entry with QR scanning. Real-time validation prevents duplicates and flags suspicious tickets instantly.',
     badge: 'New',
-    glass: 'glass-pink',
-    glow: 'pink' as const,
+    glass: 'glass-accent',
+    glow: 'accent' as const,
   },
   {
     icon: BarChart3,
     title: 'Live Analytics',
     description: 'Track ticket sales, check-ins, and revenue in real-time. Export reports for stakeholders without spreadsheets.',
     badge: '',
-    glass: 'glass-cyan',
-    glow: 'cyan' as const,
+    glass: 'glass-primary',
+    glow: 'primary' as const,
   },
   {
     icon: CreditCard,
     title: 'Payment Processing',
     description: 'Accept payments via Razorpay, Slice, and more. No setup fees, no monthly charges — just seamless transactions.',
     badge: 'Free',
-    glass: 'glass-yellow',
-    glow: 'yellow' as const,
+    glass: 'glass-primary',
+    glow: 'primary' as const,
   },
   {
     icon: Users,
     title: 'Attendee Management',
     description: 'View, search, and manage all attendees in one place. Send bulk updates, export lists, and track engagement.',
     badge: '',
-    glass: 'glass-pink',
-    glow: 'pink' as const,
+    glass: 'glass-accent',
+    glow: 'accent' as const,
   },
   {
     icon: Bell,
     title: 'Automated Notifications',
     description: 'Keep attendees informed with automated email and WhatsApp reminders. Customize templates for every touchpoint.',
     badge: '',
-    glass: 'glass-cyan',
-    glow: 'cyan' as const,
+    glass: 'glass-primary',
+    glow: 'primary' as const,
   },
   {
     icon: Palette,
     title: 'Event Branding',
     description: 'Customize your event page with your brand colors, logo, and domain. No coding or design skills needed.',
     badge: '',
-    glass: 'glass-yellow',
-    glow: 'yellow' as const,
+    glass: 'glass-primary',
+    glow: 'primary' as const,
   },
   {
     icon: Shield,
     title: 'Fraud Protection',
     description: 'Built-in anti-scalping, duplicate ticket detection, and secure QR codes. Your event, protected.',
     badge: 'Secure',
-    glass: 'glass-pink',
-    glow: 'pink' as const,
+    glass: 'glass-accent',
+    glow: 'accent' as const,
   },
   {
     icon: Share2,
     title: 'Social Sharing',
     description: 'Built-in social sharing tools. Let attendees spread the word with shareable ticket graphics and referral links.',
     badge: '',
-    glass: 'glass-cyan',
-    glow: 'cyan' as const,
+    glass: 'glass-primary',
+    glow: 'primary' as const,
   },
   {
     icon: Zap,
     title: 'Instant Setup',
     description: 'Create a professional event page in minutes. No coding required — just fill in details and publish.',
     badge: 'Fast',
-    glass: 'glass-yellow',
-    glow: 'yellow' as const,
+    glass: 'glass-primary',
+    glow: 'primary' as const,
   },
   {
     icon: Globe,
     title: 'Multi-Event Support',
     description: 'Manage recurring events, conferences with multiple tracks, and multi-day festivals from a single dashboard.',
     badge: '',
-    glass: 'glass-pink',
-    glow: 'pink' as const,
+    glass: 'glass-accent',
+    glow: 'accent' as const,
   },
   {
     icon: Sparkles,
     title: 'AI Poster Generator',
     description: 'Just describe your event — the AI generates a stunning poster in seconds. No design skills needed.',
     badge: 'Soon',
-    glass: 'glass-cyan',
-    glow: 'cyan' as const,
+    glass: 'glass-primary',
+    glow: 'primary' as const,
   },
 ]
 
 export function FeaturesSection() {
   return (
     <section id="features" className="relative py-24 sm:py-32 overflow-hidden">
-      {/* Background glow spots */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-yellow-400/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent-pink/5 rounded-full blur-[120px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-accent-cyan/5 rounded-full blur-[120px]" />
-      </div>
-
-      <div className="relative mx-auto px-6 max-w-7xl">
+      <div className="relative px-8 lg:px-12 mx-auto max-w-7xl">
         {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center max-w-3xl mx-auto mb-16 sm:mb-20"
+          className="mb-16 sm:mb-20"
         >
-          <Badge variant="yellow" size="lg" className="mb-4">
-            Everything You Need
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-            All the tools to run{' '}
-            <br />
-            <span className="gradient-text">events like a pro</span>
-          </h2>
-          <p className="text-text-secondary text-lg sm:text-xl max-w-2xl mx-auto">
-            No more juggling spreadsheets, payment links, and check-in apps.{' '}
-            MakeYourPass brings it all under one roof.
-          </p>
+          <div className="left-accent">
+            <Badge variant="primary" size="lg" className="mb-4">
+              Everything You Need
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-text-primary mb-4">
+              All the tools to run{' '}
+              <br />
+              <span className="gradient-text">events like a pro</span>
+            </h2>
+            <p className="text-text-secondary text-lg sm:text-xl max-w-2xl">
+              No more juggling spreadsheets, payment links, and check-in apps.{' '}
+              MakeYourPass brings it all under one roof.
+            </p>
+          </div>
         </motion.div>
 
         {/* Features grid */}
@@ -149,7 +144,7 @@ export function FeaturesSection() {
               transition={{ duration: 0.5, delay: index * 0.05 }}
             >
               <Card
-                variant={feature.glass as 'glass-yellow' | 'glass-pink' | 'glass-cyan'}
+                variant={feature.glass as 'glass-primary' | 'glass-accent'}
                 padding="lg"
                 hover
                 glow={feature.glow}
@@ -157,16 +152,16 @@ export function FeaturesSection() {
               >
                 <CardContent>
                   <div className="flex items-start gap-4 mb-4">
-                    <div className="p-2.5 rounded-xl bg-white/[0.06] text-white transition-all duration-300 group-hover:scale-110 group-hover:text-yellow-400">
+                    <div className="p-2.5 rounded-xl bg-primary-muted text-text-primary transition-all duration-300 group-hover:scale-110 group-hover:text-primary">
                       <feature.icon className="h-5 w-5" />
                     </div>
                     {feature.badge && (
-                      <Badge variant={feature.glow === 'pink' ? 'pink' : feature.glow === 'cyan' ? 'cyan' : 'yellow'} size="sm" className="ml-auto">
+                      <Badge variant={feature.glow === 'accent' ? 'accent' : 'primary'} size="sm" className="ml-auto">
                         {feature.badge}
                       </Badge>
                     )}
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
+                  <h3 className="text-lg font-semibold text-text-primary mb-2">{feature.title}</h3>
                   <p className="text-text-secondary text-sm leading-relaxed">{feature.description}</p>
                 </CardContent>
               </Card>

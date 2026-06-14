@@ -28,7 +28,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             'w-full px-4 py-3 bg-primary/50 border rounded-xl text-text-primary placeholder:text-text-muted',
             'transition-all duration-200',
             'hover:border-border-light',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:border-yellow-400 focus-visible:bg-primary',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             error && 'border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500',
             className
@@ -81,7 +81,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             'w-full px-4 py-3 bg-primary/50 border rounded-xl text-text-primary placeholder:text-text-muted resize-y min-h-[100px]',
             'transition-all duration-200',
             'hover:border-border-light',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:border-yellow-400 focus-visible:bg-primary',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             error && 'border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500',
             className

@@ -86,9 +86,9 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-primary/50 border border-border rounded-xl text-left transition-all hover:border-yellow-400/30 focus:outline-none focus:border-yellow-400/50"
+        className="w-full flex items-center gap-3 px-4 py-3 bg-primary/50 border border-border rounded-xl text-left transition-all hover:border-primary/30 focus:outline-none focus:border-primary/50"
       >
-        <CalendarIcon className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+        <CalendarIcon className="h-5 w-5 text-primary flex-shrink-0" />
         <span className={displayValue ? 'text-white' : 'text-text-muted'}>
           {displayValue || 'Select date'}
         </span>
@@ -102,7 +102,7 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-2 w-[320px] glass-strong rounded-xl border border-yellow-400/10 shadow-xl shadow-black/40 overflow-hidden"
+            className="absolute z-50 mt-2 w-[320px] glass-strong rounded-xl border border-primary/10 shadow-xl shadow-black/40 overflow-hidden"
           >
             {/* Header with month/year navigation */}
             <div className="flex items-center justify-between p-3 border-b border-white/10">
@@ -149,8 +149,8 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                     type="button"
                     onClick={() => handleYearSelect(year)}
                     className={`py-2 rounded-lg text-sm font-medium transition-colors ${
-                      getYear(viewDate) === year
-                        ? 'bg-yellow-400 text-black'
+                       getYear(viewDate) === year
+                        ? 'bg-primary text-white'
                         : 'text-text-secondary hover:bg-white/10 hover:text-white'
                     }`}
                   >
@@ -169,8 +169,8 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                     type="button"
                     onClick={() => handleMonthSelect(idx)}
                     className={`py-2 rounded-lg text-sm font-medium transition-colors ${
-                      getMonth(viewDate) === idx
-                        ? 'bg-yellow-400 text-black'
+                       getMonth(viewDate) === idx
+                        ? 'bg-primary text-white'
                         : 'text-text-secondary hover:bg-white/10 hover:text-white'
                     }`}
                   >
@@ -208,9 +208,9 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                         onClick={() => handleSelect(day)}
                         className={`h-10 w-full rounded-lg text-sm font-medium transition-all flex items-center justify-center ${
                           isSelected
-                            ? 'bg-yellow-400 text-black font-bold shadow-lg shadow-yellow-400/20'
+                            ? 'bg-primary text-white font-bold shadow-lg shadow-primary/20'
                             : isTodayDay && !isSelected
-                            ? 'border border-yellow-400/30 text-yellow-400'
+                            ? 'border border-primary/30 text-primary'
                             : isCurrentMonth
                             ? 'text-white hover:bg-white/10'
                             : 'text-text-muted/40'
@@ -227,7 +227,7 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                   <button
                     type="button"
                     onClick={handleToday}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-primary hover:bg-primary-muted transition-colors"
                   >
                     Today
                   </button>

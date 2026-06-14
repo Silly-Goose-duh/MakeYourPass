@@ -31,27 +31,26 @@ export function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div className="relative">
-        {/* Glass backdrop — morphs from subtle to strong on scroll */}
+        {/* Glass backdrop */}
         <div
           className={cn(
             'absolute inset-0 border-b transition-all duration-500',
             scrolled
-              ? 'bg-black/80 backdrop-blur-2xl border-white/10'
-              : 'bg-black/40 backdrop-blur-lg border-transparent'
+              ? 'bg-white/95 backdrop-blur-2xl border-border'
+              : 'bg-white/80 backdrop-blur-lg border-transparent'
           )}
         />
 
         <nav className="relative mx-auto flex items-center justify-between px-6 py-4 max-w-7xl">
-          {/* Logo — bolder, more distinctive */}
+          {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-yellow-400 via-yellow-300 to-accent-pink flex items-center justify-center shadow-lg shadow-yellow-400/30 group-hover:shadow-yellow-400/50 transition-all duration-300 group-hover:scale-105 overflow-hidden">
-              {/* Inner glow ring */}
+            <div className="relative h-11 w-11 rounded-xl bg-gradient-to-br from-primary to-violet-600 flex items-center justify-center shadow-lg shadow-primary/25 group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-105 overflow-hidden">
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent" />
-              <Zap className="h-5 w-5 text-black relative z-10" />
+              <Zap className="h-5 w-5 text-white relative z-10" />
             </div>
             <div className="flex flex-col leading-none">
-              <span className="text-lg font-bold tracking-tight text-white">
-                MakeYour<span className="text-yellow-400">Pass</span>
+              <span className="text-lg font-bold tracking-tight text-text-primary">
+                MakeYour<span className="text-primary">Pass</span>
               </span>
               <span className="text-[10px] font-medium text-text-muted tracking-widest uppercase -mt-0.5">
                 Event OS
@@ -59,17 +58,17 @@ export function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Nav */}
+          {/* Desktop Nav — left-aligned after logo */}
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
                 onClick={() => handleNavClick()}
-                className="relative px-4 py-2 text-sm font-medium text-text-secondary hover:text-white rounded-lg hover:bg-white/[0.04] transition-all group"
+                className="relative px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary rounded-lg hover:bg-primary-muted transition-all group"
               >
                 {link.label}
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-yellow-400 rounded-full transition-all duration-300 group-hover:w-3/4" />
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-[2px] bg-primary rounded-full transition-all duration-300 group-hover:w-3/4" />
               </a>
             ))}
           </div>
@@ -95,7 +94,7 @@ export function Navbar() {
           {/* Mobile toggle */}
           <button
             type="button"
-            className="md:hidden p-2 text-text-secondary hover:text-white"
+            className="md:hidden p-2 text-text-secondary hover:text-text-primary"
             onClick={() => setIsMobileOpen(!isMobileOpen)}
             aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
           >
@@ -111,7 +110,7 @@ export function Navbar() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden border-b border-white/10 bg-black/95 backdrop-blur-2xl"
+              className="md:hidden border-b border-border bg-white/95 backdrop-blur-2xl"
             >
               <div className="px-6 py-4 space-y-1">
                 {navLinks.map((link, i) => (
@@ -122,12 +121,12 @@ export function Navbar() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="block px-4 py-3 text-sm font-medium text-text-secondary hover:text-white rounded-lg hover:bg-white/[0.04] transition-all"
+                    className="block px-4 py-3 text-sm font-medium text-text-secondary hover:text-primary rounded-lg hover:bg-primary-muted transition-all"
                   >
                     {link.label}
                   </motion.a>
                 ))}
-                <hr className="border-white/10 my-3" />
+                <hr className="border-border my-3" />
 
                 {!isAuthPage && (
                   <div className="space-y-2 px-1">

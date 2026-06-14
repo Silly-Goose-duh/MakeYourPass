@@ -110,7 +110,7 @@ export function TicketsPage() {
             placeholder="Search by name, email, or event..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white/[0.04] border border-white/10 rounded-xl text-text-primary placeholder:text-text-muted focus:outline-none focus:border-yellow-400/50"
+            className="w-full pl-10 pr-4 py-3 bg-white/[0.04] border border-border rounded-xl text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary/50"
           />
         </div>
         <div className="flex gap-2">
@@ -121,8 +121,8 @@ export function TicketsPage() {
               className={cn(
                 'px-4 py-2 rounded-xl text-sm font-medium transition-all capitalize',
                 filterStatus === status
-                  ? 'bg-yellow-400 text-black'
-                  : 'bg-white/[0.04] border border-white/10 text-text-secondary hover:text-white'
+                  ? 'bg-primary text-white'
+                  : 'bg-white/[0.04] border border-border text-text-secondary hover:text-white'
               )}
             >
               {status}
@@ -133,7 +133,7 @@ export function TicketsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-40">
-          <div className="h-8 w-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filtered.length > 0 ? (
         <div className="space-y-2">
@@ -174,7 +174,7 @@ export function TicketsPage() {
                     href={`/scan/${ticket.qr_code}`}
                     target="_blank"
                     rel="noopener"
-                    className="shrink-0 p-2 text-text-muted hover:text-yellow-400 transition-colors"
+                    className="shrink-0 p-2 text-text-muted hover:text-primary transition-colors"
                   >
                     <ExternalLink className="h-4 w-4" />
                   </a>
@@ -186,8 +186,8 @@ export function TicketsPage() {
       ) : (
         <Card variant="glass" padding="lg">
           <div className="text-center py-16">
-            <div className="h-16 w-16 rounded-2xl bg-yellow-400/20 mx-auto mb-4 flex items-center justify-center">
-              <Ticket className="h-8 w-8 text-yellow-400" />
+            <div className="h-16 w-16 rounded-2xl bg-primary-muted mx-auto mb-4 flex items-center justify-center">
+              <Ticket className="h-8 w-8 text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">
               {tickets.length > 0 ? 'No matches' : 'No tickets sold yet'}

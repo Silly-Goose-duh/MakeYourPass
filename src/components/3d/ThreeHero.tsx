@@ -291,7 +291,7 @@ export function SceneFallback() {
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-4">
-        <div className="h-12 w-12 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+        <div className="h-12 w-12 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         <p className="text-text-muted text-sm font-medium">Loading experience...</p>
       </div>
     </div>

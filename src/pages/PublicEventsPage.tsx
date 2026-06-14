@@ -65,7 +65,7 @@ export function PublicEventsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center max-w-3xl mx-auto mb-12"
         >
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-4">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-text-primary mb-4">
             Explore <span className="gradient-text">Events</span>
           </h1>
           <p className="text-text-secondary text-lg">
@@ -87,7 +87,7 @@ export function PublicEventsPage() {
               placeholder="Search events by name, description, or city..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 bg-white/[0.04] border border-white/10 rounded-2xl text-white placeholder:text-text-muted focus:outline-none focus:border-yellow-400/50 focus:shadow-[0_0_20px_rgba(245,215,0,0.08)] transition-all"
+              className="w-full pl-12 pr-4 py-3.5 bg-surface border border-border rounded-2xl text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary/50 focus:shadow-[0_0_20px_rgba(99,102,241,0.08)] transition-all"
             />
           </div>
         </motion.div>
@@ -106,8 +106,8 @@ export function PublicEventsPage() {
               className={cn(
                 'px-4 py-2 rounded-full text-sm font-medium transition-all',
                 selectedCategory === cat.value
-                  ? 'bg-yellow-400 text-black'
-                  : 'bg-white/5 text-text-secondary hover:text-white hover:bg-white/10'
+                  ? 'bg-primary text-white'
+                  : 'bg-surface text-text-secondary hover:text-white hover:bg-surface'
               )}
             >
               {cat.label}
@@ -118,7 +118,7 @@ export function PublicEventsPage() {
         {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+            <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
@@ -149,12 +149,12 @@ export function PublicEventsPage() {
                         variant="glass"
                         padding="md"
                         hover
-                        glow="yellow"
+                        glow="primary"
                         className="h-full"
                       >
                         <CardContent>
                           {/* Cover image or gradient placeholder */}
-                          <div className="h-36 -mx-6 -mt-6 mb-5 rounded-t-2xl bg-gradient-to-br from-yellow-400/20 via-accent-pink/10 to-accent-cyan/20 flex items-center justify-center overflow-hidden">
+                          <div className="h-36 -mx-6 -mt-6 mb-5 rounded-t-2xl bg-gradient-to-br from-primary/20 via-accent-rose/10 to-accent-teal/20 flex items-center justify-center overflow-hidden">
                             {event.cover_image_url ? (
                               <img src={event.cover_image_url} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -170,11 +170,11 @@ export function PublicEventsPage() {
                           </div>
 
                           {/* Category badge */}
-                          <Badge variant="yellow" size="sm" className="mb-3">
+                          <Badge variant="primary" size="sm" className="mb-3">
                             {event.category.replace('_', ' ')}
                           </Badge>
 
-                          <CardTitle className="text-lg mb-2 line-clamp-2 group-hover:text-yellow-400 transition-colors">
+                          <CardTitle className="text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
                             {event.title}
                           </CardTitle>
 
@@ -199,8 +199,8 @@ export function PublicEventsPage() {
                           </div>
 
                           {/* Action */}
-                          <div className="pt-3 border-t border-white/10">
-                            <span className="text-yellow-400 text-sm font-medium flex items-center gap-1.5 group-hover:gap-2 transition-all">
+                          <div className="pt-3 border-t border-border">
+                            <span className="text-primary text-sm font-medium flex items-center gap-1.5 group-hover:gap-2 transition-all">
                               Quick View
                               <ExternalLink className="h-3.5 w-3.5" />
                             </span>
@@ -213,10 +213,10 @@ export function PublicEventsPage() {
               </div>
             ) : (
               <div className="text-center py-20">
-                <div className="h-16 w-16 rounded-2xl bg-white/5 mx-auto mb-4 flex items-center justify-center">
+                <div className="h-16 w-16 rounded-2xl bg-surface mx-auto mb-4 flex items-center justify-center">
                   <Calendar className="h-8 w-8 text-text-muted" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">No events found</h3>
+                <h3 className="text-xl font-semibold text-text-primary mb-2">No events found</h3>
                 <p className="text-text-secondary mb-2">
                   {searchQuery
                     ? `No events matching "${searchQuery}"`

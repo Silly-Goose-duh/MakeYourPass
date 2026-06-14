@@ -165,14 +165,14 @@ export function EventsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Events</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1">Events</h1>
           <p className="text-text-secondary text-sm">
             {mode === 'my-events' ? 'Manage your events' : 'Discover public events'}
           </p>
         </div>
         {mode === 'my-events' && (
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={seedTestEvent} className="text-xs text-text-muted hover:text-yellow-400">
+            <Button variant="ghost" size="sm" onClick={seedTestEvent} className="text-xs text-text-muted hover:text-primary">
               <FlaskConical className="h-3.5 w-3.5" />
               Add Test Event
             </Button>
@@ -187,13 +187,13 @@ export function EventsPage() {
       </div>
 
       {/* Toggle — My Events / Public Events */}
-      <div className="flex items-center gap-1 p-1 rounded-2xl bg-white/[0.04] border border-white/10 w-fit mb-6">
+      <div className="flex items-center gap-1 p-1 rounded-2xl bg-white/[0.04] border border-border w-fit mb-6">
         <button
           onClick={() => setMode('my-events')}
           className={cn(
             'px-5 py-2 rounded-xl text-sm font-medium transition-all',
             mode === 'my-events'
-              ? 'bg-yellow-400 text-black shadow-[0_0_20px_rgba(245,215,0,0.15)]'
+              ? 'bg-primary text-white shadow-[0_0_20px_rgba(99,102,241,0.15)]'
               : 'text-text-secondary hover:text-white'
           )}
         >
@@ -205,7 +205,7 @@ export function EventsPage() {
           className={cn(
             'px-5 py-2 rounded-xl text-sm font-medium transition-all',
             mode === 'public-events'
-              ? 'bg-yellow-400 text-black shadow-[0_0_20px_rgba(245,215,0,0.15)]'
+              ? 'bg-primary text-white shadow-[0_0_20px_rgba(99,102,241,0.15)]'
               : 'text-text-secondary hover:text-white'
           )}
         >
@@ -222,7 +222,7 @@ export function EventsPage() {
           placeholder={mode === 'my-events' ? 'Search my events...' : 'Search public events...'}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-white placeholder:text-text-muted text-sm focus:outline-none focus:border-yellow-400/50 transition-all"
+          className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-border rounded-xl text-white placeholder:text-text-muted text-sm focus:outline-none focus:border-primary/50 transition-all"
         />
       </div>
 
@@ -236,7 +236,7 @@ export function EventsPage() {
               className={cn(
                 'px-4 py-1.5 rounded-full text-sm font-medium transition-all capitalize',
                 filterStatus === status
-                  ? 'bg-yellow-400 text-black'
+                  ? 'bg-primary text-white'
                   : 'bg-white/5 text-text-secondary hover:text-white hover:bg-white/10'
               )}
             >
@@ -249,7 +249,7 @@ export function EventsPage() {
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center h-64">
-          <div className="h-8 w-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
@@ -276,10 +276,10 @@ function MyEventsView({ events, ticketCounts }: { events: Event[]; ticketCounts:
         animate={{ opacity: 1 }}
         className="text-center py-20"
       >
-        <div className="h-16 w-16 rounded-2xl bg-yellow-400/20 mx-auto mb-4 flex items-center justify-center">
-          <Sparkles className="h-8 w-8 text-yellow-400" />
+        <div className="h-16 w-16 rounded-2xl bg-primary-muted mx-auto mb-4 flex items-center justify-center">
+          <Sparkles className="h-8 w-8 text-primary" />
         </div>
-        <h3 className="text-xl font-semibold text-white mb-2">No events yet</h3>
+        <h3 className="text-xl font-semibold text-text-primary mb-2">No events yet</h3>
         <p className="text-text-secondary mb-6">Create your first event to get started</p>
         <Link to="/dashboard/events/new">
           <Button variant="primary">
@@ -311,7 +311,7 @@ function MyEventsView({ events, ticketCounts }: { events: Event[]; ticketCounts:
                 </Badge>
               </div>
 
-              <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2">{event.title}</h3>
+              <h3 className="text-lg font-semibold text-text-primary mb-2 line-clamp-2">{event.title}</h3>
               <div className="space-y-1.5 mb-4">
                 <div className="flex items-center gap-2 text-text-muted text-sm">
                   <Calendar className="h-3.5 w-3.5" />
@@ -338,7 +338,7 @@ function MyEventsView({ events, ticketCounts }: { events: Event[]; ticketCounts:
                       ticketCounts[event.id].sold >= ticketCounts[event.id].total
                         ? 'text-red-400'
                         : ticketCounts[event.id].sold / ticketCounts[event.id].total > 0.75
-                          ? 'text-yellow-400'
+                          ? 'text-secondary'
                           : 'text-green-400'
                     )}>
                       {ticketCounts[event.id].sold >= ticketCounts[event.id].total
@@ -352,7 +352,7 @@ function MyEventsView({ events, ticketCounts }: { events: Event[]; ticketCounts:
                         'h-full rounded-full transition-all',
                         ticketCounts[event.id].sold >= ticketCounts[event.id].total
                           ? 'bg-red-500'
-                          : 'bg-gradient-to-r from-yellow-400 to-cyan-400'
+                          : 'bg-gradient-to-r from-primary to-accent-teal'
                       )}
                       style={{
                         width: `${Math.min(100, (ticketCounts[event.id].sold / ticketCounts[event.id].total) * 100)}%`
@@ -362,7 +362,7 @@ function MyEventsView({ events, ticketCounts }: { events: Event[]; ticketCounts:
                 </div>
               )}
 
-              <div className="flex items-center gap-1.5 pt-3 border-t border-white/10">
+              <div className="flex items-center gap-1.5 pt-3 border-t border-border">
                 <Link to={`/dashboard/events/${event.id}`} className="flex-1">
                   <Button variant="primary" size="sm" fullWidth className="text-xs">
                     <Eye className="h-3.5 w-3.5" /> Dashboard
@@ -422,22 +422,22 @@ function PublicEventsView({ events }: { events: Event[] }) {
               onClick={() => setSelectedEvent(event)}
               className="w-full text-left group"
             >
-              <Card variant="glass-cyan" hover glow="cyan" className="group h-full">
+              <Card variant="glass-primary" hover glow="primary" className="group h-full">
                 <CardContent>
                   {/* Top: category + external badge */}
                   <div className="flex items-center gap-2 mb-3">
-                    <Badge variant="cyan" size="sm">
+                    <Badge variant="primary" size="sm">
                       {event.category.replace('_', ' ')}
                     </Badge>
                     {event.use_external_form && event.form_link && (
-                      <Badge variant="pink" size="sm" className="ml-auto">
+                      <Badge variant="accent" size="sm" className="ml-auto">
                         <ExternalLink className="h-3 w-3 mr-1" />
                         External Form
                       </Badge>
                     )}
                   </div>
 
-                  <h3 className="text-base font-semibold text-white mb-1.5 line-clamp-2 group-hover:text-accent-cyan transition-colors">
+                  <h3 className="text-base font-semibold text-text-primary mb-1.5 line-clamp-2 group-hover:text-primary transition-colors">
                     {event.title}
                   </h3>
 
@@ -461,8 +461,8 @@ function PublicEventsView({ events }: { events: Event[] }) {
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-white/10">
-                    <span className="text-accent-cyan text-sm font-medium flex items-center gap-1.5">
+                  <div className="pt-3 border-t border-border">
+                    <span className="text-primary text-sm font-medium flex items-center gap-1.5">
                       <Eye className="h-3.5 w-3.5" /> Quick View
                     </span>
                   </div>

@@ -29,40 +29,33 @@ export function DashboardLayout() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    // ProtectedRoute wrapper will auto-redirect to /login via auth listener
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-black">
-      {/* Ambient background glow */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-yellow-400/5 rounded-full blur-[150px]" />
-        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-accent-pink/5 rounded-full blur-[120px]" />
-      </div>
-
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 lg:hidden bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-40 lg:hidden bg-black/30 backdrop-blur-sm"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — fixed left */}
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 w-72 bg-black/90 backdrop-blur-2xl border-r border-white/10 flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
+        'fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         {/* Logo */}
-        <div className="p-6 border-b border-white/10">
+        <div className="p-5 border-b border-border">
           <Link to="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-yellow-400 to-accent-pink flex items-center justify-center shadow-lg shadow-yellow-400/30 overflow-hidden">
+            <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-violet-600 flex items-center justify-center shadow-sm shadow-primary/30 overflow-hidden">
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent" />
-              <Sparkles className="h-4 w-4 text-black relative z-10" />
+              <Sparkles className="h-4 w-4 text-white relative z-10" />
             </div>
             <span className="text-lg font-bold">
-              <span className="text-white">MakeYour</span>
-              <span className="text-yellow-400">Pass</span>
+              <span className="text-text-primary">MakeYour</span>
+              <span className="text-primary">Pass</span>
             </span>
           </Link>
         </div>
@@ -79,14 +72,14 @@ export function DashboardLayout() {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                   isActive
-                    ? 'bg-gradient-to-r from-yellow-400/15 to-accent-pink/10 text-yellow-400 border border-yellow-400/20 shadow-[0_0_20px_rgba(245,215,0,0.08)]'
-                    : 'text-text-secondary hover:text-white hover:bg-white/[0.04] border border-transparent'
+                    ? 'bg-primary-muted text-primary border border-primary/15 shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface border border-transparent'
                 )}
               >
-                <link.icon className={cn('h-5 w-5 flex-shrink-0', isActive && 'drop-shadow-[0_0_8px_rgba(245,215,0,0.5)]')} />
+                <link.icon className={cn('h-5 w-5 flex-shrink-0', isActive && 'text-primary')} />
                 {link.label}
                 {isActive && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-yellow-400 shadow-[0_0_10px_rgba(245,215,0,0.8)]" />
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
                 )}
               </Link>
             )
@@ -94,11 +87,11 @@ export function DashboardLayout() {
         </nav>
 
         {/* Bottom section */}
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3 mb-3 px-1">
             <Avatar name={user?.user_metadata?.full_name || 'User'} size="md" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
+              <p className="text-sm font-medium text-text-primary truncate">
                 {user?.user_metadata?.full_name || 'User'}
               </p>
               <p className="text-xs text-text-muted truncate">{user?.email}</p>
@@ -109,7 +102,7 @@ export function DashboardLayout() {
             size="sm"
             fullWidth
             onClick={handleSignOut}
-            className="justify-start text-text-muted hover:text-red-400 hover:bg-red-500/10"
+            className="justify-start text-text-muted hover:text-error hover:bg-error/5"
           >
             <LogOut className="h-4 w-4 mr-1.5" />
             Sign out
@@ -117,29 +110,29 @@ export function DashboardLayout() {
         </div>
       </aside>
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col min-w-0 relative">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-black/60 backdrop-blur-2xl border-b border-white/10">
-          <div className="flex items-center justify-between px-4 sm:px-6 h-16">
+      {/* Main area — starts after sidebar */}
+      <div className="flex-1 flex flex-col min-w-0 relative lg:ml-0">
+        {/* Top bar — sticky, left-anchored */}
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-2xl border-b border-border">
+          <div className="flex items-center justify-between px-6 h-16">
             {/* Left */}
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                className="lg:hidden p-2 text-text-secondary hover:text-white"
+                className="lg:hidden p-2 text-text-secondary hover:text-text-primary rounded-lg hover:bg-surface"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Open sidebar"
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div className="hidden sm:flex items-center gap-2 bg-white/[0.04] rounded-xl px-3 py-1.5 border border-white/5">
+              <div className="hidden sm:flex items-center gap-2 bg-surface rounded-xl px-3 py-1.5 border border-border">
                 <Search className="h-4 w-4 text-text-muted" />
                 <input
                   type="text"
                   placeholder="Search events..."
                   className="bg-transparent text-sm text-text-primary placeholder:text-text-muted border-none focus:outline-none w-48"
                 />
-                <kbd className="hidden lg:inline-flex text-[10px] text-text-muted bg-white/5 px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
+                <kbd className="hidden lg:inline-flex text-[10px] text-text-muted bg-white px-1.5 py-0.5 rounded font-mono border border-border">⌘K</kbd>
               </div>
             </div>
 
@@ -147,11 +140,11 @@ export function DashboardLayout() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                className="relative p-2 text-text-secondary hover:text-white transition-colors rounded-xl hover:bg-white/[0.04]"
+                className="relative p-2 text-text-secondary hover:text-text-primary transition-colors rounded-xl hover:bg-surface"
                 aria-label="Notifications"
               >
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-yellow-400 rounded-full shadow-[0_0_8px_rgba(245,215,0,0.8)]" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-secondary rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
               </button>
               <Link to="/dashboard/events/new">
                 <Button variant="gradient" size="sm" glow className="hidden sm:flex">
@@ -163,8 +156,8 @@ export function DashboardLayout() {
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        {/* Page content — left-anchored, full width */}
+        <main className="flex-1 overflow-y-auto px-6 py-8">
           <Outlet context={{ user, orgName }} />
         </main>
       </div>

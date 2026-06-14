@@ -102,7 +102,7 @@ export function ScanPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="h-8 w-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -114,7 +114,7 @@ export function ScanPage() {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-lg"
       >
-        <Link to="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-6 text-sm">
+        <Link to="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-primary transition-colors mb-6 text-sm">
           <ArrowLeft className="h-4 w-4" />
           Back to MakeYourPass
         </Link>
@@ -133,7 +133,7 @@ export function ScanPage() {
             </CardContent>
           </Card>
         ) : checkedIn ? (
-          <Card variant="glass-yellow" glow="yellow" padding="lg">
+          <Card variant="glass-primary" glow="primary" padding="lg">
             <CardContent className="text-center py-8">
               <div className="h-16 w-16 rounded-2xl bg-green-500/20 mx-auto mb-4 flex items-center justify-center">
                 <Shield className="h-8 w-8 text-green-400" />
@@ -183,7 +183,7 @@ export function ScanPage() {
               <div className="text-left bg-white/[0.04] rounded-xl p-4 mb-6 space-y-1">
                 <p className="text-xs text-text-muted">Ticket Details</p>
                 <p className="text-white text-sm flex items-center gap-2">
-                  <User className="h-3.5 w-3.5 text-yellow-400" />
+                  <User className="h-3.5 w-3.5 text-primary" />
                   {ticket?.attendee_name || 'Anonymous'}
                 </p>
                 {ticket?.attendee_email && (

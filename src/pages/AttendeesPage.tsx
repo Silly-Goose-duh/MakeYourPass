@@ -141,7 +141,7 @@ export function AttendeesPage() {
           onClick={() => setSelectedEventId('all')}
           className={cn(
             'px-3 py-1.5 rounded-full text-xs font-medium transition-all',
-            selectedEventId === 'all' ? 'bg-yellow-400 text-black' : 'bg-white/5 text-text-secondary hover:text-white'
+            selectedEventId === 'all' ? 'bg-primary text-white' : 'bg-white/5 text-text-secondary hover:text-white'
           )}
         >
           All Events
@@ -152,7 +152,7 @@ export function AttendeesPage() {
             onClick={() => setSelectedEventId(ev.id)}
             className={cn(
               'px-3 py-1.5 rounded-full text-xs font-medium transition-all truncate max-w-[150px]',
-              selectedEventId === ev.id ? 'bg-yellow-400 text-black' : 'bg-white/5 text-text-secondary hover:text-white'
+              selectedEventId === ev.id ? 'bg-primary text-white' : 'bg-white/5 text-text-secondary hover:text-white'
             )}
           >
             {ev.title}
@@ -169,7 +169,7 @@ export function AttendeesPage() {
             placeholder="Search by name, email, or event..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white/[0.04] border border-white/10 rounded-xl text-text-primary placeholder:text-text-muted focus:outline-none focus:border-yellow-400/50"
+            className="w-full pl-10 pr-4 py-3 bg-white/[0.04] border border-border rounded-xl text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary/50"
           />
         </div>
         <div className="flex gap-2">
@@ -180,8 +180,8 @@ export function AttendeesPage() {
               className={cn(
                 'px-4 py-2 rounded-xl text-sm font-medium transition-all capitalize',
                 filter === status
-                  ? 'bg-yellow-400 text-black'
-                  : 'bg-white/[0.04] border border-white/10 text-text-secondary hover:text-white'
+                  ? 'bg-primary text-white'
+                  : 'bg-white/[0.04] border border-border text-text-secondary hover:text-white'
               )}
             >
               {status.replace('-', ' ')}
@@ -192,7 +192,7 @@ export function AttendeesPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-40">
-          <div className="h-8 w-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filteredAttendees.length > 0 ? (
         <div className="space-y-2">
@@ -235,8 +235,8 @@ export function AttendeesPage() {
       ) : (
         <Card variant="glass" padding="lg">
           <div className="text-center py-16">
-            <div className="h-16 w-16 rounded-2xl bg-yellow-400/20 mx-auto mb-4 flex items-center justify-center">
-              <Users className="h-8 w-8 text-yellow-400" />
+            <div className="h-16 w-16 rounded-2xl bg-primary-muted mx-auto mb-4 flex items-center justify-center">
+              <Users className="h-8 w-8 text-primary" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">No attendees yet</h3>
             <p className="text-text-secondary text-sm max-w-md mx-auto">
