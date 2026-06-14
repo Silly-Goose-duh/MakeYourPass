@@ -13,12 +13,14 @@ import { EventBuilderPage } from '@/pages/EventBuilder'
 import { EventDashboard } from '@/pages/EventDashboard'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/auth/RouteGuards'
+import { AuthProvider } from '@/hooks/useAuth'
 
 function App() {
   return (
     <BrowserRouter>
-      <AnimatePresence mode="wait">
-        <Routes>
+      <AuthProvider>
+        <AnimatePresence mode="wait">
+          <Routes>
           {/* Public routes */}
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
@@ -43,7 +45,8 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>
-    </BrowserRouter>
+    </AuthProvider>
+  </BrowserRouter>
   )
 }
 
