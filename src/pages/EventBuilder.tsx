@@ -25,6 +25,21 @@ const eventCategories = [
   'Webinar', 'Other'
 ]
 
+const shortDescriptionOptions = [
+  'Annual college fest with competitions, performances, and events',
+  'Tech conference for developers, innovators, and tech enthusiasts',
+  'Cultural event showcasing music, dance, art, and creativity',
+  'Hands-on workshop with expert-led learning sessions',
+  'Live music concert featuring top artists and bands',
+  'Sports tournament and athletic competition event',
+  'Professional networking and community meetup',
+  'Industry conference with expert speakers and panels',
+  'Community gathering and social event for all ages',
+  'Hackathon — build, innovate, and compete with the best',
+  'Seminar with guest lectures and knowledge sessions',
+  'Custom...',
+]
+
 // ===== TOGGLE COMPONENT =====
 function ToggleSwitch({
   enabled,
@@ -146,6 +161,7 @@ export function EventBuilderPage() {
 
   // Upload / manual toggle
   const [manualMode, setManualMode] = useState(false)
+  const [customShortDesc, setCustomShortDesc] = useState(false)
   const [isParsing, setIsParsing] = useState(false)
   const [parseProgress, setParseProgress] = useState('')
   const [parseError, setParseError] = useState('')
@@ -194,6 +210,7 @@ export function EventBuilderPage() {
     setSelectedVisibility(null)
     setFormStep(0)
     setManualMode(false)
+    setCustomShortDesc(false)
     setParsedSuccess(false)
     setParseError('')
     setParseProgress('')
@@ -364,17 +381,25 @@ export function EventBuilderPage() {
 
   // ===== RENDER =====
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        background: `
-          radial-gradient(ellipse 80% 60% at 50% 40%, rgba(30,30,30,1) 0%, rgba(10,10,10,1) 60%, rgba(5,5,5,1) 100%),
-          radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.08) 0%, transparent 60%),
-          radial-gradient(ellipse at 80% 80%, rgba(244,63,94,0.05) 0%, transparent 50%)
-        `,
-        backgroundColor: '#050505',
-      }}
-    >
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Animated gradient background — slowly shifting ambient glow */}
+      <motion.div
+        className="absolute inset-0 -z-10 pointer-events-none"
+        animate={{
+          background: [
+            'radial-gradient(ellipse 60% 50% at 20% 30%, rgba(99,102,241,0.08) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 80% 70%, rgba(245,158,11,0.06) 0%, transparent 70%), radial-gradient(ellipse 40% 30% at 50% 50%, rgba(244,63,94,0.04) 0%, transparent 60%)',
+            'radial-gradient(ellipse 60% 50% at 30% 40%, rgba(245,158,11,0.08) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 70% 60%, rgba(99,102,241,0.06) 0%, transparent 70%), radial-gradient(ellipse 40% 30% at 40% 50%, rgba(16,185,129,0.04) 0%, transparent 60%)',
+            'radial-gradient(ellipse 60% 50% at 50% 20%, rgba(244,63,94,0.08) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 60% 80%, rgba(99,102,241,0.06) 0%, transparent 70%), radial-gradient(ellipse 40% 30% at 30% 60%, rgba(245,158,11,0.04) 0%, transparent 60%)',
+            'radial-gradient(ellipse 60% 50% at 20% 30%, rgba(99,102,241,0.08) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 80% 70%, rgba(245,158,11,0.06) 0%, transparent 70%), radial-gradient(ellipse 40% 30% at 50% 50%, rgba(244,63,94,0.04) 0%, transparent 60%)',
+          ],
+        }}
+        transition={{
+          duration: 12,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+      />
+
       {/* ===== PHASE: SELECT VISIBILITY ===== */}
       <AnimatePresence mode="wait">
         {phase === 'select' && !zoomingCard && (
@@ -551,7 +576,7 @@ export function EventBuilderPage() {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="fixed inset-0 z-50 flex items-center justify-center"
             style={{
-              background: `linear-gradient(135deg, rgba(5,5,5,0.98) 0%, rgba(12,12,12,0.99) 100%)`,
+              background: `linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.99) 100%)`,
             }}
           >
             <motion.div
@@ -572,7 +597,7 @@ export function EventBuilderPage() {
                   : <Lock className="h-8 w-8" style={{ color: accentColor }} />
                 }
               </div>
-              <p className="text-lg font-semibold text-white">
+              <p className="text-lg font-semibold text-text-primary">
                 {selectedVisibility === 'public' ? 'Public Event' : 'Private Event'}
               </p>
               <Loader2 className="h-5 w-5 animate-spin" style={{ color: accentColor }} />
@@ -593,7 +618,7 @@ export function EventBuilderPage() {
             <div className="flex items-center justify-between mb-8">
               <button
                 onClick={handleBackToSelect}
-                className="inline-flex items-center gap-2 text-text-secondary hover:text-white transition-all text-sm group"
+                className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-all text-sm group"
               >
                 <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                 Change visibility
@@ -645,7 +670,7 @@ export function EventBuilderPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Wand2 className="h-5 w-5" style={{ color: accentColor }} />
-                      <h2 className="text-lg font-bold text-white">Do you have a brochure or flyer?</h2>
+                      <h2 className="text-lg font-bold text-text-primary">Do you have a brochure or flyer?</h2>
                     </div>
                     <p className="text-text-muted text-sm mb-5">
                       Upload a PDF or image — we&apos;ll auto-fill all the details using AI. Saves you minutes.
@@ -759,7 +784,7 @@ export function EventBuilderPage() {
                             </div>
 
                             <div>
-                              <p className="text-white font-semibold text-lg mb-1">
+                              <p className="text-text-primary font-semibold text-lg mb-1">
                                 Click to upload event brochure, flyer, or PDF
                               </p>
                               <p className="text-text-muted text-sm">
@@ -828,7 +853,7 @@ export function EventBuilderPage() {
                   >
                     <Sparkles className="h-5 w-5 shrink-0 mt-0.5" style={{ color: accentColor }} />
                     <div>
-                      <p className="font-semibold text-white mb-1">Pro tip</p>
+                      <p className="font-semibold text-text-primary mb-1">Pro tip</p>
                       <p className="text-text-secondary text-xs leading-relaxed">
                         Upload a brochure PDF or event poster image and we&apos;ll extract the title, description, dates, venue,
                         and more automatically. Everything is editable afterwards.
@@ -864,7 +889,7 @@ export function EventBuilderPage() {
                     >
                       <FileText className="h-4 w-4" style={{ color: accentColor }} />
                     </div>
-                    <h2 className="text-lg font-bold text-white">Event Details</h2>
+                    <h2 className="text-lg font-bold text-text-primary">Event Details</h2>
                   </div>
 
                   {/* Auto-filled indicator */}
@@ -895,13 +920,49 @@ export function EventBuilderPage() {
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <Input
-                        label="Short Description"
-                        placeholder="A brief tagline for your event"
-                        value={eventData.shortDescription}
-                        onChange={(e) => updateField('shortDescription', e.target.value)}
-                        hint="Shown on cards and social sharing"
-                      />
+                      <label className="block text-sm font-medium text-text-primary mb-2">Short Description</label>
+                      <div className="flex flex-wrap gap-2">
+                        {shortDescriptionOptions.map((opt) => {
+                          const isCustom = opt === 'Custom...'
+                          const isSelected = isCustom
+                            ? customShortDesc
+                            : eventData.shortDescription === opt
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => {
+                                if (isCustom) {
+                                  setCustomShortDesc(true)
+                                  updateField('shortDescription', '')
+                                } else {
+                                  setCustomShortDesc(false)
+                                  updateField('shortDescription', opt)
+                                }
+                              }}
+                              className={cn(
+                                'px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                                isSelected
+                                  ? 'border-primary bg-primary/20 text-primary shadow-[0_0_10px_rgba(99,102,241,0.1)]'
+                                  : 'border-border text-text-secondary hover:text-text-primary hover:border-primary/30 bg-surface/50'
+                              )}
+                            >
+                              {opt}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {customShortDesc && (
+                        <Input
+                          placeholder="Type your own short description..."
+                          value={eventData.shortDescription}
+                          onChange={(e) => updateField('shortDescription', e.target.value)}
+                          className="mt-2"
+                        />
+                      )}
+                      {!eventData.shortDescription && !customShortDesc && (
+                        <p className="text-xs text-text-muted mt-2">Pick a preset or select &quot;Custom...&quot; to write your own</p>
+                      )}
                     </div>
                   </div>
 
@@ -918,7 +979,7 @@ export function EventBuilderPage() {
                             'px-4 py-2 rounded-full text-sm font-medium transition-all border',
                             eventData.category === cat.toLowerCase()
                               ? 'border-primary bg-primary/20 text-primary shadow-[0_0_15px_rgba(99,102,241,0.1)]'
-                              : 'bg-surface border-border text-text-secondary hover:text-white hover:border-white/30'
+                              : 'bg-surface border-border text-text-secondary hover:text-text-primary hover:border-primary/30'
                           )}
                         >
                           {cat}
@@ -931,7 +992,7 @@ export function EventBuilderPage() {
                   <div className="p-5 rounded-2xl border border-border bg-surface/50">
                     <div className="flex items-center gap-2 mb-4">
                       <Calendar className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-semibold text-white">Date & Time</span>
+                      <span className="text-sm font-semibold text-text-primary">Date & Time</span>
                     </div>
                     <div className="grid sm:grid-cols-2 gap-4">
                       <DatePicker
@@ -970,7 +1031,7 @@ export function EventBuilderPage() {
                   <div className="p-5 rounded-2xl border border-border bg-surface/50">
                     <div className="flex items-center gap-2 mb-4">
                       <MapPin className="h-4 w-4 text-accent-rose" />
-                      <span className="text-sm font-semibold text-white">Venue</span>
+                      <span className="text-sm font-semibold text-text-primary">Venue</span>
                     </div>
                     <div className="space-y-4">
                       <Input
@@ -1006,7 +1067,7 @@ export function EventBuilderPage() {
                   <div className="p-5 rounded-2xl border border-border bg-surface/50">
                     <div className="flex items-center gap-2 mb-4">
                       <Ticket className="h-4 w-4 text-accent-teal" />
-                      <span className="text-sm font-semibold text-white">Registration Method</span>
+                      <span className="text-sm font-semibold text-text-primary">Registration Method</span>
                     </div>
                     <div className="flex items-center gap-3 mb-3">
                       <button
@@ -1086,13 +1147,13 @@ export function EventBuilderPage() {
                     >
                       <IndianRupee className="h-4 w-4" style={{ color: accentColor }} />
                     </div>
-                    <h2 className="text-lg font-bold text-white">Tickets & Pricing</h2>
+                    <h2 className="text-lg font-bold text-text-primary">Tickets & Pricing</h2>
                   </div>
 
                   {eventData.useExternalForm ? (
                     <div className="p-8 bg-accent-rose/10 border border-accent-rose/20 rounded-3xl text-center">
                       <ExternalLink className="h-12 w-12 text-accent-rose mx-auto mb-4" />
-                      <p className="text-white font-semibold text-lg mb-2">External Form Mode</p>
+                      <p className="text-text-primary font-semibold text-lg mb-2">External Form Mode</p>
                       <p className="text-text-secondary text-sm max-w-sm mx-auto">
                         Ticket management is handled by your external form provider.
                         No payment setup needed here.
@@ -1205,9 +1266,9 @@ export function EventBuilderPage() {
                           <ShieldCheck className="h-5 w-5" style={{ color: accentColor }} />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-white mb-1">Secure Payment Processing</p>
+                          <p className="text-sm font-semibold text-text-primary mb-1">Secure Payment Processing</p>
                           <p className="text-xs text-text-secondary leading-relaxed">
-                            Tickets are processed securely via <strong className="text-white">Razorpay</strong>.
+                            Tickets are processed securely via <strong className="text-text-primary">Razorpay</strong>.
                             Payment gateway fee (2% + GST) is deducted per transaction.
                             Funds settle to your bank account within 2-3 business days.
                           </p>

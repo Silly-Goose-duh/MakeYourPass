@@ -176,26 +176,43 @@ async function sendToGroqVision(base64Images: string[], mimeType: string): Promi
   const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
     {
       type: 'text',
-      text: `You are an event detail extraction AI. This is a multi-page event brochure.
+      text: `You are a precise event detail extraction AI. This is a multi-page event brochure.
 
-Read EVERY piece of text from ALL pages/images carefully. Extract ALL visible event details and return them as a JSON object.
+YOUR JOB: Scan EVERY page of this brochure and extract ALL visible event information. Be thorough — look at headers, body text, footers, fine print, tables, and even watermarks.
 
-Fill every field you can find. Use empty string "" for anything not found:
-- title: the full event name
-- description: the complete event description, agenda, or details
-- shortDescription: a one-line tagline or subtitle
-- category: one of: conference, workshop, meetup, festival, concert, sports, networking, college_fest, webinar, other
-- startDate: the start date in YYYY-MM-DD format
-- endDate: the end date in YYYY-MM-DD format
-- startTime: the start time in HH:MM 24-hour format
-- endTime: the end time in HH:MM 24-hour format
-- venueName: the venue or location name
-- venueAddress: the full street address
-- city: the city name
-- state: the state or region
-- maxAttendees: the maximum number of attendees, or empty string
+Return a valid JSON object with these EXACT fields. Use "" (empty string) ONLY if a field is genuinely absent:
 
-Look through ALL pages — headers, body text, footers, fine print. Extract dates, times, location, description, every detail you can see across all pages. If you see a date like "June 15, 2026", format it as "2026-06-15".`,
+- title: The COMPLETE event name (e.g. "Hardwired Hackathon 2026" or "Tech Summit Bengaluru")
+- description: The FULL event description, agenda, schedule, theme, or any detailed text. Include ALL paragraphs you can read.
+- shortDescription: A concise one-line tagline or subtitle (e.g. "Annual college fest with competitions and performances" or "A 24-hour hackathon for innovation")
+- category: Pick EXACTLY one from: conference, workshop, meetup, festival, concert, sports, networking, college_fest, webinar, other
+- startDate: Start date in YYYY-MM-DD format. If you see "June 15, 2026" → "2026-06-15". If you see "15/06/2026" → "2026-06-15". If you see "15th June 2026" → "2026-06-15".
+- endDate: End date in YYYY-MM-DD format (same rules). If same as start date, use the same value.
+- startTime: Start time in HH:MM 24-hour format. "2:00 PM" → "14:00". "10:30 AM" → "10:30".
+- endTime: End time in HH:MM 24-hour format. "6:00 PM" → "18:00". "12:30 PM" → "12:30".
+- venueName: The venue name (e.g. "Marian Engineering College", "Bangalore International Centre")
+- venueAddress: The full street address if visible
+- city: The city name (e.g. "Kottayam", "Bangalore", "Mumbai")
+- state: The state or region (e.g. "Kerala", "Karnataka", "Maharashtra")
+- maxAttendees: A number as string if mentioned (e.g. "500", "1000"), or "" if not found
+
+SPECIAL INSTRUCTIONS FOR DATES:
+- "15-17 June 2026" means startDate="2026-06-15", endDate="2026-06-17"
+- "June 15-17, 2026" means startDate="2026-06-15", endDate="2026-06-17"
+- "15th to 17th June 2026" means startDate="2026-06-15", endDate="2026-06-17"
+- "June 2026" with no specific day → try to infer, or use "2026-06-01" and "2026-06-30"
+
+SPECIAL INSTRUCTIONS FOR CATEGORY:
+- Hackathon → "college_fest" or "workshop"
+- College fest → "college_fest"
+- Tech conference → "conference"
+- Music/dance show → "concert"
+- Sports event → "sports"
+- Workshop/seminar → "workshop"
+- Networking event → "networking"
+
+CRITICAL: Read EVERY page. If the brochure has multiple pages, information may be spread across them.`,
+
     },
   ]
 
@@ -250,24 +267,38 @@ async function parseTextWithGroq(text: string): Promise<ExtractedEventData> {
         },
         {
           role: 'user',
-          content: `Extract ALL event details from the document text below. Return ONLY valid JSON with exactly this structure. Fill every field you can find. Use empty string "" only if truly absent:
+          content: `Extract ALL event details from the document text below. Be THOROUGH — read every line and fill as many fields as possible.
+
+Return ONLY valid JSON with exactly this structure. Use "" only if truly absent:
 {
-  "title": "Full event name/title",
-  "description": "Complete event description, agenda, or details",
-  "shortDescription": "One-line tagline or subtitle",
-  "category": "conference|workshop|meetup|festival|concert|sports|networking|college_fest|webinar|other",
-  "startDate": "YYYY-MM-DD",
-  "endDate": "YYYY-MM-DD",
-  "startTime": "HH:MM (24-hour format)",
-  "endTime": "HH:MM (24-hour format)",
-  "venueName": "Venue or location name",
+  "title": "Full event name/title — be complete",
+  "description": "Complete event description, agenda, schedule, theme, all paragraphs",
+  "shortDescription": "A concise one-line tagline (e.g. 'Annual college fest with competitions' or 'A 24-hour hackathon')",
+  "category": "EXACTLY one from: conference, workshop, meetup, festival, concert, sports, networking, college_fest, webinar, other",
+  "startDate": "YYYY-MM-DD — convert dates carefully. 'June 15, 2026' → '2026-06-15'",
+  "endDate": "YYYY-MM-DD — same rules",
+  "startTime": "HH:MM 24-hour format. '2:00 PM' → '14:00'",
+  "endTime": "HH:MM 24-hour format. '6:00 PM' → '18:00'",
+  "venueName": "Venue name",
   "venueAddress": "Full street address",
   "city": "City name",
   "state": "State or region",
-  "maxAttendees": "Maximum participant count or empty"
+  "maxAttendees": "Number as string if mentioned, or ''"
 }
 
-SCAN THE ENTIRE TEXT BELOW. Look for dates, times, locations, descriptions, ticket counts, categories. Extract everything you can find. Return ONLY the JSON object, no markdown, no code blocks, no other text.
+DATE PARSING EXAMPLES:
+- "15-17 June 2026" → startDate="2026-06-15", endDate="2026-06-17"
+- "June 15-17, 2026" → startDate="2026-06-15", endDate="2026-06-17"
+- "15th to 17th June 2026" → startDate="2026-06-15", endDate="2026-06-17"
+- "15/06/2026" → startDate="2026-06-15"
+
+CATEGORY HINTS:
+- Hackathon → "college_fest" or "workshop"
+- College fest → "college_fest"
+- Tech conference → "conference"
+- Music/dance show → "concert"
+- Sports → "sports"
+- Workshop/seminar → "workshop"
 
 DOCUMENT TEXT:
 ${text.slice(0, 8000)}`,
