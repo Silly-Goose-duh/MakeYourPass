@@ -1,10 +1,17 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Check, Sparkles, Save, Ticket, ExternalLink, Upload, Globe, Lock, Wand2, AlertCircle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Globe, Lock, Check, Sparkles,
+  ArrowLeft, ArrowRight, Save, Ticket,
+  ExternalLink, Wand2, AlertCircle,
+  MapPin, Calendar,
+  IndianRupee, ChevronRight,
+  ShieldCheck, FileText,
+  PartyPopper, Loader2
+} from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { cn, generateSlug } from '@/lib/utils'
@@ -12,34 +19,139 @@ import { supabase } from '@/lib/supabase'
 import { parseEventDocument } from '@/lib/groq'
 import type { ExtractedEventData } from '@/lib/groq'
 
-interface StepProps {
-  title: string
-  subtitle: string
-}
-
-const steps: StepProps[] = [
-  { title: 'Event Type', subtitle: 'Visibility and auto-fill from brochure' },
-  { title: 'Event Details', subtitle: 'Basic information about your event' },
-  { title: 'Date & Venue', subtitle: 'When and where is your event?' },
-  { title: 'Tickets', subtitle: 'Set up ticket types and pricing' },
-  { title: 'Branding', subtitle: 'Customize your event page' },
-  { title: 'Review & Publish', subtitle: 'Final checks before going live' },
-]
-
 const eventCategories = [
   'Conference', 'Workshop', 'Meetup', 'Festival',
   'Concert', 'Sports', 'Networking', 'College Fest',
   'Webinar', 'Other'
 ]
 
+// ===== TOGGLE COMPONENT =====
+function ToggleSwitch({
+  enabled,
+  onChange,
+  label,
+  description,
+}: {
+  enabled: boolean
+  onChange: (v: boolean) => void
+  label: string
+  description?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!enabled)}
+      className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all duration-300 group cursor-pointer"
+      style={{
+        borderColor: enabled ? 'rgba(245, 215, 0, 0.3)' : 'rgba(255,255,255,0.06)',
+        background: enabled ? 'rgba(245, 215, 0, 0.04)' : 'rgba(255,255,255,0.02)',
+      }}
+    >
+      <div className="text-left">
+        <p className="text-sm font-semibold text-white group-hover:text-yellow-400 transition-colors">
+          {label}
+        </p>
+        {description && (
+          <p className="text-xs text-text-muted mt-0.5">{description}</p>
+        )}
+      </div>
+      <div
+        className="relative w-12 h-7 rounded-full transition-all duration-300 shrink-0 ml-4"
+        style={{
+          background: enabled
+            ? 'linear-gradient(135deg, #f5d700, #ff2d95)'
+            : 'rgba(255,255,255,0.1)',
+          boxShadow: enabled ? '0 0 20px rgba(245, 215, 0, 0.2)' : 'none',
+        }}
+      >
+        <motion.div
+          className="absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg"
+          animate={{ x: enabled ? 24 : 4 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+        />
+      </div>
+    </button>
+  )
+}
+
+// ===== STEP INDICATOR DOTS =====
+function StepDots({ current, total }: { current: number; total: number }) {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      {Array.from({ length: total }).map((_, i) => (
+        <motion.div
+          key={i}
+          className="rounded-full transition-all duration-300"
+          style={{
+            width: i === current ? 24 : 8,
+            height: 8,
+            background: i <= current
+              ? 'linear-gradient(135deg, #f5d700, #ff2d95)'
+              : 'rgba(255,255,255,0.1)',
+            boxShadow: i === current ? '0 0 12px rgba(245, 215, 0, 0.3)' : 'none',
+          }}
+          layout
+        />
+      ))}
+    </div>
+  )
+}
+
+// ===== VISIBILITY CARDS =====
+const visibilityCards = [
+  {
+    id: 'public' as const,
+    icon: Globe,
+    title: 'Public Event',
+    subtitle: 'Listed on the events page & discoverable by everyone',
+    gradient: 'from-yellow-400/20 via-yellow-400/5 to-transparent',
+    borderGlow: 'rgba(245, 215, 0, 0.3)',
+    accentColor: '#f5d700',
+    features: [
+      'Appears on /events and landing page',
+      'SEO indexed for search discovery',
+      'Anyone can find and register',
+      'Maximum visibility & reach',
+    ],
+  },
+  {
+    id: 'private' as const,
+    icon: Lock,
+    title: 'Private Event',
+    subtitle: 'Hidden from listings — only accessible via direct link',
+    gradient: 'from-accent-pink/20 via-accent-cyan/5 to-transparent',
+    borderGlow: 'rgba(255, 45, 149, 0.3)',
+    accentColor: '#ff2d95',
+    features: [
+      'Hidden from all public listings',
+      'Shareable secret link only',
+      'Perfect for invite-only events',
+      'Exclusive, gated experience',
+    ],
+  },
+]
+
 export function EventBuilderPage() {
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [currentStep, setCurrentStep] = useState(0)
-  const [isPublic, setIsPublic] = useState(true)
+  const formRef = useRef<HTMLDivElement>(null)
+
+  // Phase: 'select' | 'create'
+  const [phase, setPhase] = useState<'select' | 'create'>('select')
+  const [selectedVisibility, setSelectedVisibility] = useState<'public' | 'private' | null>(null)
+  const [zoomingCard, setZoomingCard] = useState(false)
+
+  // Form step
+  const [formStep, setFormStep] = useState(0) // 0=upload, 1=details, 2=payment
+
+  // Upload / manual toggle
+  const [manualMode, setManualMode] = useState(false)
   const [isParsing, setIsParsing] = useState(false)
   const [parseProgress, setParseProgress] = useState('')
   const [parseError, setParseError] = useState('')
+  const [parsedSuccess, setParsedSuccess] = useState(false)
+
+  // Event data
   const [eventData, setEventData] = useState({
     title: '',
     description: '',
@@ -66,15 +178,35 @@ export function EventBuilderPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1)
-  }
+  // ===== SELECT VISIBILITY (with zoom animation) =====
+  const handleSelectVisibility = useCallback((visibility: 'public' | 'private') => {
+    setSelectedVisibility(visibility)
+    setZoomingCard(true)
+    // Wait for zoom animation, then switch phase
+    setTimeout(() => {
+      setPhase('create')
+      setZoomingCard(false)
+    }, 500)
+  }, [])
 
-  const handleBack = () => {
-    if (currentStep > 0) setCurrentStep(currentStep - 1)
-  }
+  const handleBackToSelect = useCallback(() => {
+    setPhase('select')
+    setSelectedVisibility(null)
+    setFormStep(0)
+    setManualMode(false)
+    setParsedSuccess(false)
+    setParseError('')
+    setParseProgress('')
+    setEventData({
+      title: '', description: '', shortDescription: '', category: '',
+      startDate: '', endDate: '', startTime: '', endTime: '',
+      venueName: '', venueAddress: '', city: '', state: '',
+      maxAttendees: '', useExternalForm: false, formLink: '',
+      ticketing: { isFree: true, price: '', quantity: '' },
+    })
+  }, [])
 
-  // --- Document upload & AI parsing ---
+  // ===== DOCUMENT UPLOAD & AI PARSING =====
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -82,16 +214,19 @@ export function EventBuilderPage() {
     setIsParsing(true)
     setParseProgress('Reading document...')
     setParseError('')
+    setParsedSuccess(false)
 
     try {
       const data = await parseEventDocument(file, (msg) => setParseProgress(msg))
       if (data) {
         applyExtractedData(data)
-        setParseProgress('✨ Fields auto-filled! Review and adjust if needed.')
+        setParsedSuccess(true)
+        setParseProgress('✨ All fields auto-filled! Review below.')
         setTimeout(() => setParseProgress(''), 3000)
       }
     } catch (err: unknown) {
-      setParseError((err instanceof Error ? err.message : String(err)) || 'Failed to parse document')
+      const msg = err instanceof Error ? err.message : String(err)
+      setParseError(msg || 'Failed to parse document')
     } finally {
       setIsParsing(false)
       if (e.target) e.target.value = ''
@@ -117,18 +252,19 @@ export function EventBuilderPage() {
     }))
   }
 
+  const updateField = (field: string, value: string) => {
+    setEventData(prev => ({ ...prev, [field]: value }))
+  }
+
+  // ===== PUBLISH =====
   const handlePublish = async () => {
     setSaving(true)
     setSaveError('')
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        navigate('/login')
-        return
-      }
+      if (!user) { navigate('/login'); return }
 
-      // Get or create organization
       const { data: orgs } = await supabase
         .from('organizations')
         .select('id, name')
@@ -149,18 +285,13 @@ export function EventBuilderPage() {
 
         if (orgError) { setSaveError(orgError.message); setSaving(false); return }
         orgId = newOrg!.id
-
         await supabase.from('org_members').insert({
-          org_id: orgId,
-          user_id: user.id,
-          role: 'owner',
-          status: 'active',
+          org_id: orgId, user_id: user.id, role: 'owner', status: 'active',
         })
       } else {
         orgId = orgs[0].id
       }
 
-      // Create the event
       const slug = generateSlug(eventData.title)
       const { data: event, error: eventError } = await supabase
         .from('events')
@@ -180,7 +311,7 @@ export function EventBuilderPage() {
           end_time: eventData.endTime,
           category: eventData.category || 'other',
           status: 'published',
-          visibility: isPublic ? 'public' : 'private',
+          visibility: selectedVisibility || 'public',
           max_attendees: eventData.maxAttendees ? parseInt(eventData.maxAttendees) : null,
           use_external_form: eventData.useExternalForm,
           form_link: eventData.formLink || null,
@@ -190,7 +321,6 @@ export function EventBuilderPage() {
 
       if (eventError) { setSaveError(eventError.message); setSaving(false); return }
 
-      // Create ticket type
       const ticketQty = eventData.ticketing.quantity ? parseInt(eventData.ticketing.quantity) : 0
       const ticketPrice = eventData.ticketing.isFree ? 0 : (parseInt(eventData.ticketing.price) || 0)
 
@@ -215,555 +345,890 @@ export function EventBuilderPage() {
     }
   }
 
-  const updateField = (field: string, value: string) => {
-    setEventData(prev => ({ ...prev, [field]: value }))
+  const accentColor = selectedVisibility === 'public' ? '#f5d700' : '#ff2d95'
+
+  // ===== ANIMATION VARIANTS =====
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.08 } as const,
+    },
   }
 
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 100, damping: 20 } },
+  }
+
+  // ===== RENDER =====
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="max-w-4xl mx-auto"
-    >
-      {/* Header */}
-      <div className="mb-8">
-        <button
-          onClick={() => navigate('/dashboard/events')}
-          className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-4 text-sm"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to events
-        </button>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white">Create New Event</h1>
-      </div>
-
-      {/* Steps progress */}
-      <div className="mb-8 overflow-x-auto">
-        <div className="flex items-center justify-between min-w-[600px]">
-          {steps.map((step, index) => (
-            <div key={step.title} className="flex items-center flex-1">
-              <div className="flex flex-col items-center">
-                <div className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all border-2 shrink-0',
-                  index < currentStep && 'bg-yellow-400 border-yellow-400 text-black',
-                  index === currentStep && 'bg-yellow-400/20 border-yellow-400 text-yellow-400',
-                  index > currentStep && 'bg-surface border-border text-text-muted'
-                )}>
-                  {index < currentStep ? (
-                    <Check className="h-5 w-5" />
-                  ) : (
-                    index + 1
-                  )}
-                </div>
-                <span className={cn(
-                  'text-xs mt-2 hidden sm:block text-center whitespace-nowrap',
-                  index <= currentStep ? 'text-yellow-400 font-medium' : 'text-text-muted'
-                )}>
-                  {step.title}
-                </span>
-              </div>
-              {index < steps.length - 1 && (
-                <div className={cn(
-                  'flex-1 h-0.5 mx-2 mb-6',
-                  index < currentStep ? 'bg-yellow-400' : 'bg-border'
-                )} />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Step Content */}
-      <Card variant="glass" padding="lg">
-        <CardHeader>
-          <CardTitle>{steps[currentStep].title}</CardTitle>
-          <p className="text-text-secondary text-sm mt-1">{steps[currentStep].subtitle}</p>
-        </CardHeader>
-
-        <CardContent>
-          {/* Step 0: Event Type + Document Upload */}
-          {currentStep === 0 && (
-            <div className="space-y-6">
-              {/* Public/Private Toggle */}
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-3">
-                  Who can see your event?
-                </label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsPublic(true)}
-                    className={cn(
-                      'px-6 py-4 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
-                      isPublic
-                        ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400 shadow-[0_0_20px_rgba(245,215,0,0.1)]'
-                        : 'border-border text-text-secondary hover:border-white/30'
-                    )}
-                  >
-                    <Globe className="h-5 w-5 mx-auto mb-1.5" />
-                    Public Event
-                    <p className="text-[10px] font-normal mt-1 text-text-muted">
-                      Listed on /events & landing page
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsPublic(false)}
-                    className={cn(
-                      'px-6 py-4 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
-                      !isPublic
-                        ? 'bg-accent-pink/20 border-accent-pink text-accent-pink shadow-[0_0_20px_rgba(255,45,149,0.1)]'
-                        : 'border-border text-text-secondary hover:border-white/30'
-                    )}
-                  >
-                    <Lock className="h-5 w-5 mx-auto mb-1.5" />
-                    Private Event
-                    <p className="text-[10px] font-normal mt-1 text-text-muted">
-                      Only visible via direct link
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              <hr className="border-border" />
-
-              {/* Document Upload */}
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-2 flex items-center gap-1.5">
-                  <Wand2 className="h-4 w-4 text-yellow-400" />
-                  Auto-Fill from Brochure / Document
-                </label>
-                <p className="text-text-muted text-xs mb-4">
-                  Upload a PDF, image of a brochure, or flyer — we&apos;ll extract event details and pre-fill the form using AI.
-                </p>
-
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className={cn(
-                    'relative p-8 border-2 border-dashed rounded-2xl text-center cursor-pointer transition-all',
-                    isParsing
-                      ? 'border-yellow-400/50 bg-yellow-400/5'
-                      : parseProgress && !parseError
-                        ? 'border-green-500/50 bg-green-500/5'
-                        : 'border-border hover:border-yellow-400/50 hover:bg-white/[0.02]'
-                  )}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,image/*,.txt"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                    disabled={isParsing}
-                  />
-
-                  {isParsing ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-10 w-10 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-                      <p className="text-yellow-400 font-medium text-sm">{parseProgress}</p>
-                    </div>
-                  ) : parseProgress && !parseError ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <Check className="h-8 w-8 text-green-400" />
-                      <p className="text-green-400 font-medium text-sm">{parseProgress}</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <Upload className="h-8 w-8 text-text-muted" />
-                      <p className="text-text-secondary font-medium text-sm">
-                        Click to upload event brochure, flyer, or PDF
-                      </p>
-                      <p className="text-text-muted text-xs">
-                        Supports PDF, PNG, JPG, TXT
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {parseError && (
-                  <div className="mt-3 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                    <span>{parseError}</span>
-                  </div>
-                )}
-
-                <div className="mt-3 p-3 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-xs text-yellow-400/80 flex items-start gap-2">
-                  <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  <span>
-                    Upload a brochure and we&apos;ll fill in the title, description, dates, venue, and more automatically.
-                    You can edit everything before publishing.
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 1: Event Details */}
-          {currentStep === 1 && (
-            <div className="space-y-5">
-              <Input
-                label="Event Title"
-                placeholder="e.g., Tech Conference 2026"
-                value={eventData.title}
-                onChange={(e) => updateField('title', e.target.value)}
-                required
-              />
-              <Textarea
-                label="Description"
-                placeholder="Describe what your event is about..."
-                value={eventData.description}
-                onChange={(e) => updateField('description', e.target.value)}
-                rows={4}
-              />
-              <Input
-                label="Short Description"
-                placeholder="A brief tagline for your event"
-                value={eventData.shortDescription}
-                onChange={(e) => updateField('shortDescription', e.target.value)}
-                hint="Shown on cards and social sharing"
-              />
-
-              {/* Registration Method */}
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-3">Registration Method</label>
-                <div className="flex items-center gap-3 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => setEventData(prev => ({ ...prev, useExternalForm: false, formLink: '' }))}
-                    className={cn(
-                      'px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
-                      !eventData.useExternalForm
-                        ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
-                        : 'border-border text-text-secondary hover:border-white/30'
-                    )}
-                  >
-                    <Ticket className="h-4 w-4 mx-auto mb-1" />
-                    Use MakeYourPass Ticketing
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEventData(prev => ({ ...prev, useExternalForm: true }))}
-                    className={cn(
-                      'px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
-                      eventData.useExternalForm
-                        ? 'bg-accent-pink/20 border-accent-pink text-accent-pink'
-                        : 'border-border text-text-secondary hover:border-white/30'
-                    )}
-                  >
-                    <ExternalLink className="h-4 w-4 mx-auto mb-1" />
-                    Use External Form
-                  </button>
-                </div>
-                {eventData.useExternalForm && (
-                  <Input
-                    label="Form Link"
-                    type="url"
-                    placeholder="https://forms.google.com/..."
-                    value={eventData.formLink}
-                    onChange={(e) => updateField('formLink', e.target.value)}
-                    hint="Attendees will be redirected to this link to register"
-                  />
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">Category</label>
-                <div className="flex flex-wrap gap-2">
-                  {eventCategories.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => updateField('category', cat.toLowerCase())}
-                      className={cn(
-                        'px-4 py-2 rounded-full text-sm font-medium transition-all border',
-                        eventData.category === cat.toLowerCase()
-                          ? 'bg-yellow-400/20 border-yellow-400/50 text-yellow-400'
-                          : 'bg-surface border-border text-text-secondary hover:text-white hover:border-white/30'
-                      )}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Date & Venue */}
-          {currentStep === 2 && (
-            <div className="space-y-5">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <DatePicker
-                  label="Start Date"
-                  value={eventData.startDate}
-                  onChange={(v) => updateField('startDate', v)}
-                  required
-                />
-                <DatePicker
-                  label="End Date"
-                  value={eventData.endDate}
-                  onChange={(v) => updateField('endDate', v)}
-                  minDate={eventData.startDate ? new Date(eventData.startDate) : undefined}
-                  required
-                />
-              </div>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Input
-                  label="Start Time"
-                  type="time"
-                  value={eventData.startTime}
-                  onChange={(e) => updateField('startTime', e.target.value)}
-                  required
-                />
-                <Input
-                  label="End Time"
-                  type="time"
-                  value={eventData.endTime}
-                  onChange={(e) => updateField('endTime', e.target.value)}
-                  required
-                />
-              </div>
-              <hr className="border-border" />
-              <Input
-                label="Venue Name"
-                placeholder="e.g., Bangalore International Centre"
-                value={eventData.venueName}
-                onChange={(e) => updateField('venueName', e.target.value)}
-              />
-              <Input
-                label="Venue Address"
-                placeholder="Full address"
-                value={eventData.venueAddress}
-                onChange={(e) => updateField('venueAddress', e.target.value)}
-              />
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Input
-                  label="City"
-                  placeholder="e.g., Bangalore"
-                  value={eventData.city}
-                  onChange={(e) => updateField('city', e.target.value)}
-                />
-                <Input
-                  label="State"
-                  placeholder="e.g., Karnataka"
-                  value={eventData.state}
-                  onChange={(e) => updateField('state', e.target.value)}
-                />
-              </div>
-              <Input
-                label="Max Attendees"
-                type="number"
-                placeholder="Leave blank for unlimited"
-                value={eventData.maxAttendees}
-                onChange={(e) => updateField('maxAttendees', e.target.value)}
-                hint="Set a limit on how many people can register"
-              />
-            </div>
-          )}
-
-          {/* Step 3: Tickets */}
-          {currentStep === 3 && (
-            <div className="space-y-5">
-              {eventData.useExternalForm ? (
-                <div className="p-6 bg-accent-pink/10 border border-accent-pink/20 rounded-2xl text-center">
-                  <ExternalLink className="h-10 w-10 text-accent-pink mx-auto mb-3" />
-                  <p className="text-white font-semibold mb-1">External Form Mode</p>
-                  <p className="text-text-secondary text-sm">
-                    Ticket management is handled by your external form provider.
-                    Skip this step.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, isFree: true } }))}
-                      className={cn(
-                        'px-6 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
-                        eventData.ticketing.isFree
-                          ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
-                          : 'border-border text-text-secondary hover:border-white/30'
-                      )}
-                    >
-                      <Check className="h-4 w-4 mx-auto mb-1" />
-                      Free Event
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, isFree: false } }))}
-                      className={cn(
-                        'px-6 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
-                        !eventData.ticketing.isFree
-                          ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
-                          : 'border-border text-text-secondary hover:border-white/30'
-                      )}
-                    >
-                      Paid Event
-                    </button>
-                  </div>
-
-                  {!eventData.ticketing.isFree && (
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <Input
-                        label="Ticket Price (₹)"
-                        type="number"
-                        placeholder="e.g., 499"
-                        value={eventData.ticketing.price}
-                        onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, price: e.target.value } }))}
-                      />
-                      <Input
-                        label="Number of Tickets"
-                        type="number"
-                        placeholder="e.g., 100"
-                        value={eventData.ticketing.quantity}
-                        onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, quantity: e.target.value } }))}
-                      />
-                    </div>
-                  )}
-
-                  {eventData.ticketing.isFree && (
-                    <Input
-                      label="Number of Tickets"
-                      type="number"
-                      placeholder="e.g., 100"
-                      value={eventData.ticketing.quantity}
-                      onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, quantity: e.target.value } }))}
-                      hint="How many free tickets are available?"
-                    />
-                  )}
-
-                  <div className="p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl text-sm text-yellow-400">
-                    <p className="font-medium mb-1">💡 Payment Processing</p>
-                    <p className="text-yellow-400/80">
-                      For paid events, tickets are processed securely via Razorpay. 
-                      The payment gateway fee (2% + GST) is deducted from each transaction.
-                    </p>
-                  </div>
-
-                  <p className="text-xs text-text-muted">
-                    Need multiple ticket types (e.g., VIP, Early Bird)? You can add more after creating the event.
-                  </p>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Step 4: Branding */}
-          {currentStep === 4 && (
-            <div className="space-y-5">
-              <div className="p-8 border-2 border-dashed border-border rounded-2xl text-center">
-                <div className="h-16 w-16 rounded-2xl bg-yellow-400/20 mx-auto mb-4 flex items-center justify-center">
-                  <Sparkles className="h-8 w-8 text-yellow-400" />
-                </div>
-                <p className="text-text-secondary mb-2">Upload Cover Image</p>
-                <p className="text-text-muted text-sm mb-4">Recommended: 1920x1080px</p>
-                <Button variant="secondary" size="sm">Choose Image</Button>
-              </div>
-
-              <Input
-                label="Custom URL Slug"
-                placeholder="your-event-name"
-                value={eventData.title.toLowerCase().replace(/\s+/g, '-')}
-                onChange={() => {}}
-                hint="makeyourpass.app/e/your-event-name"
-              />
-            </div>
-          )}
-
-          {/* Step 5: Review */}
-          {currentStep === 5 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-yellow-400/10 border border-yellow-400/20 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-400" />
-                  <div>
-                    <p className="text-white font-medium">All steps completed</p>
-                    <p className="text-text-secondary text-sm">Review your event details before publishing</p>
-                  </div>
-                </div>
-                <Badge variant="yellow">Ready</Badge>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-text-muted">Visibility</span>
-                  <span className={cn('font-medium', isPublic ? 'text-yellow-400' : 'text-accent-pink')}>
-                    {isPublic ? '🌍 Public' : '🔒 Private'}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-text-muted">Title</span>
-                  <span className="text-white font-medium">{eventData.title || 'Not set'}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-text-muted">Category</span>
-                  <span className="text-white capitalize">{eventData.category || 'Not set'}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-text-muted">Date</span>
-                  <span className="text-white">{eventData.startDate || 'Not set'}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-text-muted">Venue</span>
-                  <span className="text-white">{eventData.venueName || 'Not set'}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-text-muted">Registration</span>
-                  <span className="text-white">
-                    {eventData.useExternalForm ? 'External Form' : 'MakeYourPass Ticketing'}
-                  </span>
-                </div>
-                {eventData.useExternalForm && eventData.formLink && (
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-text-muted">Form Link</span>
-                    <span className="text-accent-cyan text-sm truncate max-w-[200px]">{eventData.formLink}</span>
-                  </div>
-                )}
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-text-muted">Tickets</span>
-                  <span className="text-white">
-                    {eventData.useExternalForm ? 'N/A (External Form)' : eventData.ticketing.isFree ? 'Free' : `₹${eventData.ticketing.price}`}
-                    {!eventData.useExternalForm && ` — ${eventData.ticketing.quantity || 'Unlimited'} available`}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
-            <Button
-              variant="ghost"
-              onClick={currentStep === 0 ? () => navigate('/dashboard/events') : handleBack}
+    <div className="min-h-screen">
+      {/* ===== PHASE: SELECT VISIBILITY ===== */}
+      <AnimatePresence mode="wait">
+        {phase === 'select' && !zoomingCard && (
+          <motion.div
+            key="select"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+            className="max-w-5xl mx-auto px-4 py-12"
+          >
+            {/* Back button */}
+            <button
+              onClick={() => navigate('/dashboard/events')}
+              className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-8 text-sm"
             >
-              {currentStep === 0 ? 'Cancel' : (
-                <>
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </>
-              )}
-            </Button>
+              <ArrowLeft className="h-4 w-4" />
+              Back to events
+            </button>
 
-            {saveError && (
-              <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                {saveError}
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-12"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-400/20 to-accent-pink/20 border border-yellow-400/20 mx-auto mb-6 flex items-center justify-center"
+              >
+                <PartyPopper className="h-8 w-8 text-yellow-400" />
+              </motion.div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+                Create Your Event
+              </h1>
+              <p className="text-text-secondary text-lg max-w-md mx-auto">
+                First, choose how your event will be listed
+              </p>
+            </motion.div>
+
+            {/* Two cards */}
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="grid sm:grid-cols-2 gap-6"
+            >
+              {visibilityCards.map((card) => {
+                const Icon = card.icon
+                return (
+                  <motion.button
+                    key={card.id}
+                    variants={itemVariants}
+                    onClick={() => handleSelectVisibility(card.id)}
+                    className="relative group text-left w-full"
+                  >
+                    {/* Glow bg */}
+                    <div
+                      className="absolute -inset-0.5 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500"
+                      style={{ background: card.borderGlow }}
+                    />
+
+                    {/* Card */}
+                    <div
+                      className="relative p-8 sm:p-10 rounded-3xl border transition-all duration-300 overflow-hidden"
+                      style={{
+                        borderColor: 'rgba(255,255,255,0.06)',
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                      }}
+                    >
+                      {/* Hover gradient overlay */}
+                      <div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style={{
+                          background: `radial-gradient(ellipse at 50% 0%, ${card.accentColor}15 0%, transparent 70%)`,
+                        }}
+                      />
+
+                      {/* Icon */}
+                      <div
+                        className="relative w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300 group-hover:scale-110"
+                        style={{
+                          background: `${card.accentColor}15`,
+                          borderColor: `${card.accentColor}30`,
+                          borderWidth: 1,
+                        }}
+                      >
+                        <Icon
+                          className="h-7 w-7 transition-all duration-300"
+                          style={{ color: card.accentColor }}
+                        />
+                      </div>
+
+                      {/* Title */}
+                      <h2
+                        className="relative text-2xl font-bold mb-2 transition-all duration-300"
+                        style={{
+                          color: card.accentColor,
+                          textShadow: `0 0 40px ${card.accentColor}30`,
+                        }}
+                      >
+                        {card.title}
+                      </h2>
+                      <p className="relative text-text-secondary text-sm mb-6 leading-relaxed">
+                        {card.subtitle}
+                      </p>
+
+                      {/* Features */}
+                      <div className="relative space-y-3 mb-8">
+                        {card.features.map((feat, i) => (
+                          <div key={i} className="flex items-start gap-3">
+                            <div
+                              className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                              style={{ background: `${card.accentColor}20` }}
+                            >
+                              <Check className="h-3 w-3" style={{ color: card.accentColor }} />
+                            </div>
+                            <span className="text-sm text-text-secondary">{feat}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* CTA */}
+                      <div className="relative flex items-center gap-2 text-sm font-semibold transition-all duration-300 group-hover:gap-3"
+                        style={{ color: card.accentColor }}
+                      >
+                        Select {card.title.split(' ')[0]}
+                        <ChevronRight className="h-4 w-4 transition-all duration-300 group-hover:translate-x-1" />
+                      </div>
+
+                      {/* Corner decoration */}
+                      <div
+                        className="absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-0 group-hover:opacity-30 transition-all duration-700"
+                        style={{
+                          background: `radial-gradient(circle, ${card.accentColor}40 0%, transparent 70%)`,
+                        }}
+                      />
+                    </div>
+                  </motion.button>
+                )
+              })}
+            </motion.div>
+
+            {/* Bottom note */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="text-center mt-10 text-text-muted text-xs"
+            >
+              You can change visibility settings anytime from the event dashboard
+            </motion.p>
+          </motion.div>
+        )}
+
+        {/* ===== ZOOM ANIMATION OVERLAY ===== */}
+        {zoomingCard && selectedVisibility && (
+          <motion.div
+            key="zoom"
+            initial={{ scale: 0.8, opacity: 0, borderRadius: '24px' }}
+            animate={{ scale: 1, opacity: 1, borderRadius: '0px' }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{
+              background: `linear-gradient(135deg, rgba(5,5,5,0.98) 0%, rgba(12,12,12,0.99) 100%)`,
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              className="flex flex-col items-center gap-4"
+            >
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center animate-pulse"
+                style={{
+                  background: `${accentColor}20`,
+                  borderColor: `${accentColor}40`,
+                  borderWidth: 1,
+                }}
+              >
+                {selectedVisibility === 'public'
+                  ? <Globe className="h-8 w-8" style={{ color: accentColor }} />
+                  : <Lock className="h-8 w-8" style={{ color: accentColor }} />
+                }
               </div>
-            )}
+              <p className="text-lg font-semibold text-white">
+                {selectedVisibility === 'public' ? 'Public Event' : 'Private Event'}
+              </p>
+              <Loader2 className="h-5 w-5 animate-spin" style={{ color: accentColor }} />
+            </motion.div>
+          </motion.div>
+        )}
 
-            {currentStep < steps.length - 1 ? (
-              <Button variant="primary" onClick={handleNext}>
-                Continue
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button variant="primary" onClick={handlePublish} loading={saving} className="bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/30">
-                <Save className="h-4 w-4" />
-                {saving ? 'Publishing...' : 'Publish Event'}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+        {/* ===== PHASE: CREATE EVENT FORM ===== */}
+        {phase === 'create' && !zoomingCard && (
+          <motion.div
+            key="create"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="max-w-3xl mx-auto px-4 py-8"
+          >
+            {/* Back + visibility badge */}
+            <div className="flex items-center justify-between mb-8">
+              <button
+                onClick={handleBackToSelect}
+                className="inline-flex items-center gap-2 text-text-secondary hover:text-white transition-all text-sm group"
+              >
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                Change visibility
+              </button>
+              <Badge variant={selectedVisibility === 'public' ? 'yellow' : 'pink'}>
+                {selectedVisibility === 'public' ? '🌍 Public' : '🔒 Private'}
+              </Badge>
+            </div>
+
+            {/* Title */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mb-8"
+            >
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                {selectedVisibility === 'public'
+                  ? 'Share with the World'
+                  : 'Create Something Exclusive'}
+              </h1>
+              <p className="text-text-secondary text-sm">
+                {selectedVisibility === 'public'
+                  ? 'Your event will be listed publicly for everyone to discover.'
+                  : 'Your event stays hidden — only people with the link can find it.'
+                }
+              </p>
+            </motion.div>
+
+            {/* Step dots */}
+            <div className="mb-8">
+              <StepDots current={formStep} total={3} />
+              <div className="flex justify-between mt-3 text-xs text-text-muted px-2">
+                <span className={formStep >= 0 ? 'text-yellow-400 font-medium' : ''}>Brochure</span>
+                <span className={formStep >= 1 ? 'text-yellow-400 font-medium' : ''}>Details</span>
+                <span className={formStep >= 2 ? 'text-yellow-400 font-medium' : ''}>Payment</span>
+              </div>
+            </div>
+
+            <div ref={formRef} className="space-y-8">
+              {/* ===== STEP 0: BROCHURE UPLOAD ===== */}
+              {formStep === 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  {/* Upload area */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Wand2 className="h-5 w-5" style={{ color: accentColor }} />
+                      <h2 className="text-lg font-bold text-white">Do you have a brochure or flyer?</h2>
+                    </div>
+                    <p className="text-text-muted text-sm mb-5">
+                      Upload a PDF or image — we&apos;ll auto-fill all the details using AI. Saves you minutes.
+                    </p>
+
+                    <div
+                      onClick={() => !isParsing && !parsedSuccess && fileInputRef.current?.click()}
+                      className={cn(
+                        'relative overflow-hidden p-10 sm:p-14 rounded-3xl border-2 border-dashed text-center cursor-pointer transition-all duration-300',
+                        isParsing && 'pointer-events-none',
+                        parsedSuccess
+                          ? 'border-green-500/40 bg-green-500/5'
+                          : 'hover:border-yellow-400/40 hover:bg-white/[0.02]',
+                      )}
+                      style={{
+                        borderColor: parsedSuccess
+                          ? 'rgba(34,197,94,0.4)'
+                          : isParsing
+                            ? `${accentColor}50`
+                            : 'rgba(255,255,255,0.08)',
+                        background: isParsing
+                          ? `${accentColor}08`
+                          : parsedSuccess
+                            ? 'rgba(34,197,94,0.05)'
+                            : 'rgba(255,255,255,0.02)',
+                      }}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,image/*,.txt"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        disabled={isParsing}
+                      />
+
+                      <AnimatePresence mode="wait">
+                        {isParsing ? (
+                          <motion.div
+                            key="parsing"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="flex flex-col items-center gap-4"
+                          >
+                            <div className="relative">
+                              <div
+                                className="h-16 w-16 rounded-full flex items-center justify-center"
+                                style={{ background: `${accentColor}15` }}
+                              >
+                                <motion.div
+                                  className="h-10 w-10 rounded-full border-2 border-t-transparent"
+                                  style={{
+                                    borderColor: `${accentColor}80`,
+                                    borderTopColor: 'transparent',
+                                  }}
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                                />
+                              </div>
+                            </div>
+                            <p className="font-semibold text-base" style={{ color: accentColor }}>
+                              {parseProgress}
+                            </p>
+                            <p className="text-text-muted text-xs">Analyzing with AI...</p>
+                          </motion.div>
+                        ) : parsedSuccess ? (
+                          <motion.div
+                            key="success"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="flex flex-col items-center gap-3"
+                          >
+                            <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center">
+                              <Check className="h-8 w-8 text-green-400" />
+                            </div>
+                            <p className="text-green-400 font-semibold text-base">✨ Brochure parsed successfully!</p>
+                            <p className="text-text-muted text-xs">All fields filled below — scroll down to review</p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setParsedSuccess(false)
+                                setManualMode(true)
+                              }}
+                            >
+                              Re-upload or edit manually
+                            </Button>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="upload"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex flex-col items-center gap-4"
+                          >
+                            {/* Decorative circles */}
+                            <div className="relative">
+                              <div className="absolute -inset-4 rounded-full opacity-30 blur-xl"
+                                style={{ background: `radial-gradient(circle, ${accentColor}30 0%, transparent 70%)` }}
+                              />
+                              <div
+                                className="relative w-20 h-20 rounded-2xl flex items-center justify-center"
+                                style={{
+                                  background: `linear-gradient(135deg, ${accentColor}20, ${accentColor}05)`,
+                                  borderColor: `${accentColor}30`,
+                                  borderWidth: 1,
+                                }}
+                              >
+                                <FileText className="h-10 w-10" style={{ color: accentColor }} />
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-white font-semibold text-lg mb-1">
+                                Click to upload event brochure, flyer, or PDF
+                              </p>
+                              <p className="text-text-muted text-sm">
+                                Supports PDF, PNG, JPG, TXT
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-4 text-xs text-text-muted">
+                              <span className="flex items-center gap-1">
+                                <Sparkles className="h-3 w-3 text-yellow-400" />
+                                AI auto-fill
+                              </span>
+                              <span className="w-1 h-1 rounded-full bg-text-muted" />
+                              <span className="flex items-center gap-1">
+                                <Check className="h-3 w-3 text-green-400" />
+                                No account needed
+                              </span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Pulse ring on hover when idle */}
+                      {!isParsing && !parsedSuccess && (
+                        <div
+                          className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                          style={{
+                            background: `radial-gradient(ellipse at 50% 50%, ${accentColor}08 0%, transparent 60%)`,
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {parseError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-4 p-4 bg-red-500/15 border border-red-500/25 rounded-2xl text-red-400 text-sm flex items-start gap-3"
+                      >
+                        <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="font-semibold mb-1">Could not read document</p>
+                          <p className="text-red-400/80">{parseError}</p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {/* Manual mode toggle */}
+                  <div className={cn('transition-all duration-300', parsedSuccess && 'opacity-50 pointer-events-none')}>
+                    <ToggleSwitch
+                      enabled={manualMode}
+                      onChange={setManualMode}
+                      label="I'll enter details manually"
+                      description={parsedSuccess ? 'Already filled by brochure — toggle to override' : 'Skip the upload and type everything yourself'}
+                    />
+                  </div>
+
+                  {/* Quick tip */}
+                  <div
+                    className="p-4 rounded-2xl border text-sm flex items-start gap-3"
+                    style={{
+                      borderColor: `${accentColor}20`,
+                      background: `${accentColor}08`,
+                    }}
+                  >
+                    <Sparkles className="h-5 w-5 shrink-0 mt-0.5" style={{ color: accentColor }} />
+                    <div>
+                      <p className="font-semibold text-white mb-1">Pro tip</p>
+                      <p className="text-text-secondary text-xs leading-relaxed">
+                        Upload a brochure PDF or event poster image and we&apos;ll extract the title, description, dates, venue,
+                        and more automatically. Everything is editable afterwards.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Navigation */}
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      variant="gradient"
+                      onClick={() => setFormStep(1)}
+                      disabled={!manualMode && !parsedSuccess && !eventData.title}
+                    >
+                      Continue to Details
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ===== STEP 1: EVENT DETAILS ===== */}
+              {formStep === 1 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: `${accentColor}20` }}
+                    >
+                      <FileText className="h-4 w-4" style={{ color: accentColor }} />
+                    </div>
+                    <h2 className="text-lg font-bold text-white">Event Details</h2>
+                  </div>
+
+                  {/* Auto-filled indicator */}
+                  {parsedSuccess && (
+                    <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm flex items-center gap-2">
+                      <Check className="h-4 w-4" />
+                      Auto-filled from brochure — edit any field below
+                    </div>
+                  )}
+
+                  <div className="grid sm:grid-cols-2 gap-5">
+                    <div className="sm:col-span-2">
+                      <Input
+                        label="Event Title"
+                        placeholder="e.g., Tech Conference 2026"
+                        value={eventData.title}
+                        onChange={(e) => updateField('title', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Textarea
+                        label="Description"
+                        placeholder="Describe what your event is about..."
+                        value={eventData.description}
+                        onChange={(e) => updateField('description', e.target.value)}
+                        rows={4}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Input
+                        label="Short Description"
+                        placeholder="A brief tagline for your event"
+                        value={eventData.shortDescription}
+                        onChange={(e) => updateField('shortDescription', e.target.value)}
+                        hint="Shown on cards and social sharing"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Category */}
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-3">Category</label>
+                    <div className="flex flex-wrap gap-2">
+                      {eventCategories.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => updateField('category', cat.toLowerCase())}
+                          className={cn(
+                            'px-4 py-2 rounded-full text-sm font-medium transition-all border',
+                            eventData.category === cat.toLowerCase()
+                              ? 'border-yellow-400 bg-yellow-400/20 text-yellow-400 shadow-[0_0_15px_rgba(245,215,0,0.1)]'
+                              : 'bg-surface border-border text-text-secondary hover:text-white hover:border-white/30'
+                          )}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Date & Time */}
+                  <div className="p-5 rounded-2xl border border-border bg-surface/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Calendar className="h-4 w-4 text-yellow-400" />
+                      <span className="text-sm font-semibold text-white">Date & Time</span>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <DatePicker
+                        label="Start Date"
+                        value={eventData.startDate}
+                        onChange={(v) => updateField('startDate', v)}
+                        required
+                      />
+                      <DatePicker
+                        label="End Date"
+                        value={eventData.endDate}
+                        onChange={(v) => updateField('endDate', v)}
+                        minDate={eventData.startDate ? new Date(eventData.startDate) : undefined}
+                        required
+                      />
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                      <Input
+                        label="Start Time"
+                        type="time"
+                        value={eventData.startTime}
+                        onChange={(e) => updateField('startTime', e.target.value)}
+                        required
+                      />
+                      <Input
+                        label="End Time"
+                        type="time"
+                        value={eventData.endTime}
+                        onChange={(e) => updateField('endTime', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Venue */}
+                  <div className="p-5 rounded-2xl border border-border bg-surface/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <MapPin className="h-4 w-4 text-accent-pink" />
+                      <span className="text-sm font-semibold text-white">Venue</span>
+                    </div>
+                    <div className="space-y-4">
+                      <Input
+                        label="Venue Name"
+                        placeholder="e.g., Bangalore International Centre"
+                        value={eventData.venueName}
+                        onChange={(e) => updateField('venueName', e.target.value)}
+                      />
+                      <Input
+                        label="Venue Address"
+                        placeholder="Full address"
+                        value={eventData.venueAddress}
+                        onChange={(e) => updateField('venueAddress', e.target.value)}
+                      />
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <Input
+                          label="City"
+                          placeholder="e.g., Bangalore"
+                          value={eventData.city}
+                          onChange={(e) => updateField('city', e.target.value)}
+                        />
+                        <Input
+                          label="State"
+                          placeholder="e.g., Karnataka"
+                          value={eventData.state}
+                          onChange={(e) => updateField('state', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Registration Method */}
+                  <div className="p-5 rounded-2xl border border-border bg-surface/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Ticket className="h-4 w-4 text-accent-cyan" />
+                      <span className="text-sm font-semibold text-white">Registration Method</span>
+                    </div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => setEventData(prev => ({ ...prev, useExternalForm: false, formLink: '' }))}
+                        className={cn(
+                          'px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
+                          !eventData.useExternalForm
+                            ? 'bg-yellow-400/20 border-yellow-400 text-yellow-400'
+                            : 'border-border text-text-secondary hover:border-white/30'
+                        )}
+                      >
+                        <Ticket className="h-4 w-4 mx-auto mb-1" />
+                        Use MakeYourPass Ticketing
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEventData(prev => ({ ...prev, useExternalForm: true }))}
+                        className={cn(
+                          'px-5 py-3 rounded-xl border-2 text-sm font-semibold transition-all flex-1 text-center',
+                          eventData.useExternalForm
+                            ? 'bg-accent-pink/20 border-accent-pink text-accent-pink'
+                            : 'border-border text-text-secondary hover:border-white/30'
+                        )}
+                      >
+                        <ExternalLink className="h-4 w-4 mx-auto mb-1" />
+                        Use External Form
+                      </button>
+                    </div>
+                    {eventData.useExternalForm && (
+                      <Input
+                        label="Form Link"
+                        type="url"
+                        placeholder="https://forms.google.com/..."
+                        value={eventData.formLink}
+                        onChange={(e) => updateField('formLink', e.target.value)}
+                        hint="Attendees will be redirected to this link to register"
+                      />
+                    )}
+                  </div>
+
+                  {/* Capacity */}
+                  <Input
+                    label="Max Attendees"
+                    type="number"
+                    placeholder="Leave blank for unlimited"
+                    value={eventData.maxAttendees}
+                    onChange={(e) => updateField('maxAttendees', e.target.value)}
+                    hint="Set a limit on how many people can register"
+                  />
+
+                  {/* Navigation */}
+                  <div className="flex items-center justify-between pt-4">
+                    <Button variant="ghost" onClick={() => setFormStep(0)}>
+                      <ArrowLeft className="h-4 w-4" />
+                      Back
+                    </Button>
+                    <Button variant="gradient" onClick={() => setFormStep(2)}>
+                      Continue to Payment
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ===== STEP 2: PAYMENT & TICKETING ===== */}
+              {formStep === 2 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: `${accentColor}20` }}
+                    >
+                      <IndianRupee className="h-4 w-4" style={{ color: accentColor }} />
+                    </div>
+                    <h2 className="text-lg font-bold text-white">Tickets & Pricing</h2>
+                  </div>
+
+                  {eventData.useExternalForm ? (
+                    <div className="p-8 bg-accent-pink/10 border border-accent-pink/20 rounded-3xl text-center">
+                      <ExternalLink className="h-12 w-12 text-accent-pink mx-auto mb-4" />
+                      <p className="text-white font-semibold text-lg mb-2">External Form Mode</p>
+                      <p className="text-text-secondary text-sm max-w-sm mx-auto">
+                        Ticket management is handled by your external form provider.
+                        No payment setup needed here.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Free / Paid toggle */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, isFree: true } }))}
+                          className={cn(
+                            'relative p-6 rounded-2xl border-2 text-center transition-all duration-300 overflow-hidden',
+                            eventData.ticketing.isFree
+                              ? 'bg-green-500/10 border-green-500 text-green-400 shadow-[0_0_30px_rgba(34,197,94,0.1)]'
+                              : 'bg-surface border-border text-text-secondary hover:border-white/30'
+                          )}
+                        >
+                          {eventData.ticketing.isFree && (
+                            <motion.div
+                              layoutId="tick-bg"
+                              className="absolute inset-0 bg-gradient-to-b from-green-500/10 to-transparent"
+                              initial={false}
+                            />
+                          )}
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center mx-auto mb-3">
+                              <Ticket className="h-5 w-5 text-green-400" />
+                            </div>
+                            <p className="font-bold text-lg mb-1">Free</p>
+                            <p className="text-xs opacity-60">No cost to attend</p>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, isFree: false } }))}
+                          className={cn(
+                            'relative p-6 rounded-2xl border-2 text-center transition-all duration-300 overflow-hidden',
+                            !eventData.ticketing.isFree
+                              ? 'bg-yellow-400/10 border-yellow-400 text-yellow-400 shadow-[0_0_30px_rgba(245,215,0,0.1)]'
+                              : 'bg-surface border-border text-text-secondary hover:border-white/30'
+                          )}
+                        >
+                          {!eventData.ticketing.isFree && (
+                            <motion.div
+                              layoutId="tick-bg"
+                              className="absolute inset-0 bg-gradient-to-b from-yellow-400/10 to-transparent"
+                              initial={false}
+                            />
+                          )}
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-xl bg-yellow-400/20 flex items-center justify-center mx-auto mb-3">
+                              <IndianRupee className="h-5 w-5 text-yellow-400" />
+                            </div>
+                            <p className="font-bold text-lg mb-1">Paid</p>
+                            <p className="text-xs opacity-60">Sell tickets online</p>
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Price & Quantity */}
+                      {!eventData.ticketing.isFree && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="grid sm:grid-cols-2 gap-4"
+                        >
+                          <Input
+                            label="Ticket Price (₹)"
+                            type="number"
+                            placeholder="e.g., 499"
+                            value={eventData.ticketing.price}
+                            onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, price: e.target.value } }))}
+                          />
+                          <Input
+                            label="Number of Tickets"
+                            type="number"
+                            placeholder="e.g., 100"
+                            value={eventData.ticketing.quantity}
+                            onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, quantity: e.target.value } }))}
+                          />
+                        </motion.div>
+                      )}
+
+                      {eventData.ticketing.isFree && (
+                        <Input
+                          label="Number of Tickets"
+                          type="number"
+                          placeholder="e.g., 100"
+                          value={eventData.ticketing.quantity}
+                          onChange={(e) => setEventData(prev => ({ ...prev, ticketing: { ...prev.ticketing, quantity: e.target.value } }))}
+                          hint="How many free tickets are available?"
+                        />
+                      )}
+
+                      {/* Payment info card */}
+                      <div
+                        className="p-5 rounded-2xl border flex items-start gap-4"
+                        style={{
+                          borderColor: `${accentColor}20`,
+                          background: `${accentColor}06`,
+                        }}
+                      >
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: `${accentColor}15` }}
+                        >
+                          <ShieldCheck className="h-5 w-5" style={{ color: accentColor }} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white mb-1">Secure Payment Processing</p>
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            Tickets are processed securely via <strong className="text-white">Razorpay</strong>.
+                            Payment gateway fee (2% + GST) is deducted per transaction.
+                            Funds settle to your bank account within 2-3 business days.
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-text-muted">
+                        Need multiple ticket types (e.g., VIP, Early Bird)? You can add more after creating the event.
+                      </p>
+                    </>
+                  )}
+
+                  {/* Navigation */}
+                  <div className="flex items-center justify-between pt-4">
+                    <Button variant="ghost" onClick={() => setFormStep(1)}>
+                      <ArrowLeft className="h-4 w-4" />
+                      Back
+                    </Button>
+
+                    {saveError && (
+                      <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm max-w-xs">
+                        {saveError}
+                      </div>
+                    )}
+
+                    <Button
+                      variant="gradient"
+                      onClick={handlePublish}
+                      loading={saving}
+                      className="text-base px-8"
+                    >
+                      <Save className="h-4 w-4" />
+                      {saving ? 'Publishing...' : 'Publish Event'}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
