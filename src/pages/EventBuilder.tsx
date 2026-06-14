@@ -374,6 +374,13 @@ export function EventBuilderPage() {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
             className="min-h-screen flex flex-col -mt-[4.625rem]"
+            style={{
+              background: `
+                radial-gradient(ellipse at 50% 0%, rgba(245,215,0,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(255,45,149,0.04) 0%, transparent 50%),
+                linear-gradient(180deg, #0f0f0f 0%, #0a0a0a 50%, #050505 100%)
+              `,
+            }}
           >
             {/* Back button — pinned top */}
             <div className="px-4 pt-8 max-w-5xl mx-auto w-full">
