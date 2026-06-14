@@ -430,17 +430,18 @@ export function EventBuilderPage() {
 
                     {/* Card */}
                     <div
-                      className="relative p-8 sm:p-10 rounded-3xl border transition-all duration-300 overflow-hidden"
+                      className="relative p-8 sm:p-10 rounded-3xl border-2 transition-all duration-300 overflow-hidden group-hover:scale-[1.02]"
                       style={{
-                        borderColor: 'rgba(255,255,255,0.06)',
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                        borderColor: `${card.accentColor}25`,
+                        background: `linear-gradient(135deg, ${card.accentColor}08 0%, rgba(255,255,255,0.01) 100%)`,
+                        boxShadow: `0 0 0 1px ${card.accentColor}10`,
                       }}
                     >
                       {/* Hover gradient overlay */}
                       <div
                         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                         style={{
-                          background: `radial-gradient(ellipse at 50% 0%, ${card.accentColor}15 0%, transparent 70%)`,
+                          background: `radial-gradient(ellipse at 50% 0%, ${card.accentColor}20 0%, transparent 70%)`,
                         }}
                       />
 
