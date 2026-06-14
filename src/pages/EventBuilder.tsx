@@ -363,7 +363,17 @@ export function EventBuilderPage() {
 
   // ===== RENDER =====
   return (
-    <div className="min-h-screen">
+    <div
+      className="min-h-screen"
+      style={{
+        background: `
+          radial-gradient(ellipse 80% 60% at 50% 40%, rgba(30,30,30,1) 0%, rgba(10,10,10,1) 60%, rgba(5,5,5,1) 100%),
+          radial-gradient(ellipse at 50% 0%, rgba(245,215,0,0.08) 0%, transparent 60%),
+          radial-gradient(ellipse at 80% 80%, rgba(255,45,149,0.05) 0%, transparent 50%)
+        `,
+        backgroundColor: '#050505',
+      }}
+    >
       {/* ===== PHASE: SELECT VISIBILITY ===== */}
       <AnimatePresence mode="wait">
         {phase === 'select' && !zoomingCard && (
@@ -374,14 +384,6 @@ export function EventBuilderPage() {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
             className="min-h-screen flex flex-col -mt-[4.625rem]"
-            style={{
-              background: `
-                radial-gradient(ellipse 80% 60% at 50% 40%, rgba(30,30,30,1) 0%, rgba(10,10,10,1) 60%, rgba(5,5,5,1) 100%),
-                radial-gradient(ellipse at 50% 0%, rgba(245,215,0,0.08) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 80%, rgba(255,45,149,0.05) 0%, transparent 50%)
-              `,
-              backgroundColor: '#050505',
-            }}
           >
             {/* Back button — pinned top */}
             <div className="px-4 pt-8 max-w-5xl mx-auto w-full">
