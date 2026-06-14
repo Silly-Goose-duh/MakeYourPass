@@ -34,7 +34,7 @@ function App() {
 
           {/* Dashboard routes (protected) */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-            <Route index element={<DashboardHome />} />
+            <Route index element={<Navigate to="events" replace />} />
             <Route path="events" element={<EventsPage />} />
             <Route path="events/new" element={<EventBuilderPage />} />
             <Route path="events/:id/edit" element={<EventBuilderPage />} />
