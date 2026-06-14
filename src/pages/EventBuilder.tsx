@@ -386,7 +386,7 @@ export function EventBuilderPage() {
             className="min-h-screen flex flex-col -mt-[4.625rem]"
           >
             {/* Back button — pinned top */}
-            <div className="px-4 pt-[2.625rem] max-w-5xl mx-auto w-full">
+            <div className="px-4 pt-14 max-w-5xl mx-auto w-full">
               <button
                 onClick={() => navigate('/dashboard/events')}
                 className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors text-sm"
