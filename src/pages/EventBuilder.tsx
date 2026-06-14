@@ -373,152 +373,160 @@ export function EventBuilderPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            className="max-w-5xl mx-auto px-4 py-12"
+            className="min-h-screen flex flex-col"
           >
-            {/* Back button */}
-            <button
-              onClick={() => navigate('/dashboard/events')}
-              className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-8 text-sm"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to events
-            </button>
-
-            {/* Header */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-12"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-400/20 to-accent-pink/20 border border-yellow-400/20 mx-auto mb-6 flex items-center justify-center"
+            {/* Back button — pinned top */}
+            <div className="px-4 pt-8 max-w-5xl mx-auto w-full">
+              <button
+                onClick={() => navigate('/dashboard/events')}
+                className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors text-sm"
               >
-                <PartyPopper className="h-8 w-8 text-yellow-400" />
-              </motion.div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-                Create Your Event
-              </h1>
-              <p className="text-text-secondary text-lg max-w-md mx-auto">
-                First, choose how your event will be listed
-              </p>
-            </motion.div>
+                <ArrowLeft className="h-4 w-4" />
+                Back to events
+              </button>
+            </div>
 
-            {/* Two cards */}
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="show"
-              className="grid sm:grid-cols-2 gap-6"
-            >
-              {visibilityCards.map((card) => {
-                const Icon = card.icon
-                return (
-                  <motion.button
-                    key={card.id}
-                    variants={itemVariants}
-                    onClick={() => handleSelectVisibility(card.id)}
-                    className="relative group text-left w-full"
+            {/* Center content */}
+            <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
+              <div className="max-w-5xl w-full">
+
+                {/* Header */}
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center mb-12"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                    className="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-400/20 to-accent-pink/20 border border-yellow-400/20 mx-auto mb-6 flex items-center justify-center"
                   >
-                    {/* Glow bg */}
-                    <div
-                      className="absolute -inset-0.5 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500"
-                      style={{ background: card.borderGlow }}
-                    />
+                    <PartyPopper className="h-8 w-8 text-yellow-400" />
+                  </motion.div>
+                  <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+                    Create Your Event
+                  </h1>
+                  <p className="text-text-secondary text-lg max-w-md mx-auto">
+                    First, choose how your event will be listed
+                  </p>
+                </motion.div>
 
-                    {/* Card */}
-                    <div
-                      className="relative p-8 sm:p-10 rounded-3xl border-2 transition-all duration-300 overflow-hidden group-hover:scale-[1.02]"
-                      style={{
-                        borderColor: `${card.accentColor}25`,
-                        background: `linear-gradient(135deg, ${card.accentColor}08 0%, rgba(255,255,255,0.01) 100%)`,
-                        boxShadow: `0 0 0 1px ${card.accentColor}10`,
-                      }}
-                    >
-                      {/* Hover gradient overlay */}
-                      <div
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                        style={{
-                          background: `radial-gradient(ellipse at 50% 0%, ${card.accentColor}20 0%, transparent 70%)`,
-                        }}
-                      />
-
-                      {/* Icon */}
-                      <div
-                        className="relative w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300 group-hover:scale-110"
-                        style={{
-                          background: `${card.accentColor}15`,
-                          borderColor: `${card.accentColor}30`,
-                          borderWidth: 1,
-                        }}
+                {/* Two cards */}
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="grid sm:grid-cols-2 gap-6"
+                >
+                  {visibilityCards.map((card) => {
+                    const Icon = card.icon
+                    return (
+                      <motion.button
+                        key={card.id}
+                        variants={itemVariants}
+                        onClick={() => handleSelectVisibility(card.id)}
+                        className="relative group text-left w-full"
                       >
-                        <Icon
-                          className="h-7 w-7 transition-all duration-300"
-                          style={{ color: card.accentColor }}
+                        {/* Glow bg */}
+                        <div
+                          className="absolute -inset-0.5 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500"
+                          style={{ background: card.borderGlow }}
                         />
-                      </div>
 
-                      {/* Title */}
-                      <h2
-                        className="relative text-2xl font-bold mb-2 transition-all duration-300"
-                        style={{
-                          color: card.accentColor,
-                          textShadow: `0 0 40px ${card.accentColor}30`,
-                        }}
-                      >
-                        {card.title}
-                      </h2>
-                      <p className="relative text-text-secondary text-sm mb-6 leading-relaxed">
-                        {card.subtitle}
-                      </p>
+                        {/* Card */}
+                        <div
+                          className="relative p-8 sm:p-10 rounded-3xl border-2 transition-all duration-300 overflow-hidden group-hover:scale-[1.02]"
+                          style={{
+                            borderColor: `${card.accentColor}25`,
+                            background: `linear-gradient(135deg, ${card.accentColor}08 0%, rgba(255,255,255,0.01) 100%)`,
+                            boxShadow: `0 0 0 1px ${card.accentColor}10`,
+                          }}
+                        >
+                          {/* Hover gradient overlay */}
+                          <div
+                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                            style={{
+                              background: `radial-gradient(ellipse at 50% 0%, ${card.accentColor}20 0%, transparent 70%)`,
+                            }}
+                          />
 
-                      {/* Features */}
-                      <div className="relative space-y-3 mb-8">
-                        {card.features.map((feat, i) => (
-                          <div key={i} className="flex items-start gap-3">
-                            <div
-                              className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                              style={{ background: `${card.accentColor}20` }}
-                            >
-                              <Check className="h-3 w-3" style={{ color: card.accentColor }} />
-                            </div>
-                            <span className="text-sm text-text-secondary">{feat}</span>
+                          {/* Icon */}
+                          <div
+                            className="relative w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300 group-hover:scale-110"
+                            style={{
+                              background: `${card.accentColor}15`,
+                              borderColor: `${card.accentColor}30`,
+                              borderWidth: 1,
+                            }}
+                          >
+                            <Icon
+                              className="h-7 w-7 transition-all duration-300"
+                              style={{ color: card.accentColor }}
+                            />
                           </div>
-                        ))}
-                      </div>
 
-                      {/* CTA */}
-                      <div className="relative flex items-center gap-2 text-sm font-semibold transition-all duration-300 group-hover:gap-3"
-                        style={{ color: card.accentColor }}
-                      >
-                        Select {card.title.split(' ')[0]}
-                        <ChevronRight className="h-4 w-4 transition-all duration-300 group-hover:translate-x-1" />
-                      </div>
+                          {/* Title */}
+                          <h2
+                            className="relative text-2xl font-bold mb-2 transition-all duration-300"
+                            style={{
+                              color: card.accentColor,
+                              textShadow: `0 0 40px ${card.accentColor}30`,
+                            }}
+                          >
+                            {card.title}
+                          </h2>
+                          <p className="relative text-text-secondary text-sm mb-6 leading-relaxed">
+                            {card.subtitle}
+                          </p>
 
-                      {/* Corner decoration */}
-                      <div
-                        className="absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-0 group-hover:opacity-30 transition-all duration-700"
-                        style={{
-                          background: `radial-gradient(circle, ${card.accentColor}40 0%, transparent 70%)`,
-                        }}
-                      />
-                    </div>
-                  </motion.button>
-                )
-              })}
-            </motion.div>
+                          {/* Features */}
+                          <div className="relative space-y-3 mb-8">
+                            {card.features.map((feat, i) => (
+                              <div key={i} className="flex items-start gap-3">
+                                <div
+                                  className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                                  style={{ background: `${card.accentColor}20` }}
+                                >
+                                  <Check className="h-3 w-3" style={{ color: card.accentColor }} />
+                                </div>
+                                <span className="text-sm text-text-secondary">{feat}</span>
+                              </div>
+                            ))}
+                          </div>
 
-            {/* Bottom note */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              className="text-center mt-10 text-text-muted text-xs"
-            >
-              You can change visibility settings anytime from the event dashboard
-            </motion.p>
+                          {/* CTA */}
+                          <div className="relative flex items-center gap-2 text-sm font-semibold transition-all duration-300 group-hover:gap-3"
+                            style={{ color: card.accentColor }}
+                          >
+                            Select {card.title.split(' ')[0]}
+                            <ChevronRight className="h-4 w-4 transition-all duration-300 group-hover:translate-x-1" />
+                          </div>
+
+                          {/* Corner decoration */}
+                          <div
+                            className="absolute -top-20 -right-20 w-40 h-40 rounded-full opacity-0 group-hover:opacity-30 transition-all duration-700"
+                            style={{
+                              background: `radial-gradient(circle, ${card.accentColor}40 0%, transparent 70%)`,
+                            }}
+                          />
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </motion.div>
+
+                {/* Bottom note */}
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.8 }}
+                  className="text-center mt-10 text-text-muted text-xs"
+                >
+                  You can change visibility settings anytime from the event dashboard
+                </motion.p>
+              </div>
+            </div>
           </motion.div>
         )}
 
