@@ -330,7 +330,7 @@ export function EventBuilderPage() {
           category: eventData.category || 'other',
           status: 'published',
           visibility: selectedVisibility || 'public',
-          max_attendees: eventData.maxAttendees ? parseInt(eventData.maxAttendees) : null,
+          max_attendees: eventData.ticketing.quantity ? parseInt(eventData.ticketing.quantity) : null,
           use_external_form: eventData.useExternalForm,
           form_link: eventData.formLink || null,
         })
@@ -1108,16 +1108,6 @@ export function EventBuilderPage() {
                       />
                     )}
                   </div>
-
-                  {/* Capacity */}
-                  <Input
-                    label="Max Attendees"
-                    type="number"
-                    placeholder="Leave blank for unlimited"
-                    value={eventData.maxAttendees}
-                    onChange={(e) => updateField('maxAttendees', e.target.value)}
-                    hint="Set a limit on how many people can register"
-                  />
 
                   {/* Navigation */}
                   <div className="flex items-center justify-between pt-4">
