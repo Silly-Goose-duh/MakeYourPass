@@ -38,6 +38,19 @@ export async function parseEventDocument(
   if (isPdf) {
     try {
       documentText = await extractTextFromPDF(file)
+      // If pdfjs returned empty text, the PDF is likely scanned/image-based.
+      // Render the first page as an image and send to Groq vision instead.
+      if (!documentText.trim()) {
+        onProgress?.('No extractable text — analyzing PDF page as image...')
+        try {
+          return await analyzePdfPageAsImage(file)
+        } catch {
+          throw new Error(
+            `Could not read this PDF. It appears to be a scanned document without selectable text. ` +
+            `Please try uploading a screenshot or photo of the event poster instead.`
+          )
+        }
+      }
     } catch (pdfErr: unknown) {
       // If pdfjs fails, try reading as text or report the specific error
       const pdfErrObj = pdfErr as { message?: string }
@@ -101,11 +114,48 @@ async function extractTextFromPDF(file: File): Promise<string> {
 }
 
 /**
+ * Render the first page of a PDF as an image and analyze it with Groq vision
+ */
+async function analyzePdfPageAsImage(file: File): Promise<ExtractedEventData> {
+  const arrayBuffer = await file.arrayBuffer()
+
+  // Load pdfjs from CDN (browser cache serves instantly since extractTextFromPDF already loaded it)
+  // @ts-expect-error — URL import resolved at runtime
+  const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs'
+
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  const page = await pdf.getPage(1)
+
+  // Set viewport at 2x scale for decent resolution
+  const viewport = page.getViewport({ scale: 2 })
+  const canvas = document.createElement('canvas')
+  canvas.width = viewport.width
+  canvas.height = viewport.height
+  const ctx = canvas.getContext('2d')!
+
+  await page.render({ canvasContext: ctx, viewport }).promise
+
+  // Convert canvas to JPEG base64
+  const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1]
+  canvas.remove()
+
+  return sendToGroqVision(base64, 'image/jpeg')
+}
+
+/**
  * Send image to Groq vision API to extract event details
  */
 async function analyzeImageWithGroq(file: File): Promise<ExtractedEventData> {
   const base64 = await fileToBase64(file)
   const mimeType = file.type || 'image/png'
+  return sendToGroqVision(base64, mimeType)
+}
+
+/**
+ * Shared function: send a base64 image to Groq vision API
+ */
+async function sendToGroqVision(base64: string, mimeType: string): Promise<ExtractedEventData> {
 
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
