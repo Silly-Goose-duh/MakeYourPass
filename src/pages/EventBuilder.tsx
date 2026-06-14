@@ -376,10 +376,11 @@ export function EventBuilderPage() {
             className="min-h-screen flex flex-col -mt-[4.625rem]"
             style={{
               background: `
-                radial-gradient(ellipse at 50% 0%, rgba(245,215,0,0.06) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 80%, rgba(255,45,149,0.04) 0%, transparent 50%),
-                linear-gradient(180deg, #0f0f0f 0%, #0a0a0a 50%, #050505 100%)
+                radial-gradient(ellipse 80% 60% at 50% 40%, rgba(30,30,30,1) 0%, rgba(10,10,10,1) 60%, rgba(5,5,5,1) 100%),
+                radial-gradient(ellipse at 50% 0%, rgba(245,215,0,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(255,45,149,0.05) 0%, transparent 50%)
               `,
+              backgroundColor: '#050505',
             }}
           >
             {/* Back button — pinned top */}
