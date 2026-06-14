@@ -225,9 +225,17 @@ create policy "Anyone can view published events"
 
 create policy "Org members can create events"
   on events for insert
-  with check (org_id in (
-    select org_id from org_members where user_id = auth.uid() and status = 'active'
-  ));
+  with check (
+    -- User is an active member of the org
+    (org_id in (
+      select org_id from org_members where user_id = auth.uid() and status = 'active'
+    ))
+    or
+    -- OR user owns the org (catches edge case where org_members insert is in same transaction)
+    (org_id in (
+      select id from organizations where owner_id = auth.uid()
+    ))
+  );
 
 create policy "Org members can update events"
   on events for update
