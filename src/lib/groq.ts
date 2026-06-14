@@ -178,24 +178,28 @@ async function sendToGroqVision(base64: string, mimeType: string): Promise<Extra
           content: [
             {
               type: 'text',
-              text: `Extract all event details from this image/brochure. Return ONLY valid JSON with these fields:
+              text: `You are an event detail extraction AI. Read EVERY piece of text in this image/brochure carefully.
+
+Extract ALL visible event details and return them as JSON. Be thorough — look for dates, times, venue names, addresses, ticket prices, descriptions, and any registration limits.
+
+Return ONLY valid JSON with exactly this structure. Fill every field you can find in the image. Use empty string "" for anything not found:
 {
-  "title": "Event name",
-  "description": "Full event description",
-  "shortDescription": "One-line tagline",
+  "title": "Full event name/title",
+  "description": "Complete event description, agenda, or details",
+  "shortDescription": "One-line tagline or subtitle",
   "category": "conference|workshop|meetup|festival|concert|sports|networking|college_fest|webinar|other",
   "startDate": "YYYY-MM-DD",
   "endDate": "YYYY-MM-DD",
-  "startTime": "HH:MM",
-  "endTime": "HH:MM",
-  "venueName": "Venue name",
-  "venueAddress": "Full address",
-  "city": "City",
-  "state": "State",
-  "maxAttendees": "Number or empty"
+  "startTime": "HH:MM (24-hour format)",
+  "endTime": "HH:MM (24-hour format)",
+  "venueName": "Venue or location name",
+  "venueAddress": "Full street address",
+  "city": "City name",
+  "state": "State or region",
+  "maxAttendees": "Maximum participant count or empty"
 }
 
-Fill what you can from the image. Leave empty strings for fields not found. Return ONLY the JSON object, no other text.`,
+Scan the image from top to bottom. Extract EVERY detail. Return ONLY the JSON object, no other text, no markdown formatting.`,
             },
             {
               type: 'image_url',
@@ -204,8 +208,8 @@ Fill what you can from the image. Leave empty strings for fields not found. Retu
           ],
         },
       ],
-      temperature: 0.1,
-      max_tokens: 1024,
+      temperature: 0.2,
+      max_tokens: 2048,
     }),
   })
 
@@ -234,35 +238,35 @@ async function parseTextWithGroq(text: string): Promise<ExtractedEventData> {
       messages: [
         {
           role: 'system',
-          content: 'You extract structured event data from text. Return ONLY valid JSON.',
+          content: 'You extract ALL structured event data from text. Be thorough — read every line and fill as many fields as possible.',
         },
         {
           role: 'user',
-          content: `Extract event details from this document text. Return ONLY valid JSON with these fields:
+          content: `Extract ALL event details from the document text below. Return ONLY valid JSON with exactly this structure. Fill every field you can find. Use empty string "" only if truly absent:
 {
-  "title": "Event name",
-  "description": "Full event description",
-  "shortDescription": "One-line tagline",
+  "title": "Full event name/title",
+  "description": "Complete event description, agenda, or details",
+  "shortDescription": "One-line tagline or subtitle",
   "category": "conference|workshop|meetup|festival|concert|sports|networking|college_fest|webinar|other",
   "startDate": "YYYY-MM-DD",
   "endDate": "YYYY-MM-DD",
-  "startTime": "HH:MM (24hr)",
-  "endTime": "HH:MM (24hr)",
-  "venueName": "Venue name",
-  "venueAddress": "Full address",
-  "city": "City",
-  "state": "State",
-  "maxAttendees": "Number or empty"
+  "startTime": "HH:MM (24-hour format)",
+  "endTime": "HH:MM (24-hour format)",
+  "venueName": "Venue or location name",
+  "venueAddress": "Full street address",
+  "city": "City name",
+  "state": "State or region",
+  "maxAttendees": "Maximum participant count or empty"
 }
 
-Fill what you can. Empty string for missing fields. ONLY the JSON object, no other text.
+SCAN THE ENTIRE TEXT BELOW. Look for dates, times, locations, descriptions, ticket counts, categories. Extract everything you can find. Return ONLY the JSON object, no markdown, no code blocks, no other text.
 
 DOCUMENT TEXT:
 ${text.slice(0, 8000)}`,
         },
       ],
-      temperature: 0.1,
-      max_tokens: 1024,
+      temperature: 0.2,
+      max_tokens: 2048,
     }),
   })
 
@@ -277,33 +281,59 @@ ${text.slice(0, 8000)}`,
 }
 
 /**
- * Parse the JSON response from Groq, handling markdown code blocks
+ * Parse the JSON response from Groq, handling various formats and edge cases
  */
 function parseGroqResponse(content: string): ExtractedEventData {
-  // Handle markdown code blocks
-  const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const jsonStr = jsonMatch ? jsonMatch[1].trim() : content.trim()
+  // Step 1: Try to extract JSON from markdown code blocks
+  let jsonStr = content.trim()
 
-  try {
-    const data = JSON.parse(jsonStr)
-    return {
-      title: data.title || '',
-      description: data.description || '',
-      shortDescription: data.shortDescription || '',
-      category: data.category || '',
-      startDate: data.startDate || '',
-      endDate: data.endDate || '',
-      startTime: data.startTime || '',
-      endTime: data.endTime || '',
-      venueName: data.venueName || '',
-      venueAddress: data.venueAddress || '',
-      city: data.city || '',
-      state: data.state || '',
-      maxAttendees: data.maxAttendees || '',
+  // Remove markdown code block fences (```json ... ``` or ``` ... ```)
+  const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (codeBlockMatch) {
+    jsonStr = codeBlockMatch[1].trim()
+  }
+
+  // Step 2: If still not valid JSON, try finding the first { and last }
+  if (jsonStr) {
+    const firstBrace = jsonStr.indexOf('{')
+    const lastBrace = jsonStr.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = jsonStr.slice(firstBrace, lastBrace + 1)
     }
+  }
+
+  // Step 3: Try parsing, with fallback for common issues
+  let data: Record<string, unknown>
+  try {
+    data = JSON.parse(jsonStr)
   } catch {
-    console.warn('Failed to parse Groq response as JSON:', content.slice(0, 200))
-    throw new Error('Could not parse the document. Please try a clearer file or fill in the details manually.')
+    // Try fixing trailing commas before re-trying
+    try {
+      const fixed = jsonStr
+        .replace(/,\s*}/g, '}')
+        .replace(/,\s*]/g, ']')
+      data = JSON.parse(fixed)
+    } catch {
+      // Last resort: log the raw content for debugging
+      console.warn('Failed to parse Groq response. Raw content (first 500 chars):', content.slice(0, 500))
+      throw new Error('Could not parse the document. Please try a clearer file or fill in the details manually.')
+    }
+  }
+
+  return {
+    title: typeof data.title === 'string' ? data.title : '',
+    description: typeof data.description === 'string' ? data.description : '',
+    shortDescription: typeof data.shortDescription === 'string' ? data.shortDescription : '',
+    category: typeof data.category === 'string' ? data.category : '',
+    startDate: typeof data.startDate === 'string' ? data.startDate : '',
+    endDate: typeof data.endDate === 'string' ? data.endDate : '',
+    startTime: typeof data.startTime === 'string' ? data.startTime : '',
+    endTime: typeof data.endTime === 'string' ? data.endTime : '',
+    venueName: typeof data.venueName === 'string' ? data.venueName : '',
+    venueAddress: typeof data.venueAddress === 'string' ? data.venueAddress : '',
+    city: typeof data.city === 'string' ? data.city : '',
+    state: typeof data.state === 'string' ? data.state : '',
+    maxAttendees: typeof data.maxAttendees === 'string' ? data.maxAttendees : '',
   }
 }
 
