@@ -130,7 +130,7 @@ export function EventDashboard() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-7xl px-6 sm:px-10">
       {/* Back + Event Header */}
       <div className="mb-6">
         <Link to="/dashboard/events" className="inline-flex items-center gap-1.5 text-text-muted hover:text-yellow-400 text-sm mb-3 transition-colors">

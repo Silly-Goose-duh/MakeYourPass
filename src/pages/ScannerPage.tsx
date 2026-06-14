@@ -143,7 +143,7 @@ export function ScannerPage() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-lg mx-auto">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-2xl mx-auto px-6">
       <button
         onClick={() => navigate('/dashboard/attendees')}
         className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-4 text-sm"

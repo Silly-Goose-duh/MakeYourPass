@@ -305,7 +305,7 @@ export function EventPage() {
     return (
       <div className="min-h-screen bg-background">
         <div className="relative bg-gradient-to-b from-yellow-400/10 via-background to-background pt-20 pb-16">
-          <div className="mx-auto px-6 max-w-4xl">
+          <div className="mx-auto px-6 sm:px-10 max-w-6xl">
             <Link to="/events" className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-6 text-sm">
               <ArrowLeft className="h-4 w-4" />
               Back to Events
@@ -358,7 +358,7 @@ export function EventPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="relative bg-gradient-to-b from-yellow-400/10 via-background to-background pt-20 pb-16">
-        <div className="mx-auto px-6 max-w-5xl">
+        <div className="mx-auto px-6 sm:px-10 max-w-7xl">
           <Link to="/events" className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors mb-6 text-sm">
             <ArrowLeft className="h-4 w-4" />
             Back to Events
@@ -636,7 +636,7 @@ export function EventPage() {
 
       {/* Full description */}
       {event.description && (
-        <div className="mx-auto px-6 max-w-5xl pb-20">
+        <div className="mx-auto px-6 sm:px-10 max-w-7xl pb-20">
           <h2 className="text-2xl font-bold text-white mb-4">About This Event</h2>
           <p className="text-text-secondary leading-relaxed whitespace-pre-line">{event.description}</p>
         </div>
