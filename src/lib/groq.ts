@@ -158,13 +158,15 @@ async function analyzeImageWithGroq(file: File): Promise<ExtractedEventData> {
 
 /**
  * Shared function: send a base64 image to Groq vision API
+ * Uses a two-step approach: first describes everything visible, then parses into structured JSON
  */
 async function sendToGroqVision(base64: string, mimeType: string): Promise<ExtractedEventData> {
   if (!GROQ_API_KEY) {
     throw new Error('Groq API key not configured. Set VITE_GROQ_API_KEY in .env.local')
   }
 
-  const response = await fetch(GROQ_API_URL, {
+  // Step 1: Use the vision model to transcribe ALL visible text from the image
+  const visionResponse = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -178,28 +180,18 @@ async function sendToGroqVision(base64: string, mimeType: string): Promise<Extra
           content: [
             {
               type: 'text',
-              text: `You are an event detail extraction AI. Read EVERY piece of text in this image/brochure carefully.
+              text: `Look at this event brochure/flyer image carefully. Read EVERY piece of text visible in the image from top to bottom, left to right.
 
-Extract ALL visible event details and return them as JSON. Be thorough — look for dates, times, venue names, addresses, ticket prices, descriptions, and any registration limits.
+Your task is to DESCRIBE everything you see in plain text. Include:
+- The event name/title
+- Any tagline or subtitle
+- The full description or agenda text
+- Dates and times mentioned
+- Venue name and address/city
+- Ticket prices, registration details, capacity limits
+- Any other text or details visible
 
-Return ONLY valid JSON with exactly this structure. Fill every field you can find in the image. Use empty string "" for anything not found:
-{
-  "title": "Full event name/title",
-  "description": "Complete event description, agenda, or details",
-  "shortDescription": "One-line tagline or subtitle",
-  "category": "conference|workshop|meetup|festival|concert|sports|networking|college_fest|webinar|other",
-  "startDate": "YYYY-MM-DD",
-  "endDate": "YYYY-MM-DD",
-  "startTime": "HH:MM (24-hour format)",
-  "endTime": "HH:MM (24-hour format)",
-  "venueName": "Venue or location name",
-  "venueAddress": "Full street address",
-  "city": "City name",
-  "state": "State or region",
-  "maxAttendees": "Maximum participant count or empty"
-}
-
-Scan the image from top to bottom. Extract EVERY detail. Return ONLY the JSON object, no other text, no markdown formatting.`,
+Be COMPLETE. Transcribe ALL text you can see. Do NOT summarize or omit anything. Output only the raw text description, no commentary.`,
             },
             {
               type: 'image_url',
@@ -208,19 +200,25 @@ Scan the image from top to bottom. Extract EVERY detail. Return ONLY the JSON ob
           ],
         },
       ],
-      temperature: 0.2,
+      temperature: 0.1,
       max_tokens: 2048,
     }),
   })
 
-  if (!response.ok) {
-    const err = await response.text()
+  if (!visionResponse.ok) {
+    const err = await visionResponse.text()
     throw new Error(`Groq API error: ${err}`)
   }
 
-  const result = await response.json()
-  const content = result.choices?.[0]?.message?.content || '{}'
-  return parseGroqResponse(content)
+  const visionResult = await visionResponse.json()
+  const extractedText = visionResult.choices?.[0]?.message?.content || ''
+
+  if (!extractedText.trim()) {
+    throw new Error('AI could not read any text from this image. Please try a clearer image or enter details manually.')
+  }
+
+  // Step 2: Feed the extracted text into the reliable text model for structured JSON
+  return parseTextWithGroq(extractedText)
 }
 
 /**

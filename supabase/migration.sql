@@ -207,6 +207,15 @@ create policy "Users can update their own organizations"
   on organizations for update
   using (owner_id = auth.uid());
 
+-- Org Members: members can see their own memberships, owners can add themselves
+create policy "Users can view their own memberships"
+  on org_members for select
+  using (user_id = auth.uid());
+
+create policy "Org creators can add themselves as members"
+  on org_members for insert
+  with check (user_id = auth.uid() and role = 'owner');
+
 -- Events: org members can view, owner can manage
 create policy "Anyone can view published events"
   on events for select

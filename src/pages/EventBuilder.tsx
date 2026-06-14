@@ -285,9 +285,10 @@ export function EventBuilderPage() {
 
         if (orgError) { setSaveError(orgError.message); setSaving(false); return }
         orgId = newOrg!.id
-        await supabase.from('org_members').insert({
+        const { error: memberError } = await supabase.from('org_members').insert({
           org_id: orgId, user_id: user.id, role: 'owner', status: 'active',
         })
+        if (memberError) { setSaveError(memberError.message); setSaving(false); return }
       } else {
         orgId = orgs[0].id
       }
