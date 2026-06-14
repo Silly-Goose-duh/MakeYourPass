@@ -31,10 +31,10 @@ export async function parseEventDocument(
   onProgress?.('Reading document...')
 
   // Step 1: Extract text from the document
-  let documentText
   const fileName = file.name.toLowerCase()
   const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf')
   const isImage = file.type.startsWith('image/') || ['.png', '.jpg', '.jpeg', '.webp'].some(ext => fileName.endsWith(ext))
+  let documentText: string | undefined
   if (isPdf) {
     try {
       documentText = await extractTextFromPDF(file)
@@ -76,17 +76,16 @@ export async function parseEventDocument(
 }
 
 /**
- * Extract text from a PDF file using pdfjs-dist
+ * Extract text from a PDF file using pdfjs-dist loaded from CDN
+ * (Avoids Vite code-split chunk caching issues in production)
  */
 async function extractTextFromPDF(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer()
   
-  // Dynamic import of pdfjs
-  const pdfjsLib = await import('pdfjs-dist')
-  
-  // Use CDN-hosted worker for reliability in production
-  const pdfVersion = pdfjsLib.version || '4.0.379'
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfVersion}/build/pdf.worker.min.mjs`
+  // Load pdfjs from CDN dynamically — avoids Vite code-split chunk issues
+  // @ts-expect-error — URL import is resolved at runtime, not by TypeScript
+  const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs'
 
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
   const pages: string[] = []
