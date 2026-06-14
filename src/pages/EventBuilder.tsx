@@ -386,7 +386,7 @@ export function EventBuilderPage() {
             className="min-h-screen flex flex-col -mt-[4.625rem]"
           >
             {/* Back button — pinned top */}
-            <div className="px-4 pt-14 max-w-5xl mx-auto w-full">
+            <div className="px-6 sm:px-10 pt-14 w-full">
               <button
                 onClick={() => navigate('/dashboard/events')}
                 className="inline-flex items-center gap-2 text-text-secondary hover:text-yellow-400 transition-colors text-sm"
@@ -397,8 +397,8 @@ export function EventBuilderPage() {
             </div>
 
             {/* Center content */}
-            <div className="flex-1 flex flex-col items-center justify-center px-4">
-              <div className="max-w-5xl w-full">
+            <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-10">
+              <div className="w-full max-w-7xl">
 
                 {/* Header */}
                 <motion.div
@@ -427,7 +427,7 @@ export function EventBuilderPage() {
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
-                  className="grid sm:grid-cols-2 gap-6"
+                  className="grid sm:grid-cols-2 gap-8 xl:gap-12"
                 >
                   {visibilityCards.map((card) => {
                     const Icon = card.icon
@@ -446,7 +446,7 @@ export function EventBuilderPage() {
 
                         {/* Card */}
                         <div
-                          className="relative p-8 sm:p-10 rounded-3xl border-2 transition-all duration-300 overflow-hidden group-hover:scale-[1.02]"
+                          className="relative p-8 sm:p-10 lg:p-12 rounded-3xl border-2 transition-all duration-300 overflow-hidden group-hover:scale-[1.02]"
                           style={{
                             borderColor: `${card.accentColor}25`,
                             background: `linear-gradient(135deg, ${card.accentColor}08 0%, rgba(255,255,255,0.01) 100%)`,
@@ -586,7 +586,7 @@ export function EventBuilderPage() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-3xl mx-auto px-4 py-8"
+            className="max-w-5xl mx-auto px-6 sm:px-10 py-8"
           >
             {/* Back + visibility badge */}
             <div className="flex items-center justify-between mb-8">
