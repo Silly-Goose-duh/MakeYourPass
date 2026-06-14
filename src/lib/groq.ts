@@ -44,10 +44,13 @@ export async function parseEventDocument(
         onProgress?.('No extractable text — analyzing PDF page as image...')
         try {
           return await analyzePdfPageAsImage(file)
-        } catch {
+        } catch (visionErr: unknown) {
+          const visionMsg = visionErr instanceof Error ? visionErr.message : String(visionErr)
           throw new Error(
-            `Could not read this PDF. It appears to be a scanned document without selectable text. ` +
-            `Please try uploading a screenshot or photo of the event poster instead.`
+            `Could not read this PDF. It appears to be a scanned document without selectable text, ` +
+            `and AI vision analysis failed: ${visionMsg}. ` +
+            `Please try uploading a screenshot or photo of the event poster instead.`,
+            { cause: visionErr }
           )
         }
       }
@@ -132,7 +135,8 @@ async function analyzePdfPageAsImage(file: File): Promise<ExtractedEventData> {
   const canvas = document.createElement('canvas')
   canvas.width = viewport.width
   canvas.height = viewport.height
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Browser canvas context not available')
 
   await page.render({ canvasContext: ctx, viewport }).promise
 
@@ -156,6 +160,9 @@ async function analyzeImageWithGroq(file: File): Promise<ExtractedEventData> {
  * Shared function: send a base64 image to Groq vision API
  */
 async function sendToGroqVision(base64: string, mimeType: string): Promise<ExtractedEventData> {
+  if (!GROQ_API_KEY) {
+    throw new Error('Groq API key not configured. Set VITE_GROQ_API_KEY in .env.local')
+  }
 
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
