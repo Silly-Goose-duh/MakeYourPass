@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Calendar, MapPin, MoreHorizontal, Edit, Eye, Copy, Sparkles, ExternalLink, Search, Ticket } from 'lucide-react'
+import { Plus, Calendar, MapPin, MoreHorizontal, Edit, Eye, Copy, Sparkles, ExternalLink, Search, Ticket, FlaskConical } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -71,6 +71,77 @@ export function EventsPage() {
     else loadPublicEvents()
   }, [mode])
 
+  const seedTestEvent = async () => {
+    setLoading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+
+    // Find or create org
+    let { data: orgs } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('owner_id', user.id)
+      .limit(1)
+
+    let orgId: string
+    if (!orgs || orgs.length === 0) {
+      const { data: newOrg } = await supabase
+        .from('organizations')
+        .insert({
+          name: 'My Organization',
+          slug: 'my-org',
+          owner_id: user.id,
+        })
+        .select('id')
+        .single()
+      orgId = newOrg!.id
+    } else {
+      orgId = orgs[0].id
+    }
+
+    // Create the event
+    const { data: event, error: evErr } = await supabase
+      .from('events')
+      .insert({
+        org_id: orgId,
+        title: 'College Fest Marian',
+        slug: 'college-fest-marian',
+        short_description: 'Annual college fest — music, dance, competitions, and more!',
+        venue_name: 'Marian College Campus',
+        city: 'Kottayam',
+        state: 'Kerala',
+        start_date: '2026-08-01',
+        end_date: '2026-08-03',
+        start_time: '09:00',
+        end_time: '21:00',
+        timezone: 'Asia/Kolkata',
+        category: 'college_fest',
+        status: 'published',
+        visibility: 'public',
+        max_attendees: 100,
+      })
+      .select('id')
+      .single()
+
+    if (evErr) { setLoading(false); alert('Error: ' + evErr.message); return }
+
+    // Create ticket type with 20 total / 10 sold
+    await supabase.from('ticket_types').insert({
+      event_id: event.id,
+      name: 'General Admission',
+      price: 0,
+      quantity: 20,
+      quantity_sold: 10,
+      max_per_order: 5,
+      is_active: true,
+      sort_order: 0,
+      currency: 'INR',
+    })
+
+    await loadMyEvents()
+    alert('✅ Test event "College Fest Marian" created! Check your events list.')
+  }
+
   const filteredMyEvents = myEvents.filter(e => {
     if (filterStatus !== 'all' && e.status !== filterStatus) return false
     if (searchQuery) {
@@ -99,12 +170,18 @@ export function EventsPage() {
           </p>
         </div>
         {mode === 'my-events' && (
-          <Link to="/dashboard/events/new">
-            <Button variant="gradient" size="sm" glow>
-              <Plus className="h-4 w-4" />
-              Create Event
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={seedTestEvent} className="text-xs text-text-muted hover:text-yellow-400">
+              <FlaskConical className="h-3.5 w-3.5" />
+              Add Test Event
             </Button>
-          </Link>
+            <Link to="/dashboard/events/new">
+              <Button variant="gradient" size="sm" glow>
+                <Plus className="h-4 w-4" />
+                Create Event
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
 

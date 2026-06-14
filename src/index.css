@@ -15,9 +15,9 @@
   --color-accent-cyan: #00f0ff;
   --color-accent-cyan-muted: rgba(0, 240, 255, 0.12);
 
-  --color-background: #000000;
-  --color-surface: #0a0a0a;
-  --color-surface-elevated: #141414;
+  --color-background: #050505;
+  --color-surface: #0c0c0c;
+  --color-surface-elevated: #161616;
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-light: rgba(255, 255, 255, 0.15);
 
@@ -126,7 +126,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .glass-strong {
-  background: rgba(10, 10, 10, 0.8);
+  background: rgba(12, 12, 12, 0.85);
   backdrop-filter: var(--glass-backdrop);
   -webkit-backdrop-filter: var(--glass-backdrop);
   border: 1px solid var(--glass-border);

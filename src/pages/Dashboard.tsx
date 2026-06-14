@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { User } from '@supabase/supabase-js'
 import {
-  LayoutDashboard, Calendar, Ticket, BarChart3,
+  Calendar, Ticket, BarChart3,
   Users, Settings, LogOut, Menu, X, Plus, Bell,
   Sparkles, Zap, TrendingUp, ArrowRight, Rocket, Search
 } from 'lucide-react'
@@ -15,7 +15,6 @@ import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 
 const sidebarLinks = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Events', href: '/dashboard/events', icon: Calendar },
   { label: 'Tickets', href: '/dashboard/tickets', icon: Ticket },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
