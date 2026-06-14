@@ -67,6 +67,7 @@ export function EventsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mode === 'my-events') loadMyEvents()
     else loadPublicEvents()
   }, [mode])
@@ -77,7 +78,7 @@ export function EventsPage() {
     if (!user) { setLoading(false); return }
 
     // Find or create org
-    let { data: orgs } = await supabase
+    const { data: orgs } = await supabase
       .from('organizations')
       .select('id')
       .eq('owner_id', user.id)

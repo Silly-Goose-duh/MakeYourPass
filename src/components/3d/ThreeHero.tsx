@@ -125,34 +125,35 @@ function FloatingIcosahedron({ position, color, scale = 0.5, speed = 0.5 }: {
 }
 
 // ---------- Glowing Particles (multi-color) ----------
-function Particles() {
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry()
-    const count = 300
-    const positions = new Float32Array(count * 3)
-    const colors = new Float32Array(count * 3)
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 24
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 24
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 24
-      // Random yellow, pink, or cyan
-      const choice = Math.random()
-      if (choice < 0.4) {
-        colors[i * 3] = 245 / 255; colors[i * 3 + 1] = 215 / 255; colors[i * 3 + 2] = 0 // yellow
-      } else if (choice < 0.7) {
-        colors[i * 3] = 1; colors[i * 3 + 1] = 45 / 255; colors[i * 3 + 2] = 149 / 255 // pink
-      } else {
-        colors[i * 3] = 0; colors[i * 3 + 1] = 240 / 255; colors[i * 3 + 2] = 1 // cyan
-      }
+function createParticleGeometry() {
+  const geo = new THREE.BufferGeometry()
+  const count = 300
+  const positions = new Float32Array(count * 3)
+  const colors = new Float32Array(count * 3)
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 24
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 24
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 24
+    const choice = Math.random()
+    if (choice < 0.4) {
+      colors[i * 3] = 245 / 255; colors[i * 3 + 1] = 215 / 255; colors[i * 3 + 2] = 0
+    } else if (choice < 0.7) {
+      colors[i * 3] = 1; colors[i * 3 + 1] = 45 / 255; colors[i * 3 + 2] = 149 / 255
+    } else {
+      colors[i * 3] = 0; colors[i * 3 + 1] = 240 / 255; colors[i * 3 + 2] = 1
     }
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-    return geo
-  }, [])
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  return geo
+}
+
+function Particles() {
+  const geometry = useMemo(() => createParticleGeometry(), [])
 
   const ref = useRef<THREE.Points>(null!)
 
-  useFrame((state) => {
+  useFrame(() => {
     if (!ref.current) return
     ref.current.rotation.y += 0.001
   })

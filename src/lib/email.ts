@@ -54,8 +54,9 @@ export async function sendConfirmationEmail(params: ConfirmationEmailParams): Pr
       return { success: true }
     }
     return { success: false, error: `EmailJS returned status ${response.status}` }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to send confirmation email:', err)
-    return { success: false, error: err?.text || err?.message || 'Unknown email error' }
+    const emailErr = err as { status?: number; text?: string }
+    return { success: false, error: emailErr?.text || (err instanceof Error ? err.message : 'Unknown email error') }
   }
 }

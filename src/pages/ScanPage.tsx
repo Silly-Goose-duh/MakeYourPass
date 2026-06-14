@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Check, X, Calendar, MapPin, Ticket as TicketIcon, ArrowLeft, User, Shield } from 'lucide-react'
@@ -19,7 +19,7 @@ export function ScanPage() {
   const [checkedIn, setCheckedIn] = useState(false)
   const [checkInError, setCheckInError] = useState('')
 
-  async function loadTicket() {
+  const loadTicket = useCallback(async () => {
     setLoading(true)
     const { data } = await supabase
       .from('tickets')
@@ -49,12 +49,13 @@ export function ScanPage() {
     if (data.status === 'used') {
       setCheckedIn(true)
     }
-  }
+  }, [qrCode])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!qrCode) { setError('No QR code provided'); setLoading(false); return }
     loadTicket()
-  }, [qrCode])
+  }, [qrCode, loadTicket])
 
   async function handleCheckIn() {
     if (!ticket) return

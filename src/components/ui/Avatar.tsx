@@ -1,4 +1,4 @@
-import React, { forwardRef, HTMLAttributes } from 'react'
+import React, { HTMLAttributes } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 
 const sizeMap = {

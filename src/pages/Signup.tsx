@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Sparkles, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/Input'
 import { supabase, signUp } from '@/lib/supabase'
 
 export function SignupPage() {
-  const navigate = useNavigate()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,7 +27,7 @@ export function SignupPage() {
     }
 
     try {
-      const { data, error } = await signUp(email, password, fullName)
+      const { error } = await signUp(email, password, fullName)
       if (error) { setError(error.message); return }
       setSuccess(true)
     } catch {

@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+
 import {
   Calendar, Clock, MapPin, Users, Share2, Check,
-  ArrowLeft, ExternalLink, Ticket, Sparkles, Download, X
+  ArrowLeft, ExternalLink, Ticket as TicketIcon, Sparkles, Download
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -13,7 +13,26 @@ import { Modal } from '@/components/ui/Modal'
 import { formatDate, formatTime, cn } from '@/lib/utils'
 import { supabase, createOrder, createTickets, updateTicketTypeSales } from '@/lib/supabase'
 import { sendConfirmationEmail } from '@/lib/email'
-import type { Event, TicketType } from '@/types'
+import { QRCodeSVG } from 'qrcode.react'
+import type { Event, TicketType, Ticket } from '@/types'
+
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || ''
+
+/** Load Razorpay checkout script dynamically once */
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if ((window as unknown as { Razorpay?: unknown }).Razorpay) {
+      resolve(true)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 export function EventPage() {
   const { eventSlug } = useParams()
@@ -28,9 +47,7 @@ export function EventPage() {
   const [showCheckout, setShowCheckout] = useState(false)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [purchaseError, setPurchaseError] = useState('')
-  const [purchasedTickets, setPurchasedTickets] = useState<any[]>([])
-  const printRef = useRef<HTMLDivElement>(null)
-
+  const [purchasedTickets, setPurchasedTickets] = useState<Ticket[]>([])
   useEffect(() => {
     if (!eventSlug) return
     async function load() {
@@ -91,7 +108,108 @@ export function EventPage() {
       if (orderError) throw new Error(orderError.message)
       if (!order) throw new Error('Failed to create order')
 
-      // 3. Generate tickets with QR codes
+      // For free tickets: direct flow (create tickets, show success)
+      if (activeTicket.price === 0) {
+        await completePurchase(order, activeTicket)
+        return
+      }
+
+      // For paid tickets: Razorpay payment flow
+      const scriptLoaded = await loadRazorpayScript()
+      if (!scriptLoaded) {
+        throw new Error('Failed to load payment gateway. Please try again.')
+      }
+
+      const razorpayRes = await fetch('/api/razorpay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create-order',
+          amount: totalAmount, // already in paise
+          currency: 'INR',
+          receipt: `order_${order.id}`,
+        }),
+      })
+
+      if (!razorpayRes.ok) {
+        const errBody = await razorpayRes.json().catch(() => ({}))
+        throw new Error(errBody.error || 'Failed to create payment order')
+      }
+
+      const razorpayOrder = await razorpayRes.json()
+      
+      const options = {
+        key: RAZORPAY_KEY_ID,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: event.title,
+        description: `${activeTicket.name} × ${quantity}`,
+        order_id: razorpayOrder.id,
+        prefill: {
+          name: buyerName,
+          email: buyerEmail,
+          contact: buyerPhone,
+        },
+        modal: {
+          ondismiss: () => {
+            setIsPurchasing(false)
+          },
+        },
+        handler: async function (response: {
+          razorpay_payment_id: string
+          razorpay_order_id: string
+          razorpay_signature: string
+        }) {
+          try {
+            // Verify payment signature
+            const verifyRes = await fetch('/api/razorpay', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'verify-payment',
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            })
+
+            const verifyResult = await verifyRes.json()
+            if (!verifyResult.verified) {
+              throw new Error('Payment verification failed. Please contact support.')
+            }
+
+            // Update order with payment ID
+            await supabase
+              .from('orders')
+              .update({
+                status: 'confirmed',
+                payment_id: response.razorpay_payment_id,
+              })
+              .eq('id', order.id)
+
+            // Create tickets
+            await completePurchase(order, activeTicket)
+
+          } catch (err: unknown) {
+            setPurchaseError(err instanceof Error ? err.message : 'Payment confirmation failed.')
+            setIsPurchasing(false)
+          }
+        },
+      }
+
+      const rzp = new (window as unknown as { Razorpay: new (options: Record<string, unknown>) => { open: () => void } }).Razorpay(options)
+      rzp.open()
+      
+    } catch (err: unknown) {
+      setPurchaseError(err instanceof Error ? err.message : 'Purchase failed. Please try again.')
+      setIsPurchasing(false)
+    }
+  }
+
+  /** Complete purchase flow — create tickets, update sales, send email, show success */
+  async function completePurchase(order: { id: string }, ticketType: TicketType) {
+    try {
+      // Generate tickets with QR codes
       const ticketData = []
       for (let i = 0; i < quantity; i++) {
         const ticketId = crypto.randomUUID()
@@ -100,8 +218,8 @@ export function EventPage() {
         
         ticketData.push({
           order_id: order.id,
-          event_id: event.id,
-          ticket_type_id: activeTicket.id,
+          event_id: event!.id,
+          ticket_type_id: ticketType.id,
           qr_code: qrCode,
           qr_code_url: qrCodeUrl,
           attendee_name: quantity === 1 ? buyerName : undefined,
@@ -112,33 +230,32 @@ export function EventPage() {
       const { data: tickets, error: ticketsError } = await createTickets(ticketData)
       if (ticketsError) throw new Error(ticketsError.message)
 
-      // 4. Update ticket type sales count
-      const newSold = (activeTicket.quantity_sold || 0) + quantity
-      await updateTicketTypeSales(activeTicket.id, newSold)
+      // Update ticket type sales count
+      const newSold = (ticketType.quantity_sold || 0) + quantity
+      await updateTicketTypeSales(ticketType.id, newSold)
 
-      // 5. Send confirmation email (fire & forget — don't block on failure)
-      const qrCodeUrls = (tickets || ticketData).map((t: any) =>
+      // Send confirmation email (fire & forget — don't block on failure)
+      const qrCodeUrls = tickets!.map((t) =>
         `${window.location.origin}/scan/${t.qr_code}`
       )
       sendConfirmationEmail({
         to_name: buyerName,
         to_email: buyerEmail,
-        event_title: event.title,
-        event_date: formatDate(event.start_date),
-        event_time: `${formatTime(event.start_time)} - ${formatTime(event.end_time)}`,
-        event_venue: [event.venue_name, event.city].filter(Boolean).join(', '),
-        ticket_type: activeTicket.name,
+        event_title: event!.title,
+        event_date: formatDate(event!.start_date),
+        event_time: `${formatTime(event!.start_time)} - ${formatTime(event!.end_time)}`,
+        event_venue: [event!.venue_name, event!.city].filter(Boolean).join(', '),
+        ticket_type: ticketType.name,
         quantity,
         qr_code_url: qrCodeUrls[0] || '',
-        event_url: `${window.location.origin}/event/${event.slug}`,
+        event_url: `${window.location.origin}/event/${event!.slug}`,
       })
 
-      // 6. Show success modal
-      setPurchasedTickets(tickets || ticketData)
-      
-    } catch (err: any) {
-      setPurchaseError(err.message || 'Purchase failed. Please try again.')
-    } finally {
+      // Show success modal
+      setPurchasedTickets(tickets!)
+      setIsPurchasing(false)
+    } catch (err: unknown) {
+      setPurchaseError(err instanceof Error ? err.message : 'Failed to create tickets.')
       setIsPurchasing(false)
     }
   }
@@ -288,7 +405,7 @@ export function EventPage() {
                 <div className="mb-6 p-4 rounded-xl bg-white/[0.03] border border-white/10">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 text-sm">
-                      <Ticket className="h-4 w-4 text-yellow-400" />
+                      <TicketIcon className="h-4 w-4 text-yellow-400" />
                       <span className="text-text-secondary">Ticket Availability</span>
                     </div>
                     <span className={cn(
@@ -493,16 +610,20 @@ export function EventPage() {
                             loading={isPurchasing}
                             disabled={!buyerName || !buyerEmail || isPurchasing}
                           >
-                            {isPurchasing ? 'Processing...' : 
-                              activeTicket?.price === 0 ? 'Complete Registration' : 
-                              `Complete (₹${(activeTicket?.price || 0) * quantity + Math.round((activeTicket?.price || 0) * quantity * 0.02)})`}
+                            {isPurchasing && activeTicket?.price && activeTicket.price > 0
+                              ? 'Opening Payment...'
+                              : isPurchasing
+                              ? 'Processing...'
+                              : activeTicket?.price === 0
+                              ? 'Complete Registration'
+                              : `Pay ₹${(activeTicket?.price || 0) * quantity + Math.round((activeTicket?.price || 0) * quantity * 0.02)}`}
                           </Button>
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="text-center py-8">
-                      <Ticket className="h-8 w-8 text-text-muted mx-auto mb-3" />
+                      <TicketIcon className="h-8 w-8 text-text-muted mx-auto mb-3" />
                       <p className="text-text-secondary">No tickets available yet</p>
                     </div>
                   )}
@@ -539,14 +660,16 @@ export function EventPage() {
 
           {/* QR Code Tickets */}
           <div className="space-y-3 max-h-[300px] overflow-y-auto">
-            {purchasedTickets.map((ticket: any, idx: number) => (
-              <div key={ticket.id || ticket.qr_code} className="p-4 rounded-xl bg-yellow-400/10 border border-yellow-400/20">
+            {purchasedTickets.map((ticket: Ticket, idx: number) => (
+              <div key={ticket.id} className="p-4 rounded-xl bg-yellow-400/10 border border-yellow-400/20">
                 <div className="flex items-center gap-4">
                   <div className="bg-white p-2 rounded-xl shrink-0">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(ticket.qr_code_url || `https://makeyourpass.vercel.app/scan/${ticket.qr_code}`)}`}
-                      alt="QR"
-                      className="w-16 h-16"
+                    <QRCodeSVG
+                      value={ticket.qr_code_url}
+                      size={64}
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      level="M"
                     />
                   </div>
                   <div className="text-left flex-1 min-w-0">

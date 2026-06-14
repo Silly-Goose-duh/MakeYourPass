@@ -107,9 +107,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
 
 Textarea.displayName = 'Textarea'
 
-export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {}
-
-export const Label = forwardRef<HTMLLabelElement, LabelProps>(
+export const Label = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLabelElement>>(
   ({ className, children, ...props }, ref) => (
     <label
       ref={ref}

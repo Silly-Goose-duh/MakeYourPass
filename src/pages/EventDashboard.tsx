@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft, Users, BarChart3, Ticket, ScanQrCode, Edit3,
-  Calendar, MapPin, Clock, Check, X, Search, Download,
-  QrCode, TrendingUp, DollarSign, ExternalLink
+  Calendar, MapPin, Clock, Check, Search, Download,
+  QrCode, TrendingUp, ExternalLink
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -16,9 +17,13 @@ import type { Event as EventType, TicketType, Order, Ticket as TicketType2 } fro
 
 type Tab = 'overview' | 'attendees' | 'tickets' | 'analytics' | 'scanner'
 
+interface ScanResult {
+  ticket: TicketType2
+  order?: Order
+}
+
 export function EventDashboard() {
   const { eventId } = useParams()
-  const navigate = useNavigate()
   const [event, setEvent] = useState<EventType | null>(null)
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([])
   const [orders, setOrders] = useState<Order[]>([])
@@ -26,14 +31,10 @@ export function EventDashboard() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [scanInput, setScanInput] = useState('')
-  const [scanResult, setScanResult] = useState<any>(null)
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [scanError, setScanError] = useState('')
 
-  useEffect(() => {
-    if (eventId) loadEvent()
-  }, [eventId])
-
-  async function loadEvent() {
+  const loadEvent = useCallback(async () => {
     setLoading(true)
     const { data: ev } = await supabase
       .from('events')
@@ -42,21 +43,18 @@ export function EventDashboard() {
       .single()
     if (ev) {
       setEvent(ev as EventType)
-      // Load ticket types
       const { data: tts } = await supabase
         .from('ticket_types')
         .select('*')
         .eq('event_id', ev.id)
         .order('sort_order')
       if (tts) setTicketTypes(tts as TicketType[])
-      // Load orders
       const { data: ords } = await supabase
         .from('orders')
         .select('*')
         .eq('event_id', ev.id)
         .order('created_at', { ascending: false })
       if (ords) setOrders(ords as Order[])
-      // Load tickets
       const { data: tix } = await supabase
         .from('tickets')
         .select('*')
@@ -65,7 +63,12 @@ export function EventDashboard() {
       if (tix) setTickets(tix as TicketType2[])
     }
     setLoading(false)
-  }
+  }, [eventId])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (eventId) loadEvent()
+  }, [eventId, loadEvent])
 
   const totalSold = ticketTypes.reduce((s, t) => s + t.quantity_sold, 0)
   const totalCapacity = ticketTypes.reduce((s, t) => s + t.quantity, 0)
@@ -97,11 +100,11 @@ export function EventDashboard() {
       .eq('id', ticketId)
     if (!error) {
       setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: 'used' as const, checked_in_at: new Date().toISOString() } : t))
-      setScanResult((prev: any) => prev ? { ...prev, ticket: { ...prev.ticket, status: 'used', checked_in_at: new Date().toISOString() } } : null)
+      setScanResult((prev: ScanResult | null) => prev ? { ...prev, ticket: { ...prev.ticket, status: 'used', checked_in_at: new Date().toISOString() } } : null)
     }
   }
 
-  const tabs: { key: Tab; label: string; icon: any }[] = [
+  const tabs: { key: Tab; label: string; icon: LucideIcon }[] = [
     { key: 'overview', label: 'Overview', icon: BarChart3 },
     { key: 'attendees', label: 'Attendees', icon: Users },
     { key: 'tickets', label: 'Tickets', icon: Ticket },
@@ -216,28 +219,25 @@ export function EventDashboard() {
       )}
 
       {activeTab === 'attendees' && (
-        <AttendeesTab eventId={event.id} orders={orders} tickets={tickets} />
+        <AttendeesTab orders={orders} tickets={tickets} />
       )}
 
       {activeTab === 'tickets' && (
-        <TicketsTab eventId={event.id} tickets={tickets} orders={orders} ticketTypes={ticketTypes} />
+        <TicketsTab tickets={tickets} orders={orders} />
       )}
 
       {activeTab === 'analytics' && (
-        <AnalyticsTab event={event} ticketTypes={ticketTypes} orders={orders} tickets={tickets} />
+        <AnalyticsTab ticketTypes={ticketTypes} orders={orders} tickets={tickets} />
       )}
 
       {activeTab === 'scanner' && (
         <ScannerTab
-          eventId={event.id}
           scanInput={scanInput}
           setScanInput={setScanInput}
           scanResult={scanResult}
           scanError={scanError}
           onScan={handleScanLookup}
           onCheckIn={handleCheckIn}
-          setScanError={setScanError}
-          setScanResult={setScanResult}
         />
       )}
     </motion.div>
@@ -245,7 +245,7 @@ export function EventDashboard() {
 }
 
 /* ===== ATTENDEES TAB ===== */
-function AttendeesTab({ eventId, orders, tickets }: { eventId: string; orders: Order[]; tickets: TicketType2[] }) {
+function AttendeesTab({ orders, tickets }: { orders: Order[]; tickets: TicketType2[] }) {
   const [search, setSearch] = useState('')
 
   const attendeeRows = orders.map(order => {
@@ -298,7 +298,7 @@ function AttendeesTab({ eventId, orders, tickets }: { eventId: string; orders: O
 }
 
 /* ===== TICKETS TAB ===== */
-function TicketsTab({ eventId, tickets, orders, ticketTypes }: { eventId: string; tickets: TicketType2[]; orders: Order[]; ticketTypes: TicketType[] }) {
+function TicketsTab({ tickets, orders }: { tickets: TicketType2[]; orders: Order[] }) {
   return (
     <Card variant="glass" padding="lg">
       <CardContent>
@@ -331,7 +331,7 @@ function TicketsTab({ eventId, tickets, orders, ticketTypes }: { eventId: string
 }
 
 /* ===== ANALYTICS TAB ===== */
-function AnalyticsTab({ event, ticketTypes, orders, tickets }: { event: EventType; ticketTypes: TicketType[]; orders: Order[]; tickets: TicketType2[] }) {
+function AnalyticsTab({ ticketTypes, orders, tickets }: { ticketTypes: TicketType[]; orders: Order[]; tickets: TicketType2[] }) {
   const totalSold = ticketTypes.reduce((s, t) => s + t.quantity_sold, 0)
   const totalCapacity = ticketTypes.reduce((s, t) => s + t.quantity, 0)
   const totalRevenue = orders.filter(o => o.status === 'confirmed').reduce((s, o) => s + o.total_amount, 0)
@@ -404,11 +404,10 @@ function AnalyticsTab({ event, ticketTypes, orders, tickets }: { event: EventTyp
 
 /* ===== SCANNER TAB ===== */
 function ScannerTab({
-  eventId, scanInput, setScanInput, scanResult, scanError, onScan, onCheckIn, setScanError, setScanResult
+  scanInput, setScanInput, scanResult, scanError, onScan, onCheckIn
 }: {
-  eventId: string; scanInput: string; setScanInput: (v: string) => void
-  scanResult: any; scanError: string; onScan: () => void; onCheckIn: (id: string) => void
-  setScanError: (v: string) => void; setScanResult: (v: any) => void
+  scanInput: string; setScanInput: (v: string) => void
+  scanResult: ScanResult | null; scanError: string; onScan: () => void; onCheckIn: (id: string) => void
 }) {
   return (
     <Card variant="glass" padding="lg">

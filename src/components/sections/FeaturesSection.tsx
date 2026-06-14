@@ -149,7 +149,7 @@ export function FeaturesSection() {
               transition={{ duration: 0.5, delay: index * 0.05 }}
             >
               <Card
-                variant={feature.glass as any}
+                variant={feature.glass as 'glass-yellow' | 'glass-pink' | 'glass-cyan'}
                 padding="lg"
                 hover
                 glow={feature.glow}

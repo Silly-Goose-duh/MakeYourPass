@@ -44,7 +44,6 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
   const calStart = startOfWeek(monthStart)
   const calEnd = endOfWeek(monthEnd)
   const days = eachDayOfInterval({ start: calStart, end: calEnd })
-  const today = new Date()
 
   const handleSelect = (day: Date) => {
     onChange(format(day, 'yyyy-MM-dd'))
@@ -246,5 +245,3 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
     </div>
   )
 }
-
-export { format } from 'date-fns'

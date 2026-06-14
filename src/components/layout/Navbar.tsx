@@ -16,7 +16,6 @@ export function Navbar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const location = useLocation()
-  const isHome = location.pathname === '/'
   const isAuthPage = location.pathname.startsWith('/login') || location.pathname.startsWith('/signup')
 
   useEffect(() => {
@@ -25,7 +24,7 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const handleNavClick = (href: string) => {
+  const handleNavClick = () => {
     setIsMobileOpen(false)
   }
 
@@ -66,7 +65,7 @@ export function Navbar() {
               <a
                 key={link.label}
                 href={link.href}
-                onClick={() => handleNavClick(link.href)}
+                onClick={() => handleNavClick()}
                 className="relative px-4 py-2 text-sm font-medium text-text-secondary hover:text-white rounded-lg hover:bg-white/[0.04] transition-all group"
               >
                 {link.label}
@@ -119,7 +118,7 @@ export function Navbar() {
                   <motion.a
                     key={link.label}
                     href={link.href}
-                    onClick={() => handleNavClick(link.href)}
+                    onClick={() => handleNavClick()}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}

@@ -50,7 +50,7 @@ function createSupabaseClient(): SupabaseClient {
       if (prop === 'auth') {
         return new Proxy({} as SupabaseClient['auth'], {
           get(_, method) {
-            return (...args: any[]) => {
+            return () => {
               console.warn(`Supabase.auth.${String(method)}() — not available (missing credentials)`)
               return Promise.resolve({ data: null, error: new Error('Supabase not configured') })
             }
@@ -60,9 +60,9 @@ function createSupabaseClient(): SupabaseClient {
       if (prop === 'storage') {
         return new Proxy({} as SupabaseClient['storage'], {
           get(_, bucket) {
-            return new Proxy({} as any, {
+            return new Proxy({} as Record<string, unknown>, {
               get(_, method) {
-                return (...args: any[]) => {
+                return () => {
                   console.warn(`Supabase.storage.${String(bucket)}.${String(method)}() — not available (missing credentials)`)
                   return Promise.resolve({ data: null, error: new Error('Supabase not configured') })
                 }

@@ -31,21 +31,20 @@ export async function parseEventDocument(
   onProgress?.('Reading document...')
 
   // Step 1: Extract text from the document
-  let documentText = ''
+  let documentText
   const fileName = file.name.toLowerCase()
   const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf')
   const isImage = file.type.startsWith('image/') || ['.png', '.jpg', '.jpeg', '.webp'].some(ext => fileName.endsWith(ext))
-  const isText = file.type === 'text/plain' || fileName.endsWith('.txt')
-
   if (isPdf) {
     try {
       documentText = await extractTextFromPDF(file)
-    } catch (pdfErr: any) {
+    } catch (pdfErr: unknown) {
       // If pdfjs fails, try reading as text or report the specific error
-      if (pdfErr?.message?.includes('worker') || pdfErr?.message?.includes('Worker')) {
-        throw new Error('PDF worker failed to load. Please try uploading as an image or text file instead.')
+      const pdfErrObj = pdfErr as { message?: string }
+      if (pdfErrObj?.message?.includes('worker') || pdfErrObj?.message?.includes('Worker')) {
+        throw new Error('PDF worker failed to load. Please try uploading as an image or text file instead.', { cause: pdfErr })
       }
-      throw new Error(`Could not read PDF: ${pdfErr?.message || 'Unknown error'}. Try uploading as an image.`)
+      throw new Error(`Could not read PDF: ${pdfErrObj?.message || 'Unknown error'}. Try uploading as an image.`, { cause: pdfErr })
     }
   } else if (isImage) {
     // For images, we'll use Groq vision directly
@@ -95,7 +94,7 @@ async function extractTextFromPDF(file: File): Promise<string> {
   for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
     const page = await pdf.getPage(i)
     const textContent = await page.getTextContent()
-    const text = textContent.items.map((item: any) => item.str).join(' ')
+    const text = textContent.items.map((item: Record<string, unknown>) => item.str as string).join(' ')
     pages.push(text)
   }
 

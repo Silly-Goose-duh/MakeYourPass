@@ -35,8 +35,8 @@ export function WelcomeOverlay() {
   useEffect(() => {
     const alreadySeen = localStorage.getItem(STORAGE_KEY)
     if (!alreadySeen) {
-      // Small delay so the page loads first
       const timer = setTimeout(() => setVisible(true), 1500)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDismissed(false)
       return () => clearTimeout(timer)
     }

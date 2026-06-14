@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import type { User } from '@supabase/supabase-js'
 import {
-  Calendar, Settings, LogOut, Menu, X, Plus, Bell,
+  Calendar, Settings, LogOut, Menu, Plus, Bell,
   Sparkles, Search
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { Card, CardContent } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 
@@ -20,7 +17,7 @@ const sidebarLinks = [
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [orgName] = useState('My Organization')
   const location = useLocation()
 

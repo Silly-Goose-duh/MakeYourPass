@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { QrCode, Camera, Check, X, ArrowLeft, User, Calendar, MapPin, Search } from 'lucide-react'
+import { Camera, Check, X, ArrowLeft, User, Calendar, MapPin, Search } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'

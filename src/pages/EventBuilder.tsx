@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Check, Sparkles, Save, Ticket, ExternalLink, Upload, FileText, Globe, Lock, Wand2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Sparkles, Save, Ticket, ExternalLink, Upload, Globe, Lock, Wand2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -90,8 +90,8 @@ export function EventBuilderPage() {
         setParseProgress('✨ Fields auto-filled! Review and adjust if needed.')
         setTimeout(() => setParseProgress(''), 3000)
       }
-    } catch (err: any) {
-      setParseError(err.message || 'Failed to parse document')
+    } catch (err: unknown) {
+      setParseError((err instanceof Error ? err.message : String(err)) || 'Failed to parse document')
     } finally {
       setIsParsing(false)
       if (e.target) e.target.value = ''
@@ -129,7 +129,7 @@ export function EventBuilderPage() {
       }
 
       // Get or create organization
-      let { data: orgs } = await supabase
+      const { data: orgs } = await supabase
         .from('organizations')
         .select('id, name')
         .eq('owner_id', user.id)

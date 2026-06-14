@@ -70,9 +70,9 @@ export function AttendeesPage() {
       .in('event_id', evs?.map(e => e.id) || [])
 
     if (orders && tickets && evs) {
-      const attendeeList: Attendee[] = orders.map((order: any) => {
+      const attendeeList: Attendee[] = orders.map((order) => {
         const event = evs.find(e => e.id === order.event_id)
-        const ticket = tickets.find((t: any) => t.order_id === order.id)
+        const ticket = tickets.find((t) => t.order_id === order.id)
         return {
           id: order.id,
           order_id: order.id,
@@ -95,6 +95,7 @@ export function AttendeesPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [])
 

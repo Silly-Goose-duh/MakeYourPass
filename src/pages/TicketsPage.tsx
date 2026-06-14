@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import type { Ticket as TicketType } from '@/types'
+
 
 interface TicketWithEvent {
   id: string
@@ -52,7 +52,7 @@ export function TicketsPage() {
       .order('created_at', { ascending: false })
 
     if (ticketsData) {
-      const enriched: TicketWithEvent[] = ticketsData.map((t: any) => {
+      const enriched: TicketWithEvent[] = ticketsData.map((t) => {
         const ev = events.find(e => e.id === t.event_id)
         return {
           id: t.id,
@@ -71,6 +71,7 @@ export function TicketsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadTickets()
   }, [])
 
