@@ -78,7 +78,7 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
       {/* Label */}
       {label && (
         <label className="block text-sm font-medium text-text-secondary mb-2">
-          {label}{required && <span className="text-red-400 ml-1">*</span>}
+          {label}{required && <span className="text-error ml-1">*</span>}
         </label>
       )}
 
@@ -86,10 +86,10 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-primary/50 border border-border rounded-xl text-left transition-all hover:border-primary/30 focus:outline-none focus:border-primary/50"
+        className="w-full flex items-center gap-3 px-4 py-3 bg-surface border border-border rounded-xl text-left transition-all hover:border-primary/40 focus:outline-none focus:border-primary/60"
       >
         <CalendarIcon className="h-5 w-5 text-primary flex-shrink-0" />
-        <span className={displayValue ? 'text-white' : 'text-text-muted'}>
+        <span className={displayValue ? 'text-text-primary' : 'text-text-muted'}>
           {displayValue || 'Select date'}
         </span>
       </button>
@@ -102,14 +102,14 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-2 w-[320px] glass-strong rounded-xl border border-primary/10 shadow-xl shadow-black/40 overflow-hidden"
+            className="absolute z-50 mt-2 w-[320px] bg-white rounded-xl border border-border shadow-lg shadow-black/10 overflow-hidden"
           >
             {/* Header with month/year navigation */}
-            <div className="flex items-center justify-between p-3 border-b border-white/10">
+            <div className="flex items-center justify-between p-3 border-b border-border">
               <button
                 type="button"
                 onClick={goToPrevMonth}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-text-secondary hover:text-white transition-colors"
+                className="p-1.5 rounded-lg hover:bg-primary-muted text-text-secondary hover:text-text-primary transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -118,14 +118,14 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                 <button
                   type="button"
                   onClick={() => { setShowMonthPicker(true); setShowYearPicker(false) }}
-                  className="px-2 py-1 rounded-lg hover:bg-white/10 text-sm font-semibold text-white transition-colors"
+                  className="px-2 py-1 rounded-lg hover:bg-primary-muted text-sm font-semibold text-text-primary transition-colors"
                 >
                   {format(viewDate, 'MMMM')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowYearPicker(true); setShowMonthPicker(false) }}
-                  className="px-2 py-1 rounded-lg hover:bg-white/10 text-sm font-semibold text-text-secondary hover:text-white transition-colors"
+                  className="px-2 py-1 rounded-lg hover:bg-primary-muted text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors"
                 >
                   {format(viewDate, 'yyyy')}
                 </button>
@@ -134,7 +134,7 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
               <button
                 type="button"
                 onClick={goToNextMonth}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-text-secondary hover:text-white transition-colors"
+                className="p-1.5 rounded-lg hover:bg-primary-muted text-text-secondary hover:text-text-primary transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -151,7 +151,7 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                     className={`py-2 rounded-lg text-sm font-medium transition-colors ${
                        getYear(viewDate) === year
                         ? 'bg-primary text-white'
-                        : 'text-text-secondary hover:bg-white/10 hover:text-white'
+                        : 'text-text-secondary hover:bg-primary-muted hover:text-text-primary'
                     }`}
                   >
                     {year}
@@ -171,7 +171,7 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                     className={`py-2 rounded-lg text-sm font-medium transition-colors ${
                        getMonth(viewDate) === idx
                         ? 'bg-primary text-white'
-                        : 'text-text-secondary hover:bg-white/10 hover:text-white'
+                        : 'text-text-secondary hover:bg-primary-muted hover:text-text-primary'
                     }`}
                   >
                     {month.slice(0, 3)}
@@ -212,7 +212,7 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                             : isTodayDay && !isSelected
                             ? 'border border-primary/30 text-primary'
                             : isCurrentMonth
-                            ? 'text-white hover:bg-white/10'
+                            ? 'text-text-primary hover:bg-primary-muted'
                             : 'text-text-muted/40'
                         } ${isDisabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
                       >
@@ -223,7 +223,7 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                 </div>
 
                 {/* Footer with Today button */}
-                <div className="flex items-center justify-between p-2 border-t border-white/10">
+                <div className="flex items-center justify-between p-2 border-t border-border">
                   <button
                     type="button"
                     onClick={handleToday}
