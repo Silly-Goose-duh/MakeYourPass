@@ -76,24 +76,24 @@ drop function if exists create_event_with_ticket_type;
 create or replace function create_event_with_ticket_type(
   p_title text,
   p_slug text,
-  p_description text default '',
-  p_short_description text default null,
-  p_venue_name text default null,
-  p_venue_address text default null,
-  p_city text default null,
-  p_state text default null,
+  p_description text,
+  p_short_description text,
+  p_venue_name text,
+  p_venue_address text,
+  p_city text,
+  p_state text,
   p_start_date date,
   p_end_date date,
   p_start_time text,
   p_end_time text,
-  p_category text default 'other',
-  p_visibility text default 'public',
-  p_max_attendees int default null,
-  p_use_external_form boolean default false,
-  p_form_link text default null,
-  p_ticket_name text default 'General Admission',
-  p_ticket_price int default 0,
-  p_ticket_quantity int default 0
+  p_category text,
+  p_visibility text,
+  p_max_attendees int,
+  p_use_external_form boolean,
+  p_form_link text,
+  p_ticket_name text,
+  p_ticket_price int,
+  p_ticket_quantity int
 )
 returns jsonb
 language plpgsql
