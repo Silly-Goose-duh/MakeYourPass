@@ -282,6 +282,42 @@ export function EventBuilderPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { navigate('/login'); return }
 
+      const slug = generateSlug(eventData.title)
+      const ticketQty = eventData.ticketing.quantity ? parseInt(eventData.ticketing.quantity) : 0
+      const ticketPrice = eventData.ticketing.isFree ? 0 : (parseInt(eventData.ticketing.price) || 0)
+
+      // Strategy 1: Try RPC function (bypasses RLS — runs as SECURITY DEFINER)
+      // Requires supabase/rpc-create-event.sql to be run in Supabase SQL Editor
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_event_with_ticket_type', {
+        p_title: eventData.title,
+        p_slug: slug,
+        p_description: eventData.description || '',
+        p_short_description: eventData.shortDescription || null,
+        p_venue_name: eventData.venueName || null,
+        p_venue_address: eventData.venueAddress || null,
+        p_city: eventData.city || null,
+        p_state: eventData.state || null,
+        p_start_date: eventData.startDate,
+        p_end_date: eventData.endDate,
+        p_start_time: eventData.startTime,
+        p_end_time: eventData.endTime,
+        p_category: eventData.category || 'other',
+        p_visibility: selectedVisibility || 'public',
+        p_max_attendees: ticketQty || null,
+        p_use_external_form: eventData.useExternalForm,
+        p_form_link: eventData.formLink || null,
+        p_ticket_name: eventData.ticketing.isFree ? 'Free Entry' : 'General Admission',
+        p_ticket_price: ticketPrice,
+        p_ticket_quantity: ticketQty,
+      })
+
+      if (!rpcError && rpcResult && !rpcResult.error) {
+        navigate(`/dashboard/events`)
+        return
+      }
+
+      // Strategy 2: RPC not available — fall back to direct inserts with RLS fix
+      // Find or create organization
       const { data: orgs } = await supabase
         .from('organizations')
         .select('id, name')
@@ -302,15 +338,28 @@ export function EventBuilderPage() {
 
         if (orgError) { setSaveError(orgError.message); setSaving(false); return }
         orgId = newOrg!.id
-        const { error: memberError } = await supabase.from('org_members').insert({
-          org_id: orgId, user_id: user.id, role: 'owner', status: 'active',
-        })
-        if (memberError) { setSaveError(memberError.message); setSaving(false); return }
       } else {
         orgId = orgs[0].id
       }
 
-      const slug = generateSlug(eventData.title)
+      // CRITICAL FIX: Always ensure org_members row exists with active status
+      // This prevents RLS failure when the user owns the org but the
+      // org_members row is missing (e.g., from a previous partial failure)
+      const { data: existingMembership } = await supabase
+        .from('org_members')
+        .select('id')
+        .eq('org_id', orgId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!existingMembership) {
+        const { error: memberError } = await supabase.from('org_members').insert({
+          org_id: orgId, user_id: user.id, role: 'owner', status: 'active',
+        })
+        if (memberError) { setSaveError(memberError.message); setSaving(false); return }
+      }
+
+      // Create the event
       const { data: event, error: eventError } = await supabase
         .from('events')
         .insert({
@@ -330,7 +379,7 @@ export function EventBuilderPage() {
           category: eventData.category || 'other',
           status: 'published',
           visibility: selectedVisibility || 'public',
-          max_attendees: eventData.ticketing.quantity ? parseInt(eventData.ticketing.quantity) : null,
+          max_attendees: ticketQty || null,
           use_external_form: eventData.useExternalForm,
           form_link: eventData.formLink || null,
         })
@@ -338,9 +387,6 @@ export function EventBuilderPage() {
         .single()
 
       if (eventError) { setSaveError(eventError.message); setSaving(false); return }
-
-      const ticketQty = eventData.ticketing.quantity ? parseInt(eventData.ticketing.quantity) : 0
-      const ticketPrice = eventData.ticketing.isFree ? 0 : (parseInt(eventData.ticketing.price) || 0)
 
       const { error: ticketError } = await supabase
         .from('ticket_types')

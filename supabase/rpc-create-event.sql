@@ -1,37 +1,10 @@
 -- ============================================
--- FIX: RLS policy + create_event_with_ticket_type RPC
--- Run this ENTIRE script in Supabase SQL Editor
--- (Ctrl+A, Ctrl+Enter) — it's idempotent.
--- ============================================
-
--- ============================================
--- PART 1: Fix the events INSERT policy to allow
--- org owners even without an org_members row
--- ============================================
-
-drop policy if exists "Org members can create events" on events;
-
-create policy "Org members can create events"
-  on events for insert
-  with check (
-    -- User is an active member of the org
-    (org_id in (
-      select org_id from org_members where user_id = auth.uid() and status = 'active'
-    ))
-    or
-    -- OR user owns the org directly
-    (org_id in (
-      select id from organizations where owner_id = auth.uid()
-    ))
-  );
-
--- ============================================
--- PART 2: Create an RPC function that creates
--- event + ticket type in a single transaction,
--- bypassing RLS (SECURITY DEFINER).
---
--- The frontend calls this as:
---   supabase.rpc('create_event_with_ticket_type', {...})
+-- Create a SECURITY DEFINER function that
+-- bypasses RLS for event + ticket type creation.
+-- The function handles org lookup/creation,
+-- org_members sync, event insert, and ticket
+-- type insert in a single transaction.
+-- Run this in Supabase SQL Editor.
 -- ============================================
 
 drop function if exists create_event_with_ticket_type;
@@ -70,6 +43,7 @@ declare
   v_event record;
   v_ticket_type record;
 begin
+  -- Get the calling user
   v_user_id := auth.uid();
   if v_user_id is null then
     return jsonb_build_object('error', 'Not authenticated');
@@ -82,6 +56,7 @@ begin
   limit 1;
 
   if v_org_id is null then
+    -- Create new org
     insert into organizations (name, slug, owner_id)
     values (
       coalesce(
@@ -105,7 +80,7 @@ begin
     returning id into v_org_id;
   end if;
 
-  -- Ensure org_members row exists (idempotent)
+  -- Ensure org_members row exists with active status
   insert into org_members (org_id, user_id, role, status)
   values (v_org_id, v_user_id, 'owner', 'active')
   on conflict do nothing;
@@ -138,6 +113,7 @@ begin
   )
   returning * into v_ticket_type;
 
+  -- Return the result
   return jsonb_build_object(
     'event_id', v_event_id,
     'org_id', v_org_id,
