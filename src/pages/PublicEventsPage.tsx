@@ -123,11 +123,13 @@ export function PublicEventsPage() {
         )}
 
         {/* Public Event Modal */}
-        <PublicEventModal
-          event={selectedEvent!}
-          isOpen={!!selectedEvent}
-          onClose={() => setSelectedEvent(null)}
-        />
+        {selectedEvent && (
+          <PublicEventModal
+            event={selectedEvent}
+            isOpen={!!selectedEvent}
+            onClose={() => setSelectedEvent(null)}
+          />
+        )}
 
         {/* Events grid */}
         {!loading && (

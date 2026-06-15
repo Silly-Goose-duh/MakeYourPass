@@ -32,8 +32,8 @@ function PaletteTheme({ palette, children }: { palette: ExtractedPalette; childr
 }
 
 export function PublicEventModal({ event, isOpen, onClose }: PublicEventModalProps) {
-  const { palette } = useColorExtractor(event.cover_image_url)
-  const { primary, secondary, accent, bgLight } = palette
+  const { palette } = useColorExtractor(event?.cover_image_url ?? null)
+  const { primary, secondary, accent, bgLight } = palette || { primary: '#6366F1', secondary: '#8B5CF6', accent: '#F59E0B', bgLight: '#F8FAFC', bgDark: '#6366F1' }
 
   const handleRegister = () => {
     if (event.use_external_form && event.form_link) {
