@@ -285,9 +285,8 @@ export function EventBuilderPage() {
       const slug = generateSlug(eventData.title)
       const ticketQty = eventData.ticketing.quantity ? parseInt(eventData.ticketing.quantity) : 0
       const ticketPrice = eventData.ticketing.isFree ? 0 : (parseInt(eventData.ticketing.price) || 0)
-
       // Strategy 1: Try RPC function (bypasses RLS — runs as SECURITY DEFINER)
-      // Requires supabase/rpc-create-event.sql to be run in Supabase SQL Editor
+      // Requires supabase/fix-rls-policy.sql to be run in Supabase SQL Editor
       const { data: rpcResult, error: rpcError } = await supabase.rpc('create_event_with_ticket_type', {
         p_title: eventData.title,
         p_slug: slug,
@@ -311,10 +310,18 @@ export function EventBuilderPage() {
         p_ticket_quantity: ticketQty,
       })
 
+      // RPC succeeded → done
       if (!rpcError && rpcResult && !rpcResult.error) {
         navigate(`/dashboard/events`)
         return
       }
+
+      // RPC doesn't exist yet → fall through to Strategy 2
+      const rpcMissing =
+        rpcError?.message?.includes('does not exist') ||
+        rpcError?.message?.includes('function') ||
+        rpcError?.code === 'PGRST202' ||
+        rpcError?.code === '42883'
 
       // Strategy 2: RPC not available — fall back to direct inserts with RLS fix
       // Find or create organization
@@ -349,8 +356,13 @@ export function EventBuilderPage() {
         p_org_id: orgId,
       })
 
-      // If RPC doesn't exist, try direct insert (requires RLS policy on org_members)
-      if (memberError && memberError.message?.includes('function "ensure_org_member" does not exist')) {
+      // If RPC doesn't exist (404-type error), fall back to direct insert
+      if (memberError && (
+        memberError.message?.includes('does not exist') ||
+        memberError.message?.includes('function') ||
+        memberError.code === 'PGRST202' ||
+        memberError.code === '42883'
+      )) {
         const { data: existingMembership } = await supabase
           .from('org_members')
           .select('id')
