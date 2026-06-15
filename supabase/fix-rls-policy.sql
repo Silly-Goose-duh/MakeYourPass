@@ -1,14 +1,15 @@
 -- ============================================
--- FIX: RLS policy + create_event_with_ticket_type RPC
--- Run this ENTIRE script in Supabase SQL Editor
--- (Ctrl+A, Ctrl+Enter) — it's idempotent.
+-- MAKEYOURPASS — SUPER FIX
+-- Run ENTIRE script in Supabase SQL Editor
+-- (select all, Ctrl+Enter)
+-- This is IDEMPOTENT — safe to run multiple times
 -- ============================================
 
 -- ============================================
--- PART 1: Fix the events INSERT policy to allow
--- org owners even without an org_members row
+-- PART 1: RLS policies
 -- ============================================
 
+-- Safe drop + recreate for events INSERT policy
 drop policy if exists "Org members can create events" on events;
 
 create policy "Org members can create events"
@@ -25,13 +26,49 @@ create policy "Org members can create events"
     ))
   );
 
+-- Ensure org_members INSERT policy exists
+drop policy if exists "Org creators can add themselves as members" on org_members;
+
+create policy "Org creators can add themselves as members"
+  on org_members for insert
+  with check (user_id = auth.uid() and role = 'owner');
+
 -- ============================================
--- PART 2: Create an RPC function that creates
--- event + ticket type in a single transaction,
--- bypassing RLS (SECURITY DEFINER).
---
--- The frontend calls this as:
---   supabase.rpc('create_event_with_ticket_type', {...})
+-- PART 2: RPC — ensure org membership exists
+-- Called by frontend fallback path when the
+-- big RPC doesn't exist yet.
+-- ============================================
+
+drop function if exists ensure_org_member;
+
+create or replace function ensure_org_member(p_org_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    return jsonb_build_object('error', 'Not authenticated');
+  end if;
+
+  insert into org_members (org_id, user_id, role, status)
+  values (p_org_id, v_user_id, 'owner', 'active')
+  on conflict do nothing;
+
+  return jsonb_build_object('success', true);
+end;
+$$;
+
+-- ============================================
+-- PART 3: RPC — create event + ticket type
+-- Called by frontend as the primary path.
+-- Handles org lookup/creation, membership,
+-- event insert, and ticket type insert in one
+-- transaction.
 -- ============================================
 
 drop function if exists create_event_with_ticket_type;

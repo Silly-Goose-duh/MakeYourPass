@@ -343,20 +343,31 @@ export function EventBuilderPage() {
       }
 
       // CRITICAL FIX: Always ensure org_members row exists with active status
-      // This prevents RLS failure when the user owns the org but the
-      // org_members row is missing (e.g., from a previous partial failure)
-      const { data: existingMembership } = await supabase
-        .from('org_members')
-        .select('id')
-        .eq('org_id', orgId)
-        .eq('user_id', user.id)
-        .maybeSingle()
+      // Try RPC first (bypasses RLS if function exists on Supabase),
+      // then fall back to direct insert
+      const { error: memberError } = await supabase.rpc('ensure_org_member', {
+        p_org_id: orgId,
+      })
 
-      if (!existingMembership) {
-        const { error: memberError } = await supabase.from('org_members').insert({
-          org_id: orgId, user_id: user.id, role: 'owner', status: 'active',
-        })
-        if (memberError) { setSaveError(memberError.message); setSaving(false); return }
+      // If RPC doesn't exist, try direct insert (requires RLS policy on org_members)
+      if (memberError && memberError.message?.includes('function "ensure_org_member" does not exist')) {
+        const { data: existingMembership } = await supabase
+          .from('org_members')
+          .select('id')
+          .eq('org_id', orgId)
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        if (!existingMembership) {
+          const { error: directError } = await supabase.from('org_members').insert({
+            org_id: orgId, user_id: user.id, role: 'owner', status: 'active',
+          })
+          if (directError) { setSaveError(directError.message); setSaving(false); return }
+        }
+      } else if (memberError) {
+        setSaveError(memberError.message)
+        setSaving(false)
+        return
       }
 
       // Create the event
