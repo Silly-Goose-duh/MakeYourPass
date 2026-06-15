@@ -31,15 +31,17 @@ function App() {
             <Route path="signup" element={<PublicOnlyRoute><SignupPage /></PublicOnlyRoute>} />
           </Route>
 
-          {/* Dashboard routes (protected) */}
+          {/* Dashboard routes (protected) — has sidebar */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="events" replace />} />
             <Route path="events" element={<EventsPage />} />
-            <Route path="events/new" element={<EventBuilderPage />} />
             <Route path="events/:id" element={<EventDashboard />} />
-            <Route path="events/:id/edit" element={<EventBuilderPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
+
+          {/* Event builder — full-screen, no sidebar distractions */}
+          <Route path="/dashboard/events/new" element={<ProtectedRoute><EventBuilderPage /></ProtectedRoute>} />
+          <Route path="/dashboard/events/:id/edit" element={<ProtectedRoute><EventBuilderPage /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
