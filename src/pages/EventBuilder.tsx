@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { DatePicker } from '@/components/ui/DatePicker'
+import { PosterUpload } from '@/components/ui/PosterUpload'
 import { cn, generateSlug } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { parseEventDocument } from '@/lib/groq'
@@ -182,6 +183,7 @@ export function EventBuilderPage() {
     city: '',
     state: '',
     maxAttendees: '',
+    coverImageUrl: '',
     useExternalForm: false,
     formLink: '',
     ticketing: {
@@ -218,7 +220,7 @@ export function EventBuilderPage() {
       title: '', description: '', shortDescription: '', category: '',
       startDate: '', endDate: '', startTime: '', endTime: '',
       venueName: '', venueAddress: '', city: '', state: '',
-      maxAttendees: '', useExternalForm: false, formLink: '',
+      maxAttendees: '', coverImageUrl: '', useExternalForm: false, formLink: '',
       ticketing: { isFree: true, price: '', quantity: '' },
     })
   }, [])
@@ -310,8 +312,15 @@ export function EventBuilderPage() {
         p_ticket_quantity: ticketQty,
       })
 
-      // RPC succeeded → done
+      // RPC succeeded → update poster if provided, then done
       if (!rpcError && rpcResult && !rpcResult.error) {
+        // If we have a poster URL, update it separately
+        if (eventData.coverImageUrl && rpcResult.event_id) {
+          await supabase
+            .from('events')
+            .update({ cover_image_url: eventData.coverImageUrl })
+            .eq('id', rpcResult.event_id)
+        }
         navigate(`/dashboard/events`)
         return
       }
@@ -403,6 +412,7 @@ export function EventBuilderPage() {
           status: 'published',
           visibility: selectedVisibility || 'public',
           max_attendees: ticketQty || null,
+          cover_image_url: eventData.coverImageUrl || null,
           use_external_form: eventData.useExternalForm,
           form_link: eventData.formLink || null,
         })
@@ -1033,6 +1043,14 @@ export function EventBuilderPage() {
                         <p className="text-xs text-text-muted mt-2">Pick a preset or select &quot;Custom...&quot; to write your own</p>
                       )}
                     </div>
+                  </div>
+
+                  {/* Poster Upload */}
+                  <div className="sm:col-span-2">
+                    <PosterUpload
+                      currentUrl={eventData.coverImageUrl}
+                      onUpload={(url) => updateField('coverImageUrl', url)}
+                    />
                   </div>
 
                   {/* Category */}

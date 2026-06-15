@@ -1,10 +1,9 @@
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Calendar, MapPin, Clock, ExternalLink, Send, Sparkles } from 'lucide-react'
+import { X, Calendar, MapPin, Clock, ExternalLink, Ticket } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { formatDate, formatTime } from '@/lib/utils'
+import { useColorExtractor, type ExtractedPalette } from '@/hooks/useColorExtractor'
 import type { Event } from '@/types'
 
 interface PublicEventModalProps {
@@ -13,178 +12,234 @@ interface PublicEventModalProps {
   onClose: () => void
 }
 
+function PaletteTheme({ palette, children }: { palette: ExtractedPalette; children: React.ReactNode }) {
+  return (
+    <div
+      className="w-full h-full flex flex-col sm:flex-row"
+      style={{
+        backgroundColor: palette.bgLight,
+        color: palette.primary,
+      }}
+    >
+      {/* Color bar accents - top for mobile, left for desktop */}
+      <div
+        className="h-1 sm:h-full sm:w-1 sm:min-h-full shrink-0"
+        style={{ background: `linear-gradient(180deg, ${palette.primary}, ${palette.secondary}, ${palette.accent})` }}
+      />
+      {children}
+    </div>
+  )
+}
+
 export function PublicEventModal({ event, isOpen, onClose }: PublicEventModalProps) {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const { palette } = useColorExtractor(event.cover_image_url)
+  const { primary, secondary, accent, bgLight } = palette
 
   const handleRegister = () => {
-    // If event has an external form link, redirect there
     if (event.use_external_form && event.form_link) {
       window.open(event.form_link, '_blank', 'noopener')
       onClose()
       return
     }
-    // Otherwise go to the event page
     window.open(`/event/${event.slug}`, '_blank')
-    onClose()
-  }
-
-  const handleQuickRegister = (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitted(true)
   }
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Blurred backdrop */}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6">
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/70 backdrop-blur-xl"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
 
           {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            exit={{ opacity: 0, scale: 0.95, y: 30 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl"
+            style={{ backgroundColor: bgLight }}
           >
-            <div className="relative rounded-3xl border border-border bg-surface backdrop-blur-2xl shadow-2xl shadow-primary/10 overflow-hidden">
-              {/* Glow accents */}
-              <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-[60px]" />
-              <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-accent-pink/10 rounded-full blur-[60px]" />
-
+            <PaletteTheme palette={palette}>
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white transition-all"
+                className="absolute top-3 right-3 z-20 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white shadow-md transition-all"
+                style={{ color: primary }}
               >
                 <X className="h-5 w-5" />
               </button>
 
-              {/* Content */}
-              <div className="p-6 sm:p-8">
-                {/* Gradient header area */}
-                <div className="h-24 -mx-8 -mt-8 mb-6 bg-gradient-to-br from-primary/20 via-accent-rose/10 to-accent-teal/20 flex items-end px-8 pb-4">
-                  <Badge variant="primary" size="md">
+              {/* LEFT: Poster */}
+              <div className="relative w-full sm:w-[38%] lg:w-[42%] shrink-0 bg-black/5 flex items-start justify-center overflow-hidden">
+                {event.cover_image_url ? (
+                  <img
+                    src={event.cover_image_url}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                    style={{ aspectRatio: '9/16', maxHeight: '85vh' }}
+                  />
+                ) : (
+                  <div
+                    className="w-full flex items-center justify-center"
+                    style={{
+                      aspectRatio: '9/16',
+                      background: `linear-gradient(135deg, ${primary}22, ${secondary}11)`,
+                    }}
+                  >
+                    <div className="text-center p-6">
+                      <div
+                        className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+                        style={{ backgroundColor: `${primary}20` }}
+                      >
+                        <Ticket className="h-7 w-7" style={{ color: primary }} />
+                      </div>
+                      <p className="text-sm font-medium" style={{ color: primary }}>{event.title}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gradient overlay at bottom of poster */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 h-20"
+                  style={{
+                    background: `linear-gradient(to top, ${bgLight}, transparent)`,
+                    display: 'none',
+                  }}
+                />
+              </div>
+
+              {/* RIGHT: Event Details */}
+              <div className="flex-1 overflow-y-auto p-6 sm:p-8 lg:p-10">
+                {/* Category badge */}
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <Badge
+                    variant="primary"
+                    size="md"
+                    style={{
+                      backgroundColor: `${primary}18`,
+                      color: primary,
+                      borderColor: `${primary}30`,
+                    }}
+                  >
                     {event.category.replace('_', ' ')}
                   </Badge>
                   {event.use_external_form && event.form_link && (
-                    <Badge variant="accent" size="sm" className="ml-2">
+                    <Badge
+                      variant="accent"
+                      size="sm"
+                      style={{
+                        backgroundColor: `${accent}18`,
+                        color: accent,
+                        borderColor: `${accent}30`,
+                      }}
+                    >
                       <ExternalLink className="h-3 w-3 mr-1" />
                       External
                     </Badge>
                   )}
                 </div>
 
-                {/* Event title */}
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 leading-tight">
+                {/* Title */}
+                <h2
+                  className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 leading-tight"
+                  style={{ color: primary }}
+                >
                   {event.title}
                 </h2>
 
+                {/* Short description */}
                 {event.short_description && (
-                  <p className="text-text-secondary text-sm mb-5 line-clamp-3">
+                  <p className="text-sm sm:text-base mb-6 leading-relaxed" style={{ color: `${primary}cc` }}>
                     {event.short_description}
                   </p>
                 )}
 
-                {/* Event details */}
-                <div className="space-y-2.5 mb-6 text-sm">
-                  <div className="flex items-center gap-2.5 text-text-secondary">
-                    <Calendar className="h-4 w-4 text-primary" />
-                    <span>{formatDate(event.start_date)}</span>
-                    {event.end_date && event.end_date !== event.start_date && (
-                      <span>— {formatDate(event.end_date)}</span>
-                    )}
+                {/* Full description */}
+                {event.description && (
+                  <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: `${primary}08` }}>
+                    <p className="text-sm leading-relaxed" style={{ color: `${primary}aa` }}>
+                      {event.description}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2.5 text-text-secondary">
-                    <Clock className="h-4 w-4 text-primary" />
-                    <span>{formatTime(event.start_time)} - {formatTime(event.end_time)}</span>
+                )}
+
+                {/* Details grid */}
+                <div className="space-y-3 mb-8">
+                  <div className="flex items-center gap-3 text-sm" style={{ color: `${primary}cc` }}>
+                    <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${primary}12` }}>
+                      <Calendar className="h-4 w-4" style={{ color: primary }} />
+                    </div>
+                    <div>
+                      <p className="text-xs" style={{ color: `${primary}88` }}>Date</p>
+                      <p className="font-medium" style={{ color: primary }}>
+                        {formatDate(event.start_date)}
+                        {event.end_date && event.end_date !== event.start_date && (
+                          <> — {formatDate(event.end_date)}</>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  {(event.venue_name || event.city) && (
-                    <div className="flex items-center gap-2.5 text-text-secondary">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      <span className="truncate">
-                        {event.venue_name}{event.venue_name && event.city ? ', ' : ''}{event.city}
-                      </span>
+
+                  <div className="flex items-center gap-3 text-sm" style={{ color: `${primary}cc` }}>
+                    <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${primary}12` }}>
+                      <Clock className="h-4 w-4" style={{ color: primary }} />
+                    </div>
+                    <div>
+                      <p className="text-xs" style={{ color: `${primary}88` }}>Time</p>
+                      <p className="font-medium" style={{ color: primary }}>
+                        {formatTime(event.start_time)} — {formatTime(event.end_time)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {(event.venue_name || event.city || event.state) && (
+                    <div className="flex items-center gap-3 text-sm" style={{ color: `${primary}cc` }}>
+                      <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${primary}12` }}>
+                        <MapPin className="h-4 w-4" style={{ color: primary }} />
+                      </div>
+                      <div>
+                        <p className="text-xs" style={{ color: `${primary}88` }}>Venue</p>
+                        <p className="font-medium" style={{ color: primary }}>
+                          {[event.venue_name, event.city, event.state].filter(Boolean).join(', ')}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Quick register form */}
-                {!submitted ? (
-                  <form onSubmit={handleQuickRegister} className="space-y-3">
-                    <p className="text-sm font-medium text-white">Quick Register</p>
-                    <Input
-                      placeholder="Your name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                    />
-                    <Input
-                      type="email"
-                      placeholder="Your email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                    <Input
-                      type="tel"
-                      placeholder="Phone (optional)"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                    <div className="flex gap-2 pt-1">
-                      <Button type="submit" variant="gradient" size="md" glow fullWidth>
-                        <Send className="h-4 w-4" />
-                        Register Interest
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="md"
-                        onClick={handleRegister}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        {event.use_external_form ? 'Open Form' : 'View Page'}
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-center py-6"
-                  >
-                    <div className="h-12 w-12 rounded-2xl bg-green-500/20 mx-auto mb-3 flex items-center justify-center">
-                      <Sparkles className="h-6 w-6 text-green-400" />
-                    </div>
-                    <p className="text-white font-semibold mb-1">You're in! 🎉</p>
-                    <p className="text-text-secondary text-sm">
-                      We've noted your interest. Check your email for updates!
-                    </p>
-                    <div className="mt-4">
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleRegister}
-                      >
-                        {event.use_external_form ? 'Complete Registration' : 'View Event Page'}
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
+                {/* Register button */}
+                <Button
+                  variant="primary"
+                  size="lg"
+                  glow
+                  fullWidth
+                  onClick={handleRegister}
+                  className="text-base"
+                  style={{
+                    backgroundColor: primary,
+                    borderColor: primary,
+                    '--glow-color': `${primary}40`,
+                  } as React.CSSProperties}
+                >
+                  <Ticket className="h-5 w-5" />
+                  {event.use_external_form ? 'Register on External Site' : 'Get Tickets'}
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+
+                <p className="text-xs text-center mt-3" style={{ color: `${primary}77` }}>
+                  {event.use_external_form
+                    ? 'You will be redirected to complete registration'
+                    : 'Free registration — no payment required'}
+                </p>
               </div>
-            </div>
+            </PaletteTheme>
           </motion.div>
         </div>
       )}
