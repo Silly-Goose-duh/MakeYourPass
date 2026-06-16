@@ -666,7 +666,7 @@ export function EventPage() {
             {purchasedTickets.map((ticket: Ticket, idx: number) => (
               <div key={ticket.id} className="p-4 rounded-xl bg-primary-muted border border-primary/20">
                 <div className="flex items-center gap-4">
-                  <div className="bg-white p-2 rounded-xl shrink-0">
+                  <div className="bg-surface p-2 rounded-xl shrink-0">
                     <QRCodeSVG
                       value={ticket.qr_code_url}
                       size={64}

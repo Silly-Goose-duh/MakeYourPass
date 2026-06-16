@@ -43,8 +43,8 @@ export function Badge({
             variant === 'warning' && 'bg-warning',
             variant === 'error' && 'bg-error',
             variant === 'info' && 'bg-accent-teal',
-            variant === 'primary' && 'bg-white',
-            variant === 'accent' && 'bg-white',
+            variant === 'primary' && 'bg-surface',
+            variant === 'accent' && 'bg-surface',
             variant === 'default' && 'bg-text-muted',
             variant === 'outline' && 'bg-text-muted'
           )}

@@ -13,12 +13,12 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     const baseStyles = 'rounded-2xl transition-all duration-300'
 
     const variants = {
-      default: 'bg-white border border-border shadow-sm',
+      default: 'bg-surface border border-border shadow-sm',
       glass: 'glass',
       'glass-primary': 'glass-primary',
       'glass-accent': 'glass-accent',
-      elevated: 'bg-white border border-border shadow-lg',
-      bordered: 'bg-white border-2 border-border-light',
+      elevated: 'bg-surface border border-border shadow-lg',
+      bordered: 'bg-surface border-2 border-border-light',
     }
 
     const paddings = {

@@ -36,8 +36,8 @@ export function Navbar() {
           className={cn(
             'absolute inset-0 border-b transition-all duration-500',
             scrolled
-              ? 'bg-white/95 backdrop-blur-2xl border-border'
-              : 'bg-white/80 backdrop-blur-lg border-transparent'
+              ? 'bg-surface/95 backdrop-blur-2xl border-border'
+              : 'bg-surface/80 backdrop-blur-lg border-transparent'
           )}
         />
 
@@ -110,7 +110,7 @@ export function Navbar() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden border-b border-border bg-white/95 backdrop-blur-2xl"
+              className="md:hidden border-b border-border bg-surface/95 backdrop-blur-2xl"
             >
               <div className="px-6 py-4 space-y-1">
                 {navLinks.map((link, i) => (

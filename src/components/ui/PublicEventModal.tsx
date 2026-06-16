@@ -70,7 +70,7 @@ export function PublicEventModal({ event, isOpen, onClose }: PublicEventModalPro
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-3 right-3 z-20 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white shadow-md transition-all"
+                className="absolute top-3 right-3 z-20 p-2 rounded-full bg-surface/80 backdrop-blur-sm hover:bg-surface shadow-md transition-all"
                 style={{ color: primary }}
               >
                 <X className="h-5 w-5" />

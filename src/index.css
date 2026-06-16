@@ -3,29 +3,29 @@
 @import "@fontsource/syne";
 
 @theme {
-  /* Core palette — White canvas, Indigo identity, Warm Amber accent */
+  /* Core palette — Dark canvas, Indigo identity, Warm Amber accent */
   --color-primary: #6366F1;
   --color-primary-hover: #4F46E5;
-  --color-primary-muted: #EEF2FF;
+  --color-primary-muted: rgba(99, 102, 241, 0.12);
 
   --color-secondary: #F59E0B;
   --color-secondary-hover: #D97706;
-  --color-secondary-muted: #FEF3C7;
+  --color-secondary-muted: rgba(245, 158, 11, 0.12);
 
   --color-accent-rose: #F43F5E;
-  --color-accent-rose-muted: #FFF1F2;
+  --color-accent-rose-muted: rgba(244, 63, 94, 0.12);
   --color-accent-teal: #0D9488;
-  --color-accent-teal-muted: #F0FDFA;
+  --color-accent-teal-muted: rgba(13, 148, 136, 0.12);
 
-  --color-background: #F4F6FA;
-  --color-surface: #FFFFFF;
-  --color-surface-elevated: #F8FAFC;
-  --color-border: #E2E8F0;
-  --color-border-light: #CBD5E1;
+  --color-background: #08080D;
+  --color-surface: #121218;
+  --color-surface-elevated: #1A1A24;
+  --color-border: #1E1E2A;
+  --color-border-light: #2A2A36;
 
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94A3B8;
+  --color-text-primary: #F1F1F7;
+  --color-text-secondary: #A0A0B4;
+  --color-text-muted: #5C5C70;
 
   --color-success: #10B981;
   --color-error: #EF4444;
@@ -58,20 +58,20 @@
   --radius-3xl: 2rem;
   --radius-full: 9999px;
 
-  /* Shadows — soft, professional */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-  --shadow-md: 0 4px 12px -1px rgb(0 0 0 / 0.06);
-  --shadow-lg: 0 10px 24px -3px rgb(0 0 0 / 0.08);
-  --shadow-xl: 0 20px 40px -5px rgb(0 0 0 / 0.1);
+  /* Shadows — more prominent on dark bg */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 12px -1px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 10px 24px -3px rgb(0 0 0 / 0.4);
+  --shadow-xl: 0 20px 40px -5px rgb(0 0 0 / 0.5);
 
-  /* Glows — subtle and elegant */
-  --shadow-glow-primary: 0 0 20px rgba(99, 102, 241, 0.25), 0 0 40px rgba(99, 102, 241, 0.1);
-  --shadow-glow-accent: 0 0 20px rgba(245, 158, 11, 0.25), 0 0 40px rgba(245, 158, 11, 0.1);
+  /* Glows */
+  --shadow-glow-primary: 0 0 20px rgba(99, 102, 241, 0.3), 0 0 40px rgba(99, 102, 241, 0.1);
+  --shadow-glow-accent: 0 0 20px rgba(245, 158, 11, 0.3), 0 0 40px rgba(245, 158, 11, 0.1);
 
   /* Glass */
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(0, 0, 0, 0.06);
-  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-bg: rgba(18, 18, 28, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
   --glass-backdrop: blur(20px);
 }
 
@@ -111,10 +111,10 @@ h1, h2, h3, h4, h5, h6 {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: var(--radius-full); }
-::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
 
-/* ===== LEFT ACCENT BAR — for left-anchored section headings ===== */
+/* ===== LEFT ACCENT BAR ===== */
 
 .left-accent {
   position: relative;
@@ -142,24 +142,24 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .glass-strong {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(18, 18, 28, 0.92);
   backdrop-filter: var(--glass-backdrop);
   -webkit-backdrop-filter: var(--glass-backdrop);
   border: 1px solid var(--glass-border);
 }
 
 .glass-primary {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.06), rgba(99, 102, 241, 0.02));
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.03));
   backdrop-filter: var(--glass-backdrop);
   -webkit-backdrop-filter: var(--glass-backdrop);
-  border: 1px solid rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.15);
 }
 
 .glass-accent {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02));
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.03));
   backdrop-filter: var(--glass-backdrop);
   -webkit-backdrop-filter: var(--glass-backdrop);
-  border: 1px solid rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.15);
 }
 
 /* ===== GRADIENT TEXT ===== */
@@ -188,11 +188,11 @@ h1, h2, h3, h4, h5, h6 {
 /* ===== GLOW UTILITIES ===== */
 
 .glow-primary {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.2), 0 0 40px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.25), 0 0 40px rgba(99, 102, 241, 0.08);
 }
 
 .glow-accent {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2), 0 0 40px rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25), 0 0 40px rgba(245, 158, 11, 0.08);
 }
 
 /* ===== ANIMATIONS ===== */
@@ -203,13 +203,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes pulse-glow-primary {
-  0%, 100% { box-shadow: 0 0 12px rgba(99, 102, 241, 0.15); }
-  50% { box-shadow: 0 0 28px rgba(99, 102, 241, 0.3), 0 0 48px rgba(99, 102, 241, 0.08); }
+  0%, 100% { box-shadow: 0 0 12px rgba(99, 102, 241, 0.2); }
+  50% { box-shadow: 0 0 28px rgba(99, 102, 241, 0.35), 0 0 48px rgba(99, 102, 241, 0.1); }
 }
 
 @keyframes pulse-glow-accent {
-  0%, 100% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.15); }
-  50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.3), 0 0 48px rgba(245, 158, 11, 0.08); }
+  0%, 100% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.2); }
+  50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.35), 0 0 48px rgba(245, 158, 11, 0.1); }
 }
 
 @keyframes shimmer {
@@ -231,7 +231,7 @@ h1, h2, h3, h4, h5, h6 {
 .animate-pulse-glow-primary { animation: pulse-glow-primary 3s ease-in-out infinite; }
 .animate-pulse-glow-accent { animation: pulse-glow-accent 3s ease-in-out infinite; }
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.06), transparent);
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.08), transparent);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
@@ -242,7 +242,7 @@ h1, h2, h3, h4, h5, h6 {
   animation: fadeIn 0.3s ease-out both;
 }
 
-/* Stagger children — used on lists/grids for left-to-right entrance */
+/* Stagger children */
 .stagger-children > * {
   animation: slideInLeft 0.4s ease-out both;
 }

@@ -102,7 +102,7 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-2 w-[320px] bg-white rounded-xl border border-border shadow-lg shadow-black/10 overflow-hidden"
+            className="absolute z-50 mt-2 w-[320px] bg-surface rounded-xl border border-border shadow-lg shadow-black/40 overflow-hidden"
           >
             {/* Header with month/year navigation */}
             <div className="flex items-center justify-between p-3 border-b border-border">

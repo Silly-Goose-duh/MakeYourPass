@@ -43,7 +43,7 @@ export function DashboardLayout() {
 
       {/* Sidebar — fixed left */}
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
+        'fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         {/* Logo */}
@@ -113,7 +113,7 @@ export function DashboardLayout() {
       {/* Main area — starts after sidebar */}
       <div className="flex-1 flex flex-col min-w-0 relative lg:ml-0">
         {/* Top bar — sticky, left-anchored */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-2xl border-b border-border">
+        <header className="sticky top-0 z-30 bg-surface/80 backdrop-blur-2xl border-b border-border">
           <div className="flex items-center justify-between px-6 h-16">
             {/* Left */}
             <div className="flex items-center gap-4">
@@ -132,7 +132,7 @@ export function DashboardLayout() {
                   placeholder="Search events..."
                   className="bg-transparent text-sm text-text-primary placeholder:text-text-muted border-none focus:outline-none w-48"
                 />
-                <kbd className="hidden lg:inline-flex text-[10px] text-text-muted bg-white px-1.5 py-0.5 rounded font-mono border border-border">⌘K</kbd>
+                <kbd className="hidden lg:inline-flex text-[10px] text-text-muted bg-surface px-1.5 py-0.5 rounded font-mono border border-border">⌘K</kbd>
               </div>
             </div>
 
