@@ -3,10 +3,10 @@
 **Marian Engineering College's Official Event Platform.** Create custom forms, manage registrations, and track analytics — all for college clubs and departments.
 
 ## Live Demo
-[https://mec-campuspass.vercel.app](https://mec-campuspass.vercel.app)
+[https://makeyourpass.vercel.app](https://makeyourpass.vercel.app)
 
 ## Master Control Panel
-[https://mec-campuspass.vercel.app/mc](https://mec-campuspass.vercel.app/mc)
+[https://makeyourpass.vercel.app/mc](https://makeyourpass.vercel.app/mc)
 
 ## Tech Stack
 - React + TypeScript + Vite
