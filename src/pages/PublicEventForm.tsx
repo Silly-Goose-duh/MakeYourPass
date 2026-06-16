@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Send, CheckCircle, Sparkles, Calendar, MapPin, Clock, Building2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
+import { formatDate, formatTime, cn } from '@/lib/utils'
 import { getEventBySlug, getEventQuestions, submitEventResponse, submitResponseAnswers } from '@/lib/supabase'
 import type { CampusEvent, Organization, EventQuestion } from '@/types'
 
@@ -273,7 +273,7 @@ export function PublicEventForm() {
                   {event.time && (
                     <span className="flex items-center gap-1.5">
                       <Clock className="h-4 w-4 text-primary" />
-                      {event.time}
+                      {formatTime(event.time)}
                     </span>
                   )}
                   {event.venue && (
@@ -335,7 +335,7 @@ export function PublicEventForm() {
                       type="tel"
                       value={respondentPhone}
                       onChange={e => setRespondentPhone(e.target.value)}
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="+91 98765 43210"
                       className="w-full px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary placeholder:text-text-muted transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary"
                     />
                   </div>

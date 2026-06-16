@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Menu, X, User, LayoutDashboard, Shield, LogOut } from 'lucide-react'
+import { Sparkles, Menu, X, User, LayoutDashboard, Shield, LogOut, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getProfile, getUserOrganizations, signOut } from '@/lib/supabase'
 import type { Profile, Organization } from '@/types'
+import { cn } from '@/lib/utils'
 
 export function Navbar() {
   const { user, loading } = useAuth()
@@ -13,6 +14,7 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [orgs, setOrgs] = useState<Organization[]>([])
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -28,6 +30,17 @@ export function Navbar() {
       })
     }
   }, [user])
+
+  // Close profile dropdown on click outside
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.profile-dropdown-area')) setProfileMenuOpen(false)
+    }
+    setTimeout(() => document.addEventListener('click', handler), 0)
+    return () => document.removeEventListener('click', handler)
+  }, [profileMenuOpen])
 
   const isMc = location.pathname.startsWith('/mc')
   if (isMc) return null
@@ -101,21 +114,82 @@ export function Navbar() {
                     Dashboard
                   </Link>
                 )}
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-text-secondary hover:text-error hover:bg-error/5 transition-colors"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  Sign Out
-                </button>
+                {/* User profile button */}
+                <div className="relative profile-dropdown-area">
+                  <button
+                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                    className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg border border-border hover:border-primary/30 hover:bg-surface transition-colors"
+                  >
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-violet-600 text-[10px] font-bold text-white">
+                      {profile?.full_name
+                        ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                        : <User className="h-3.5 w-3.5" />}
+                    </div>
+                    <span className="text-xs font-medium text-text-primary max-w-[100px] truncate hidden sm:block">
+                      {profile?.full_name || user.email?.split('@')[0] || 'User'}
+                    </span>
+                    <ChevronDown className={cn('h-3 w-3 text-text-muted transition-transform', profileMenuOpen && 'rotate-180')} />
+                  </button>
+                  <AnimatePresence>
+                    {profileMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-xl shadow-xl z-50 overflow-hidden"
+                      >
+                        <div className="p-1.5 space-y-0.5">
+                          <div className="px-3 py-2 border-b border-border mb-1">
+                            <p className="text-xs font-medium text-text-primary truncate">{profile?.full_name || 'User'}</p>
+                            <p className="text-[10px] text-text-muted truncate">{user.email}</p>
+                          </div>
+                          <Link
+                            to="/dashboard"
+                            onClick={() => setProfileMenuOpen(false)}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+                          >
+                            <LayoutDashboard className="h-4 w-4" />
+                            Dashboard
+                          </Link>
+                          {profile?.is_superadmin && (
+                            <Link
+                              to="/mc"
+                              onClick={() => setProfileMenuOpen(false)}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-amber-400 hover:bg-amber-500/10 transition-colors"
+                            >
+                              <Shield className="h-4 w-4" />
+                              MC Panel
+                            </Link>
+                          )}
+                          <button
+                            onClick={() => { handleSignOut(); setProfileMenuOpen(false) }}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-error hover:bg-error/5 transition-colors"
+                          >
+                            <LogOut className="h-4 w-4" />
+                            Sign Out
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             ) : (
-              <Link
-                to="/login"
-                className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary-hover transition-colors shadow-lg shadow-primary/25"
-              >
-                Sign In
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/signup"
+                  className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  Sign Up
+                </Link>
+                <Link
+                  to="/login"
+                  className="text-sm font-semibold px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary-hover transition-colors shadow-lg shadow-primary/25"
+                >
+                  Sign In
+                </Link>
+              </div>
             )}
           </div>
 

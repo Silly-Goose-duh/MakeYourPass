@@ -1,23 +1,21 @@
 import { Link } from 'react-router-dom'
-import { Sparkles, Code, Heart, Mail, MessageCircle } from 'lucide-react'
+import { Sparkles, Code, Heart, Mail, MessageCircle, Building2, Shield } from 'lucide-react'
 
 const footerLinks = {
   Product: [
-    { label: 'Features', href: '/#features' },
-    { label: 'How It Works', href: '/#how-it-works' },
-    { label: 'Integrations', href: '/integrations' },
+    { label: 'Events', href: '/' },
+    { label: 'How It Works', href: '/#events-section' },
+    { label: 'Register Your Club', href: '/signup' },
   ],
-  Resources: [
-    { label: 'Blog', href: '/blog' },
-    { label: 'Documentation', href: '/docs' },
-    { label: 'API Reference', href: '/api' },
-    { label: 'Community', href: '/community' },
+  Account: [
+    { label: 'Sign In', href: '/login' },
+    { label: 'Create Account', href: '/signup' },
+    { label: 'Dashboard', href: '/dashboard' },
   ],
-  Company: [
-    { label: 'About', href: '/about' },
-    { label: 'Privacy', href: '/privacy' },
-    { label: 'Terms', href: '/terms' },
-    { label: 'Contact', href: '/contact' },
+  Links: [
+    { label: 'About MEC', href: 'https://marian.ac.in' },
+    { label: 'Contact Us', href: 'mailto:hello@campuspass.app' },
+    { label: 'MC Panel', href: '/mc' },
   ],
 }
 
@@ -33,11 +31,11 @@ export function Footer() {
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <span className="text-lg font-bold text-text-primary">
-                MakeYour<span className="text-primary">Pass</span>
+                Campus<span className="text-primary">Pass</span>
               </span>
             </Link>
             <p className="text-text-secondary text-sm leading-relaxed mb-4">
-              The all-in-one event OS that makes ticketing seamless, check-ins instant, and your guests go, &ldquo;Whoa, that was smooth.&rdquo;
+              Marian Engineering College's event platform. Register, organize, and attend campus events seamlessly.
             </p>
             <div className="flex items-center gap-3">
               <a

@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Layout } from '@/components/layout/Layout'
 import HomePage from '@/pages/Home'
@@ -14,6 +14,7 @@ const CreateEvent = lazy(() => import('@/pages/CreateEvent').then(m => ({ defaul
 const EditEvent = lazy(() => import('@/pages/EditEvent').then(m => ({ default: m.EditEvent })))
 const EventAnalytics = lazy(() => import('@/pages/EventAnalytics').then(m => ({ default: m.EventAnalytics })))
 const MCPanel = lazy(() => import('@/pages/MCPanel').then(m => ({ default: m.MCPanel })))
+const NotFoundPage = lazy(() => import('@/pages/NotFound'))
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -30,10 +31,40 @@ function PageSuspense({ children }: { children: React.ReactNode }) {
   )
 }
 
+function AppRoutes() {
+  const location = useLocation()
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Public routes */}
+        <Route path="/" element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="event/:eventSlug" element={<PageSuspense><PublicEventForm /></PageSuspense>} />
+          <Route path="login" element={<LoginPage />} />
+          <Route path="signup" element={<SignupPage />} />
+          <Route path="*" element={<PageSuspense><NotFoundPage /></PageSuspense>} />
+        </Route>
+
+        {/* Organization Dashboard */}
+        <Route path="/dashboard" element={<ProtectedRoute><PageSuspense><OrgDashboard /></PageSuspense></ProtectedRoute>} />
+        <Route path="/dashboard/events/new" element={<OrgAdminRoute><PageSuspense><CreateEvent /></PageSuspense></OrgAdminRoute>} />
+        <Route path="/dashboard/events/:id/edit" element={<OrgAdminRoute><PageSuspense><EditEvent /></PageSuspense></OrgAdminRoute>} />
+        <Route path="/dashboard/events/:id/analytics" element={<OrgAdminRoute><PageSuspense><EventAnalytics /></PageSuspense></OrgAdminRoute>} />
+
+        {/* Superadmin Master Control */}
+        <Route path="/mc" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
+        <Route path="/mc/*" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
+      </Routes>
+    </AnimatePresence>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        {/* SEO / OG meta tags */}
+        <HeadTags />
         {/* Ambient background overlay */}
         <div
           className="fixed inset-0 pointer-events-none z-[-1]"
@@ -46,31 +77,38 @@ export default function App() {
             backgroundAttachment: 'fixed',
           }}
         />
-        <AnimatePresence mode="wait">
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Layout />}>
-              <Route index element={<HomePage />} />
-              <Route path="event/:eventSlug" element={<PageSuspense><PublicEventForm /></PageSuspense>} />
-              <Route path="login" element={<LoginPage />} />
-              <Route path="signup" element={<SignupPage />} />
-            </Route>
-
-            {/* Organization Dashboard */}
-            <Route path="/dashboard" element={<ProtectedRoute><PageSuspense><OrgDashboard /></PageSuspense></ProtectedRoute>} />
-            <Route path="/dashboard/events/new" element={<OrgAdminRoute><PageSuspense><CreateEvent /></PageSuspense></OrgAdminRoute>} />
-            <Route path="/dashboard/events/:id/edit" element={<OrgAdminRoute><PageSuspense><EditEvent /></PageSuspense></OrgAdminRoute>} />
-            <Route path="/dashboard/events/:id/analytics" element={<OrgAdminRoute><PageSuspense><EventAnalytics /></PageSuspense></OrgAdminRoute>} />
-
-            {/* Superadmin Master Control */}
-            <Route path="/mc" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
-            <Route path="/mc/*" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
-
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AnimatePresence>
+        <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
   )
+}
+
+function HeadTags() {
+  useEffect(() => {
+    const tags: { property?: string; name?: string; content: string }[] = [
+      { property: 'og:title', content: 'CampusPass — Marian Engineering College' },
+      { property: 'og:description', content: 'Discover and register for events hosted by clubs and departments across Marian Engineering College.' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:url', content: 'https://makeyourpass.vercel.app' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: 'CampusPass — Marian Engineering College' },
+      { name: 'twitter:description', content: 'Discover and register for events hosted by clubs and departments across Marian Engineering College.' },
+      { name: 'description', content: 'CampusPass — Marian Engineering College\'s event platform. Register, organize, and attend campus events seamlessly.' },
+    ]
+    const els = tags.map(t => {
+      const el = document.createElement('meta')
+      if (t.property) el.setAttribute('property', t.property)
+      if (t.name) el.setAttribute('name', t.name)
+      el.setAttribute('content', t.content)
+      document.head.appendChild(el)
+      return el
+    })
+    // Set title
+    const titleEl = document.querySelector('title')
+    if (titleEl) titleEl.textContent = 'CampusPass — Marian Engineering College'
+    return () => {
+      els.forEach(el => document.head.removeChild(el))
+    }
+  }, [])
+  return null
 }

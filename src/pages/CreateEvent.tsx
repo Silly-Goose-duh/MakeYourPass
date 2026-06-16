@@ -6,19 +6,10 @@ import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { FormBuilder } from '@/components/forms/FormBuilder'
-import { cn } from '@/lib/utils'
+import { cn, generateSlug } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { getProfile, getUserOrganizations, createEvent, saveEventQuestions, uploadPoster, getPosterPublicUrl, uploadBrochure, getBrochurePublicUrl } from '@/lib/supabase'
 import type { Profile, Organization, CampusEvent, FormQuestion } from '@/types'
-
-function generateSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
 
 function ToggleSwitch({
   enabled,

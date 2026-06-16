@@ -273,7 +273,7 @@ export function SignupPage() {
                     onChange={(e) => setOrgDescription(e.target.value)}
                     placeholder="Tell us about your organization..."
                     rows={4}
-                    className="w-full px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary placeholder:text-text-muted resize-y min-h-[100px] transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary"
+                    className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-text-primary placeholder:text-text-muted resize-y min-h-[100px] transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary"
                   />
                 </div>
 
