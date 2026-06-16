@@ -315,7 +315,7 @@ export function EventPage() {
                 <ExternalLink className="h-4 w-4 mr-1" />
                 External Registration
               </Badge>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-text-primary mb-4">
                 {event.title}
               </h1>
               {event.short_description && (
@@ -370,7 +370,7 @@ export function EventPage() {
               <Badge variant="primary" size="sm" className="mb-3">
                 {event.category.replace('_', ' ')}
               </Badge>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 leading-[1.1]">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-text-primary mb-4 leading-[1.1]">
                 {event.title}
               </h1>
               {event.short_description && (
@@ -451,7 +451,10 @@ export function EventPage() {
             <div className="w-full lg:w-[380px]">
               <Card variant="glass" padding="lg" className="sticky top-24">
                 <CardContent>
-                  <h3 className="text-lg font-bold text-text-primary mb-4">Get Tickets</h3>
+                  <h3 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
+                    <TicketIcon className="h-5 w-5 text-primary" />
+                    Get Tickets
+                  </h3>
 
                   {/* Overall availability bar in card */}
                   {totalTickets > 0 && (
@@ -496,7 +499,7 @@ export function EventPage() {
                             )}
                           >
                             <div className="flex items-center justify-between mb-1">
-                              <span className="font-semibold text-white">{ticket.name}</span>
+                              <span className="font-semibold text-text-primary">{ticket.name}</span>
                               <span className={cn(
                                 'font-bold',
                                 ticket.price === 0 ? 'text-success' : 'text-secondary'
@@ -550,15 +553,15 @@ export function EventPage() {
                               <button
                                 type="button"
                                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                className="w-10 h-10 rounded-xl border border-border text-white font-bold hover:bg-white/5"
+                                className="w-10 h-10 rounded-xl border border-border text-text-primary font-bold hover:bg-surface"
                               >
                                 -
                               </button>
-                              <span className="text-xl font-bold text-white w-8 text-center">{quantity}</span>
+                              <span className="text-xl font-bold text-text-primary w-8 text-center">{quantity}</span>
                               <button
                                 type="button"
                                 onClick={() => setQuantity(Math.min(quantity + 1, activeTicket?.max_per_order || 10))}
-                                className="w-10 h-10 rounded-xl border border-border text-white font-bold hover:bg-white/5"
+                                className="w-10 h-10 rounded-xl border border-border text-text-primary font-bold hover:bg-surface"
                               >
                                 +
                               </button>
@@ -568,7 +571,7 @@ export function EventPage() {
                           <div className="p-4 bg-surface rounded-xl border border-border">
                             <div className="flex justify-between mb-2">
                               <span className="text-text-secondary">{activeTicket?.name} x {quantity}</span>
-                              <span className="text-white font-medium">
+                              <span className="text-text-primary font-medium">
                                 {activeTicket?.price === 0 
                                   ? 'Free' 
                                   : `₹${(activeTicket?.price || 0) * quantity}`}
@@ -581,7 +584,7 @@ export function EventPage() {
                               </div>
                             )}
                             <div className="flex justify-between mt-2 pt-2 border-t border-border">
-                              <span className="font-semibold text-white">Total</span>
+                              <span className="font-semibold text-text-primary">Total</span>
                               <span className="font-bold text-secondary">
                                 {activeTicket?.price === 0 
                                   ? 'Free' 
@@ -648,11 +651,11 @@ export function EventPage() {
           <div className="h-16 w-16 rounded-2xl bg-success/20 mx-auto mb-4 flex items-center justify-center">
             <Check className="h-8 w-8 text-success" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-2xl font-bold text-text-primary mb-2">
             Registration Successful! 🎉
           </h2>
           <p className="text-text-secondary text-sm mb-1">
-            {purchasedTickets.length} ticket{purchasedTickets.length > 1 ? 's' : ''} confirmed for <span className="text-white font-semibold">{event?.title}</span>
+            {purchasedTickets.length} ticket{purchasedTickets.length > 1 ? 's' : ''} confirmed for <span className="text-text-primary font-semibold">{event?.title}</span>
           </p>
           <p className="text-text-muted text-xs mb-6">
             Show the QR code at the entrance for check-in.
@@ -674,7 +677,7 @@ export function EventPage() {
                   </div>
                   <div className="text-left flex-1 min-w-0">
                     <Badge variant="primary" size="sm" className="mb-1">Ticket #{idx + 1}</Badge>
-                    <p className="text-white font-semibold text-sm truncate">{event?.title}</p>
+                    <p className="text-text-primary font-semibold text-sm truncate">{event?.title}</p>
                     <p className="text-text-muted text-xs">{activeTicket?.name}</p>
                     <p className="text-text-muted text-[10px]">
                       {event?.start_date && formatDate(event.start_date)}

@@ -87,7 +87,7 @@ export function PublicEventsPage() {
               placeholder="Search events by name, description, or city..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 bg-surface border border-border rounded-2xl text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary/50 focus:shadow-[0_0_20px_rgba(99,102,241,0.08)] transition-all"
+              className="w-full pl-12 pr-4 py-3.5 bg-surface border border-primary/40 rounded-2xl text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:shadow-[0_0_20px_rgba(99,102,241,0.12)] transition-all shadow-[0_0_8px_rgba(99,102,241,0.06)]"
             />
           </div>
         </motion.div>
