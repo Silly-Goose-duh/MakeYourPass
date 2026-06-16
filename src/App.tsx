@@ -19,6 +19,17 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        {/* Ambient background gradients — fixed behind all pages */}
+        <div className="fixed inset-0 pointer-events-none z-[-1]"
+          style={{
+            backgroundImage: `
+              radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,255,255,0.06) 0%, transparent 100%),
+              radial-gradient(ellipse 50% 30% at 20% 60%, rgba(99,102,241,0.04) 0%, transparent 100%),
+              radial-gradient(ellipse 40% 30% at 80% 70%, rgba(245,158,11,0.03) 0%, transparent 100%)
+            `,
+            backgroundAttachment: 'fixed'
+          }}
+        />
         <AnimatePresence mode="wait">
           <Routes>
           {/* Public routes */}
