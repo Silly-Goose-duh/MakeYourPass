@@ -213,6 +213,39 @@ export default function HomePage() {
           </aside>
 
           <main className="min-w-0 flex-1">
+            {/* Mobile Org Filter */}
+            <div className="mb-4 lg:hidden">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                <button
+                  onClick={() => setSelectedOrgId(null)}
+                  className={cn(
+                    'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap',
+                    selectedOrgId === null
+                      ? 'bg-primary/10 text-primary border-primary/30'
+                      : 'bg-surface text-text-secondary border-border hover:border-primary/30'
+                  )}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  All
+                </button>
+                {organizations.map(org => (
+                  <button
+                    key={org.id}
+                    onClick={() => setSelectedOrgId(org.id)}
+                    className={cn(
+                      'shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap',
+                      selectedOrgId === org.id
+                        ? 'bg-primary/10 text-primary border-primary/30'
+                        : 'bg-surface text-text-secondary border-border hover:border-primary/30'
+                    )}
+                  >
+                    <Building2 className="h-3 w-3" />
+                    {org.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -324,7 +357,7 @@ export default function HomePage() {
                         className="group relative overflow-hidden rounded-2xl border border-border bg-surface transition-colors hover:border-border-light"
                       >
                         <Link
-                          to={`/events/${event.slug}`}
+                          to={`/event/${event.slug}`}
                           className="block"
                         >
                           <div className="relative h-44 overflow-hidden bg-surface-elevated">

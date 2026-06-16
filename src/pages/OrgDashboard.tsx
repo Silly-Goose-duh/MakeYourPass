@@ -69,13 +69,18 @@ export function OrgDashboard() {
   today.setHours(0, 0, 0, 0)
 
   const filteredEvents = events.filter(event => {
+    const hasDate = !!event.date
+    const eventDate = event.date ? new Date(event.date) : null
+    const isToday = eventDate && eventDate.getTime() === today.getTime()
+    const isFuture = eventDate && eventDate > today
+    const isPast = eventDate && eventDate < today
     switch (activeTab) {
       case 'active':
-        return event.status === 'published'
+        return event.status === 'published' && (!hasDate || isToday)
       case 'upcoming':
-        return event.status === 'published' && event.date && new Date(event.date) > today
+        return event.status === 'published' && isFuture
       case 'past':
-        return event.status === 'published' && event.date && new Date(event.date) < today
+        return event.status === 'published' && isPast
       case 'drafts':
         return event.status === 'draft'
       default:

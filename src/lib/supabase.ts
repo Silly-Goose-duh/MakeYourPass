@@ -246,6 +246,15 @@ export function getPosterPublicUrl(path: string) {
   return data.publicUrl
 }
 
+export async function uploadBrochure(file: File, path: string) {
+  return supabase.storage.from('event-posters').upload(path, file, { upsert: true })
+}
+
+export function getBrochurePublicUrl(path: string) {
+  const { data } = supabase.storage.from('event-posters').getPublicUrl(path)
+  return data.publicUrl
+}
+
 // ==================== Superadmin ====================
 
 export async function getAllOrganizations() {

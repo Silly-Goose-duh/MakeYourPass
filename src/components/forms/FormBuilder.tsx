@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { motion, AnimatePresence, Reorder } from 'framer-motion'
+import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, GripVertical, ChevronDown, Type, AlignLeft, List, CheckSquare, ListOrdered, Ruler } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -21,6 +21,19 @@ interface FormBuilderProps {
 }
 
 export function FormBuilder({ questions, onChange }: FormBuilderProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const addQuestion = (type: FormQuestion['question_type']) => {
     const newQ: FormQuestion = {
       title: '',
@@ -72,26 +85,43 @@ export function FormBuilder({ questions, onChange }: FormBuilderProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-text-primary">Form Questions</h3>
-        <div className="relative group">
-          <Button size="sm" variant="primary">
+        <div className="relative" ref={dropdownRef}>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+          >
             <Plus className="h-4 w-4" />
             Add Question
           </Button>
-          <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-            <div className="p-1.5 space-y-0.5">
-              {QUESTION_TYPES.map(qt => (
-                <button
-                  key={qt.value}
-                  type="button"
-                  onClick={() => addQuestion(qt.value as FormQuestion['question_type'])}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
-                >
-                  <qt.icon className="h-4 w-4" />
-                  {qt.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <AnimatePresence>
+            {dropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-xl shadow-xl z-50"
+              >
+                <div className="p-1.5 space-y-0.5">
+                  {QUESTION_TYPES.map(qt => (
+                    <button
+                      key={qt.value}
+                      type="button"
+                      onClick={() => {
+                        addQuestion(qt.value as FormQuestion['question_type'])
+                        setDropdownOpen(false)
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+                    >
+                      <qt.icon className="h-4 w-4" />
+                      {qt.label}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

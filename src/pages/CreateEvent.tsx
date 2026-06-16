@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { FormBuilder } from '@/components/forms/FormBuilder'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { getProfile, getUserOrganizations, createEvent, saveEventQuestions, uploadPoster, getPosterPublicUrl } from '@/lib/supabase'
+import { getProfile, getUserOrganizations, createEvent, saveEventQuestions, uploadPoster, getPosterPublicUrl, uploadBrochure, getBrochurePublicUrl } from '@/lib/supabase'
 import type { Profile, Organization, CampusEvent, FormQuestion } from '@/types'
 
 function generateSlug(text: string): string {
@@ -151,6 +151,7 @@ export function CreateEvent() {
 
     try {
       let posterUrl = ''
+      let brochureUrl = ''
 
       if (posterFile) {
         setPosterUploading(true)
@@ -167,6 +168,18 @@ export function CreateEvent() {
         setPosterUploading(false)
       }
 
+      if (brochureFile) {
+        const ext = brochureFile.name.split('.').pop()
+        const brochurePath = `${selectedOrgId}/brochures/${generateSlug(title)}-${Date.now()}.${ext}`
+        const { error: uploadErr } = await uploadBrochure(brochureFile, brochurePath)
+        if (uploadErr) {
+          setError('Failed to upload brochure: ' + uploadErr.message)
+          setSaving(false)
+          return
+        }
+        brochureUrl = getBrochurePublicUrl(brochurePath)
+      }
+
       const slug = generateSlug(title)
       const eventPayload: Partial<CampusEvent> = {
         organization_id: selectedOrgId,
@@ -174,7 +187,7 @@ export function CreateEvent() {
         slug,
         description,
         poster_url: posterUrl,
-        brochure_url: brochureFile ? brochureFile.name : '',
+        brochure_url: brochureUrl,
         date: date || null,
         time: time || null,
         venue,

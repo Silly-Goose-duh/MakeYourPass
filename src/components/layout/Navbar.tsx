@@ -57,7 +57,7 @@ export function Navbar() {
               whileHover={{ scale: 1.05, rotate: -5 }}
               className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-violet-600 flex items-center justify-center shadow-lg shadow-primary/25"
             >
-              <Sparkles className="h-4.5 w-4.5 text-white relative z-10" />
+              <Sparkles className="h-5 w-5 text-white relative z-10" />
             </motion.div>
             <div>
               <span className="text-lg font-bold font-display text-text-primary">

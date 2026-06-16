@@ -30,7 +30,7 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2.5 mb-4">
               <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-violet-600 flex items-center justify-center shadow-sm">
-                <Sparkles className="h-4.5 w-4.5 text-white" />
+                <Sparkles className="h-5 w-5 text-white" />
               </div>
               <span className="text-lg font-bold text-text-primary">
                 MakeYour<span className="text-primary">Pass</span>
