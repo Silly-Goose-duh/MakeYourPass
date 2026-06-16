@@ -1,310 +1,514 @@
--- ============================================
--- MakeYourPass — Database Schema
--- Run this in Supabase SQL Editor (Ctrl+Enter)
--- ============================================
+-- ============================================================
+-- CAMPUSPASS — Marian Engineering College Event Platform
+-- Full Schema Migration
+-- ============================================================
 
--- 0. Extensions
-create extension if not exists "pgcrypto";
+-- 0. Drop existing tables (wipe clean)
+DROP TABLE IF EXISTS response_answers CASCADE;
+DROP TABLE IF EXISTS event_responses CASCADE;
+DROP TABLE IF EXISTS event_questions CASCADE;
+DROP TABLE IF EXISTS tickets CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS ticket_types CASCADE;
+DROP TABLE IF EXISTS events CASCADE;
+DROP TABLE IF EXISTS organization_members CASCADE;
+DROP TABLE IF EXISTS organization_registration_requests CASCADE;
+DROP TABLE IF EXISTS organizations CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+DROP FUNCTION IF EXISTS create_organization_request CASCADE;
+DROP FUNCTION IF EXISTS approve_organization_request CASCADE;
 
--- 1. Organizations
-create table if not exists organizations (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  slug text not null unique,
-  logo_url text,
-  description text,
-  owner_id uuid not null references auth.users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+-- 1. PROFILES (extends auth.users)
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  is_superadmin BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 2. Organization Members
-create table if not exists org_members (
-  id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references organizations(id) on delete cascade,
-  user_id uuid references auth.users(id) on delete set null,
-  role text not null check (role in ('owner', 'admin', 'member')) default 'member',
-  invited_email text,
-  status text not null check (status in ('active', 'invited', 'declined')) default 'invited',
-  created_at timestamptz not null default now()
-);
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- 3. Events
-create table if not exists events (
-  id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references organizations(id) on delete cascade,
-  title text not null,
-  slug text not null unique,
-  description text not null default '',
-  short_description text,
-  cover_image_url text,
-  venue_name text,
-  venue_address text,
-  city text,
-  state text,
-  start_date date not null,
-  end_date date not null,
-  start_time text not null,
-  end_time text not null,
-  timezone text not null default 'Asia/Kolkata',
-  category text not null check (category in ('conference', 'workshop', 'meetup', 'festival', 'concert', 'sports', 'networking', 'college_fest', 'webinar', 'other')) default 'other',
-  status text not null check (status in ('draft', 'published', 'cancelled', 'completed', 'archived')) default 'draft',
-  visibility text not null check (visibility in ('public', 'private', 'unlisted')) default 'public',
-  max_attendees int,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+-- Everyone can read profiles
+CREATE POLICY "Profiles are readable by all authenticated users"
+  ON profiles FOR SELECT USING (auth.role() = 'authenticated');
 
--- 4. Ticket Types
-create table if not exists ticket_types (
-  id uuid primary key default gen_random_uuid(),
-  event_id uuid not null references events(id) on delete cascade,
-  name text not null,
-  description text,
-  price int not null default 0,
-  currency text not null default 'INR',
-  quantity int not null default 0,
-  quantity_sold int not null default 0,
-  max_per_order int not null default 5,
-  sales_start timestamptz,
-  sales_end timestamptz,
-  is_active boolean not null default true,
-  sort_order int not null default 0,
-  created_at timestamptz not null default now()
-);
+-- Users can update their own profile
+CREATE POLICY "Users can update own profile"
+  ON profiles FOR UPDATE USING (auth.uid() = id);
 
--- 5. Orders
-create table if not exists orders (
-  id uuid primary key default gen_random_uuid(),
-  event_id uuid not null references events(id) on delete cascade,
-  ticket_type_id uuid not null references ticket_types(id) on delete restrict,
-  buyer_name text not null,
-  buyer_email text not null,
-  buyer_phone text,
-  quantity int not null default 1,
-  total_amount int not null,
-  currency text not null default 'INR',
-  status text not null check (status in ('pending', 'confirmed', 'cancelled', 'refunded')) default 'pending',
-  payment_method text not null check (payment_method in ('razorpay', 'slice', 'free')) default 'free',
-  payment_id text,
-  promo_code text,
-  discount_amount int not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
--- 6. Tickets (issued)
-create table if not exists tickets (
-  id uuid primary key default gen_random_uuid(),
-  order_id uuid not null references orders(id) on delete cascade,
-  event_id uuid not null references events(id) on delete cascade,
-  ticket_type_id uuid not null references ticket_types(id) on delete restrict,
-  attendee_name text,
-  attendee_email text,
-  attendee_phone text,
-  qr_code text not null,
-  qr_code_url text not null,
-  status text not null check (status in ('active', 'used', 'cancelled', 'refunded')) default 'active',
-  checked_in_at timestamptz,
-  checked_in_by uuid references auth.users(id) on delete set null,
-  created_at timestamptz not null default now()
-);
-
--- 7. Check-ins
-create table if not exists check_ins (
-  id uuid primary key default gen_random_uuid(),
-  ticket_id uuid not null references tickets(id) on delete cascade,
-  event_id uuid not null references events(id) on delete cascade,
-  checked_in_by uuid not null references auth.users(id) on delete set null,
-  checked_in_at timestamptz not null default now(),
-  method text not null check (method in ('scan', 'manual')) default 'scan',
-  notes text
-);
-
--- 8. Coupons / Promo Codes
-create table if not exists coupons (
-  id uuid primary key default gen_random_uuid(),
-  event_id uuid not null references events(id) on delete cascade,
-  code text not null,
-  discount_type text not null check (discount_type in ('percentage', 'fixed')),
-  discount_value int not null,
-  max_uses int,
-  current_uses int not null default 0,
-  min_order_amount int,
-  max_discount_amount int,
-  valid_from timestamptz,
-  valid_until timestamptz,
-  is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  unique(event_id, code)
-);
-
--- 9. Notification Templates
-create table if not exists notification_templates (
-  id uuid primary key default gen_random_uuid(),
-  event_id uuid references events(id) on delete cascade,
-  org_id uuid not null references organizations(id) on delete cascade,
-  type text not null check (type in ('email', 'whatsapp')),
-  trigger text not null check (trigger in ('registration', 'check_in', 'reminder', 'cancellation')),
-  subject text,
-  body text not null,
-  is_active boolean not null default true
-);
-
--- 10. Integrations (Payment Gateways)
-create table if not exists integrations (
-  id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references organizations(id) on delete cascade,
-  provider text not null check (provider in ('razorpay', 'slice', 'stripe')),
-  api_key text,
-  webhook_secret text,
-  is_active boolean not null default false,
-  created_at timestamptz not null default now()
-);
-
--- ============================================
--- Indexes for performance
--- ============================================
-create index idx_events_org_id on events(org_id);
-create index idx_events_slug on events(slug);
-create index idx_events_status on events(status);
-create index idx_ticket_types_event_id on ticket_types(event_id);
-create index idx_orders_event_id on orders(event_id);
-create index idx_orders_buyer_email on orders(buyer_email);
-create index idx_tickets_event_id on tickets(event_id);
-create index idx_tickets_order_id on tickets(order_id);
-create index idx_tickets_qr_code on tickets(qr_code);
-create index idx_tickets_status on tickets(status);
-create index idx_check_ins_event_id on check_ins(event_id);
-create index idx_coupons_event_id on coupons(event_id);
-create index idx_org_members_org_id on org_members(org_id);
-create index idx_org_members_user_id on org_members(user_id);
-
--- ============================================
--- Row Level Security (RLS)
--- ============================================
-alter table organizations enable row level security;
-alter table org_members enable row level security;
-alter table events enable row level security;
-alter table ticket_types enable row level security;
-alter table orders enable row level security;
-alter table tickets enable row level security;
-alter table check_ins enable row level security;
-alter table coupons enable row level security;
-alter table notification_templates enable row level security;
-alter table integrations enable row level security;
-
--- Organizations: owner has full access
-create policy "Users can view their own organizations"
-  on organizations for select
-  using (owner_id = auth.uid());
-
-create policy "Users can insert their own organizations"
-  on organizations for insert
-  with check (owner_id = auth.uid());
-
-create policy "Users can update their own organizations"
-  on organizations for update
-  using (owner_id = auth.uid());
-
--- Org Members: members can see their own memberships, owners can add themselves
-create policy "Users can view their own memberships"
-  on org_members for select
-  using (user_id = auth.uid());
-
-create policy "Org creators can add themselves as members"
-  on org_members for insert
-  with check (user_id = auth.uid() and role = 'owner');
-
--- Events: org members can view, owner can manage
-create policy "Anyone can view published events"
-  on events for select
-  using (status = 'published' or org_id in (
-    select org_id from org_members where user_id = auth.uid()
-  ));
-
-create policy "Org members can create events"
-  on events for insert
-  with check (
-    -- User is an active member of the org
-    (org_id in (
-      select org_id from org_members where user_id = auth.uid() and status = 'active'
-    ))
-    or
-    -- OR user owns the org (catches edge case where org_members insert is in same transaction)
-    (org_id in (
-      select id from organizations where owner_id = auth.uid()
-    ))
+-- Superadmin can insert/update any profile
+CREATE POLICY "Superadmin can manage all profiles"
+  ON profiles FOR ALL USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true)
   );
 
-create policy "Org members can update events"
-  on events for update
-  using (org_id in (
-    select org_id from org_members where user_id = auth.uid() and status = 'active'
-  ));
+-- 2. ORGANIZATIONS (pre-existing clubs & departments)
+CREATE TABLE organizations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT DEFAULT '',
+  logo_url TEXT DEFAULT '',
+  is_approved BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- Ticket Types: public for published events
-create policy "Anyone can view ticket types for published events"
-  on ticket_types for select
-  using (event_id in (
-    select id from events where status = 'published'
-  ) or event_id in (
-    select id from events where org_id in (
-      select org_id from org_members where user_id = auth.uid()
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read approved organizations
+CREATE POLICY "Anyone can read approved organizations"
+  ON organizations FOR SELECT USING (is_approved = true OR auth.role() = 'authenticated');
+
+-- Superadmin can manage all organizations
+CREATE POLICY "Superadmin can manage organizations"
+  ON organizations FOR ALL USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true)
+  );
+
+-- 3. ORGANIZATION REGISTRATION REQUESTS (pending approval)
+CREATE TABLE organization_registration_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  organization_name TEXT NOT NULL,
+  organization_slug TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE organization_registration_requests ENABLE ROW LEVEL SECURITY;
+
+-- Users can see their own requests
+CREATE POLICY "Users can see own requests"
+  ON organization_registration_requests FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Users can create requests
+CREATE POLICY "Authenticated users can create requests"
+  ON organization_registration_requests FOR INSERT
+  WITH CHECK (auth.uid() = user_id AND auth.role() = 'authenticated');
+
+-- Superadmin can see and manage all requests
+CREATE POLICY "Superadmin can manage all requests"
+  ON organization_registration_requests FOR ALL USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true)
+  );
+
+-- 4. ORGANIZATION MEMBERS (who belongs to which org)
+CREATE TABLE organization_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(organization_id, user_id)
+);
+
+ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
+
+-- Members can see their own org memberships
+CREATE POLICY "Members can see own memberships"
+  ON organization_members FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Org admins can see all members of their org
+CREATE POLICY "Org admins can see org members"
+  ON organization_members FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM organization_members om
+      WHERE om.organization_id = organization_members.organization_id
+      AND om.user_id = auth.uid()
+      AND om.role = 'admin'
     )
+  );
+
+-- Superadmin can see all
+CREATE POLICY "Superadmin can see all members"
+  ON organization_members FOR SELECT USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true)
+  );
+
+-- 5. EVENTS
+CREATE TABLE events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT DEFAULT '',
+  poster_url TEXT DEFAULT '',
+  brochure_url TEXT DEFAULT '',
+  date DATE,
+  time TIME,
+  venue TEXT DEFAULT '',
+  form_type TEXT NOT NULL DEFAULT 'manual' CHECK (form_type IN ('brochure', 'manual')),
+  payment_type TEXT NOT NULL DEFAULT 'free' CHECK (payment_type IN ('free', 'paid')),
+  price NUMERIC(10,2) DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'cancelled')),
+  response_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read published events
+CREATE POLICY "Anyone can read published events"
+  ON events FOR SELECT
+  USING (status = 'published' OR EXISTS (
+    SELECT 1 FROM organization_members om
+    WHERE om.organization_id = events.organization_id
+    AND om.user_id = auth.uid()
+  ) OR EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true
   ));
 
--- Orders: buyer can view own, org can view all
-create policy "Users can view their own orders"
-  on orders for select
-  using (buyer_email = (select email from auth.users where id = auth.uid()) or event_id in (
-    select id from events where org_id in (
-      select org_id from org_members where user_id = auth.uid()
+-- Org admins can create events
+CREATE POLICY "Org admins can create events"
+  ON events FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM organization_members om
+      WHERE om.organization_id = events.organization_id
+      AND om.user_id = auth.uid()
+      AND om.role = 'admin'
+    ) OR EXISTS (
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true
     )
-  ));
+  );
 
-create policy "Anyone can insert orders"
-  on orders for insert
-  with check (true);
-
--- Tickets: buyer can view own, org can view all
-create policy "Users can view their own tickets"
-  on tickets for select
-  using (order_id in (
-    select id from orders where buyer_email = (select email from auth.users where id = auth.uid())
-  ) or event_id in (
-    select id from events where org_id in (
-      select org_id from org_members where user_id = auth.uid()
+-- Org admins can update their events
+CREATE POLICY "Org admins can update events"
+  ON events FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM organization_members om
+      WHERE om.organization_id = events.organization_id
+      AND om.user_id = auth.uid()
+      AND om.role = 'admin'
+    ) OR EXISTS (
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true
     )
-  ));
+  );
 
-create policy "Tickets can be created from orders"
-  on tickets for insert
-  with check (true);
+-- 6. EVENT QUESTIONS (Google Forms style)
+CREATE TABLE event_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  question_type TEXT NOT NULL CHECK (question_type IN ('short_text', 'paragraph', 'multiple_choice', 'checkboxes', 'dropdown', 'linear_scale')),
+  options JSONB DEFAULT '[]'::jsonb,
+  required BOOLEAN NOT NULL DEFAULT false,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- ============================================
--- Auto-update updated_at trigger
--- ============================================
-create or replace function update_updated_at()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
+ALTER TABLE event_questions ENABLE ROW LEVEL SECURITY;
 
-create trigger update_organizations_updated_at
-  before update on organizations for each row execute function update_updated_at();
+-- Anyone can read questions for published events
+CREATE POLICY "Anyone can read questions for published events"
+  ON event_questions FOR SELECT
+  USING (
+    EXISTS (SELECT 1 FROM events WHERE id = event_questions.event_id AND status = 'published')
+    OR EXISTS (
+      SELECT 1 FROM organization_members om
+      JOIN events e ON e.organization_id = om.organization_id
+      WHERE e.id = event_questions.event_id AND om.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true)
+  );
 
-create trigger update_events_updated_at
-  before update on events for each row execute function update_updated_at();
+-- Org admins can manage questions for their events
+CREATE POLICY "Org admins can manage questions"
+  ON event_questions FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM organization_members om
+      JOIN events e ON e.organization_id = om.organization_id
+      WHERE e.id = event_questions.event_id AND om.user_id = auth.uid() AND om.role = 'admin'
+    ) OR EXISTS (
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true
+    )
+  );
 
-create trigger update_orders_updated_at
-  before update on orders for each row execute function update_updated_at();
+-- 7. EVENT RESPONSES (form submissions)
+CREATE TABLE event_responses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  respondent_name TEXT NOT NULL DEFAULT '',
+  respondent_email TEXT NOT NULL DEFAULT '',
+  respondent_phone TEXT DEFAULT '',
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- ============================================
--- Migration 2: Add form_link and use_external_form to events
--- ============================================
-alter table events
-  add column if not exists form_link text,
-  add column if not exists use_external_form boolean default false;
+ALTER TABLE event_responses ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can insert a response (public form submission)
+CREATE POLICY "Anyone can submit a response"
+  ON event_responses FOR INSERT
+  WITH CHECK (true);
+
+-- Org admins can see responses for their events
+CREATE POLICY "Org admins can see responses"
+  ON event_responses FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM organization_members om
+      JOIN events e ON e.organization_id = om.organization_id
+      WHERE e.id = event_responses.event_id AND om.user_id = auth.uid()
+    ) OR EXISTS (
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true
+    )
+  );
+
+-- 8. RESPONSE ANSWERS (individual answers to questions)
+CREATE TABLE response_answers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  response_id UUID NOT NULL REFERENCES event_responses(id) ON DELETE CASCADE,
+  question_id UUID NOT NULL REFERENCES event_questions(id) ON DELETE CASCADE,
+  value TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE response_answers ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can insert answers (public form submission)
+CREATE POLICY "Anyone can submit answers"
+  ON response_answers FOR INSERT
+  WITH CHECK (true);
+
+-- Org admins can see answers for their events
+CREATE POLICY "Org admins can see answers"
+  ON response_answers FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM organization_members om
+      JOIN events e ON e.organization_id = om.organization_id
+      JOIN event_responses er ON er.event_id = e.id
+      WHERE er.id = response_answers.response_id AND om.user_id = auth.uid()
+    ) OR EXISTS (
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true
+    )
+  );
+
+-- 9. STORAGE bucket for posters
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('event-posters', 'event-posters', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'])
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- RPC FUNCTIONS
+-- ============================================================
+
+-- Create profile on signup (trigger from auth)
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, email, is_superadmin)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    COALESCE(NEW.email, ''),
+    CASE WHEN NEW.email = 'gooseisback4u@gmail.com' THEN true ELSE false END
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for new user signup
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- Create organization registration request (RPC)
+CREATE OR REPLACE FUNCTION create_organization_request(
+  org_name TEXT,
+  org_slug TEXT,
+  org_description TEXT DEFAULT ''
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_request_id UUID;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object('error', 'Not authenticated');
+  END IF;
+
+  -- Check if slug is taken
+  IF EXISTS (SELECT 1 FROM organizations WHERE slug = org_slug) THEN
+    RETURN jsonb_build_object('error', 'Organization slug already exists');
+  END IF;
+
+  -- Check if user already has a pending request
+  IF EXISTS (SELECT 1 FROM organization_registration_requests WHERE user_id = v_user_id AND status = 'pending') THEN
+    RETURN jsonb_build_object('error', 'You already have a pending request');
+  END IF;
+
+  INSERT INTO organization_registration_requests (user_id, organization_name, organization_slug, description)
+  VALUES (v_user_id, org_name, org_slug, org_description)
+  RETURNING id INTO v_request_id;
+
+  RETURN jsonb_build_object('id', v_request_id, 'status', 'pending');
+END;
+$$;
+
+-- Approve organization request (RPC, superadmin only)
+CREATE OR REPLACE FUNCTION approve_organization_request(request_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_request record;
+  v_org_id UUID;
+  v_profile record;
+BEGIN
+  -- Check if caller is superadmin
+  SELECT * INTO v_profile FROM profiles WHERE id = auth.uid();
+  IF v_profile IS NULL OR v_profile.is_superadmin = false THEN
+    RETURN jsonb_build_object('error', 'Only superadmin can approve requests');
+  END IF;
+
+  -- Get the request
+  SELECT * INTO v_request FROM organization_registration_requests WHERE id = request_id;
+  IF v_request IS NULL THEN
+    RETURN jsonb_build_object('error', 'Request not found');
+  END IF;
+
+  -- Create organization
+  INSERT INTO organizations (name, slug, description, is_approved)
+  VALUES (v_request.organization_name, v_request.organization_slug, v_request.description, true)
+  RETURNING id INTO v_org_id;
+
+  -- Add user as org admin
+  INSERT INTO organization_members (organization_id, user_id, role)
+  VALUES (v_org_id, v_request.user_id, 'admin');
+
+  -- Update request status
+  UPDATE organization_registration_requests SET status = 'approved', updated_at = now() WHERE id = request_id;
+
+  RETURN jsonb_build_object('organization_id', v_org_id, 'status', 'approved');
+END;
+$$;
+
+-- Reject organization request (RPC, superadmin only)
+CREATE OR REPLACE FUNCTION reject_organization_request(request_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_profile record;
+BEGIN
+  SELECT * INTO v_profile FROM profiles WHERE id = auth.uid();
+  IF v_profile IS NULL OR v_profile.is_superadmin = false THEN
+    RETURN jsonb_build_object('error', 'Only superadmin can reject requests');
+  END IF;
+
+  UPDATE organization_registration_requests SET status = 'rejected', updated_at = now() WHERE id = request_id;
+  RETURN jsonb_build_object('status', 'rejected');
+END;
+$$;
+
+-- Get events for an organization with filters
+CREATE OR REPLACE FUNCTION get_organization_events(
+  org_id UUID,
+  filter_status TEXT DEFAULT 'all'
+)
+RETURNS SETOF events
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF filter_status = 'all' THEN
+    RETURN QUERY SELECT * FROM events WHERE organization_id = org_id ORDER BY created_at DESC;
+  ELSE
+    RETURN QUERY SELECT * FROM events WHERE organization_id = org_id AND status = filter_status::text ORDER BY created_at DESC;
+  END IF;
+END;
+$$;
+
+-- Get organizations with member count and event count
+CREATE OR REPLACE FUNCTION get_organizations_with_counts()
+RETURNS TABLE (
+  id UUID,
+  name TEXT,
+  slug TEXT,
+  description TEXT,
+  logo_url TEXT,
+  is_approved BOOLEAN,
+  member_count BIGINT,
+  event_count BIGINT,
+  created_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    o.id,
+    o.name,
+    o.slug,
+    o.description,
+    o.logo_url,
+    o.is_approved,
+    COALESCE(mc.member_count, 0) AS member_count,
+    COALESCE(ec.event_count, 0) AS event_count,
+    o.created_at
+  FROM organizations o
+  LEFT JOIN (SELECT organization_id, COUNT(*) AS member_count FROM organization_members GROUP BY organization_id) mc ON mc.organization_id = o.id
+  LEFT JOIN (SELECT organization_id, COUNT(*) AS event_count FROM events GROUP BY organization_id) ec ON ec.organization_id = o.id
+  WHERE o.is_approved = true OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_superadmin = true)
+  ORDER BY o.name;
+END;
+$$;
+
+-- Get event analytics
+CREATE OR REPLACE FUNCTION get_event_analytics(event_id_param UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_total_responses BIGINT;
+  v_question_breakdown JSONB;
+BEGIN
+  SELECT COUNT(*) INTO v_total_responses FROM event_responses WHERE event_id = event_id_param;
+
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'question_id', eq.id,
+      'question_title', eq.title,
+      'question_type', eq.question_type,
+      'responses', (
+        SELECT jsonb_agg(jsonb_build_object('value', ra.value, 'count', cnt))
+        FROM (
+          SELECT ra.value, COUNT(*) AS cnt
+          FROM response_answers ra
+          WHERE ra.question_id = eq.id
+          GROUP BY ra.value
+          ORDER BY cnt DESC
+        ) sub
+      )
+    )
+    ORDER BY eq.sort_order
+  ) INTO v_question_breakdown
+  FROM event_questions eq
+  WHERE eq.event_id = event_id_param;
+
+  RETURN jsonb_build_object(
+    'total_responses', v_total_responses,
+    'questions', COALESCE(v_question_breakdown, '[]'::jsonb)
+  );
+END;
+$$;
