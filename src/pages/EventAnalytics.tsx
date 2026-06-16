@@ -150,7 +150,7 @@ export function EventAnalytics() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 pb-16">
+        <div className="px-4 sm:px-6 pt-24 pb-16">
           <div className="flex items-center gap-3 mb-8">
             <SkeletonBar className="h-5 w-32" />
           </div>
@@ -235,7 +235,7 @@ export function EventAnalytics() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 pb-16">
+      <div className="px-4 sm:px-6 pt-24 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

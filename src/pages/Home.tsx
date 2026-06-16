@@ -91,7 +91,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: 'easeOut' as const }}
-          className="relative z-10 mx-auto max-w-3xl"
+          className="relative z-10 mx-auto px-6"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -125,7 +125,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.45 }}
-            className="mx-auto max-w-2xl text-base text-text-secondary sm:text-lg"
+            className="mx-auto px-6 text-base text-text-secondary sm:text-lg"
           >
             Discover and register for events hosted by clubs and departments
             across campus.
@@ -133,7 +133,7 @@ export default function HomePage() {
         </motion.div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 pb-20">
+      <section className="px-6 pb-20">
         <div className="flex gap-8">
           <aside className="hidden w-[260px] flex-shrink-0 lg:block">
             <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-hidden rounded-2xl border border-border bg-surface">

@@ -113,7 +113,7 @@ export function OrgDashboard() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-7xl px-6 sm:px-10"
+        className="w-full px-6 sm:px-10"
       >
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <div className="h-20 w-20 rounded-2xl bg-surface border border-border flex items-center justify-center mb-6">
@@ -141,7 +141,7 @@ export function OrgDashboard() {
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="w-full max-w-7xl px-6 sm:px-10"
+      className="w-full px-6 sm:px-10"
     >
       {/* Superadmin Banner */}
       {profile?.is_superadmin && (

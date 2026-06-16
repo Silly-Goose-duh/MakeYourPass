@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 export function CTASection() {
   return (
     <section className="relative py-24 sm:py-32 overflow-hidden">
-      <div className="relative mx-auto px-8 lg:px-12 max-w-7xl">
+      <div className="relative mx-auto px-8 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}

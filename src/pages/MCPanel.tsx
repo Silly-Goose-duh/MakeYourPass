@@ -319,7 +319,7 @@ export function MCPanel() {
 
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-2xl border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <Link
@@ -365,7 +365,7 @@ export function MCPanel() {
       </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
           initial="hidden"
           animate="visible"
