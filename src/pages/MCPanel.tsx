@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Shield, CheckCircle, XCircle, Clock, Building2, Calendar, Users,
   BarChart3, Search, ArrowLeft, Sparkles, ExternalLink, Trash2, Loader2,
-  Download, Eye, AlertTriangle
+  Download, Eye, AlertTriangle, RefreshCw
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card'
@@ -416,11 +416,13 @@ export function MCPanel() {
                     </p>
                   </div>
                   <Button
-                    variant="ghost"
+                    variant="secondary"
                     size="sm"
                     onClick={loadPendingRequests}
                     loading={requestsLoading}
+                    className="gap-1.5"
                   >
+                    <RefreshCw className="h-3.5 w-3.5" />
                     Refresh
                   </Button>
                 </motion.div>
@@ -434,7 +436,7 @@ export function MCPanel() {
                     <div className="h-20 w-20 rounded-2xl bg-surface border border-border mx-auto mb-6 flex items-center justify-center">
                       <CheckCircle className="h-10 w-10 text-success/60" />
                     </div>
-                    <h3 className="text-xl font-semibold text-text-primary mb-2">No pending requests</h3>
+                    <h3 className="text-xl font-semibold text-text-primary mb-2">All caught up</h3>
                     <p className="text-text-secondary text-sm max-w-md mx-auto">
                       All organization registration requests have been reviewed. New requests will appear here.
                     </p>

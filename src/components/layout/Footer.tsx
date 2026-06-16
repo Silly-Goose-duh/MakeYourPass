@@ -59,7 +59,7 @@ export function Footer() {
                 <MessageCircle className="h-5 w-5" />
               </a>
               <a
-                href="mailto:hello@makeyourpass.com"
+                href="mailto:hello@campuspass.app"
                 className="p-2 text-text-muted hover:text-primary transition-colors"
                 aria-label="Email"
               >
@@ -102,10 +102,10 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-text-muted">
-            &copy; {new Date().getFullYear()} MakeYourPass. All rights reserved.
+            &copy; {new Date().getFullYear()} CampusPass. All rights reserved.
           </p>
           <p className="text-sm text-text-muted flex items-center gap-1">
-            Made with <Heart className="h-3.5 w-3.5 text-accent-rose" /> by the MakeYourPass team
+            Made with <Heart className="h-3.5 w-3.5 text-accent-rose" /> by the CampusPass team
           </p>
         </div>
       </div>

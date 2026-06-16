@@ -52,10 +52,10 @@ export function LoginPage() {
               <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
-              <span className="text-xl font-bold">
-                <span className="text-white">MakeYour</span>
-                <span className="text-primary">Pass</span>
-              </span>
+                  <span className="text-xl font-bold">
+                    <span className="text-white">Campus</span>
+                    <span className="text-primary">Pass</span>
+                  </span>
             </Link>
             <h1 className="text-2xl font-bold text-white mb-2">Welcome back</h1>
             <p className="text-text-secondary text-sm">Sign in to manage your events</p>

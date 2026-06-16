@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, ArrowLeft, Building2, CheckCircle2, Loader2 } from 'lucide-react'
+import { Sparkles, ArrowLeft, Building2, CheckCircle2, Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { signUp, createOrganizationRequest } from '@/lib/supabase'
-import { generateSlug } from '@/lib/utils'
+import { generateSlug, cn } from '@/lib/utils'
 
 export function SignupPage() {
   const navigate = useNavigate()
@@ -19,6 +19,7 @@ export function SignupPage() {
   const [orgSlug, setOrgSlug] = useState('')
   const [orgDescription, setOrgDescription] = useState('')
   const [slugEdited, setSlugEdited] = useState(false)
+  const [slugEditOpen, setSlugEditOpen] = useState(false)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -83,6 +84,33 @@ export function SignupPage() {
           Back to home
         </Link>
 
+        {/* Step Progress */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <div className={cn(
+            'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+            step === 'account' ? 'bg-primary/10 text-primary border border-primary/30' : 'bg-surface text-text-muted border border-border'
+          )}>
+            <div className={cn(
+              'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold',
+              step === 'account' ? 'bg-primary text-white' : 'bg-surface-elevated text-text-muted'
+            )}>1</div>
+            Account
+          </div>
+          <div className="w-6 h-px bg-border" />
+          <div className={cn(
+            'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+            step === 'organization' ? 'bg-primary/10 text-primary border border-primary/30' : step === 'success' ? 'bg-success/10 text-success border border-success/30' : 'bg-surface text-text-muted border border-border'
+          )}>
+            <div className={cn(
+              'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold',
+              step === 'organization' ? 'bg-primary text-white' : step === 'success' ? 'bg-success text-white' : 'bg-surface-elevated text-text-muted'
+            )}>
+              {step === 'success' ? <CheckCircle2 className="h-3 w-3" /> : '2'}
+            </div>
+            Organization
+          </div>
+        </div>
+
         <AnimatePresence mode="wait">
           {step === 'account' && (
             <motion.div
@@ -99,7 +127,7 @@ export function SignupPage() {
                     <Sparkles className="h-5 w-5 text-white" />
                   </div>
                   <span className="text-xl font-bold">
-                    <span className="text-white">MakeYour</span>
+                    <span className="text-white">Campus</span>
                     <span className="text-primary">Pass</span>
                   </span>
                 </Link>
@@ -198,15 +226,45 @@ export function SignupPage() {
                   required
                 />
 
-                <Input
-                  label="Organization Slug"
-                  type="text"
-                  placeholder="e.g. university-of-innovation"
-                  value={orgSlug}
-                  onChange={(e) => { setOrgSlug(e.target.value); setSlugEdited(true) }}
-                  hint="This will be used in your organization's URL"
-                  required
-                />
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">Organization URL</label>
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-surface-elevated border border-border">
+                    <div className="flex-1 min-w-0">
+                      {slugEditOpen ? (
+                        <input
+                          type="text"
+                          value={orgSlug}
+                          onChange={(e) => { setOrgSlug(e.target.value); setSlugEdited(true) }}
+                          className="w-full bg-transparent text-sm text-text-primary font-mono outline-none"
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="text-sm text-text-muted font-mono truncate">
+                          campuspass.com/<span className="text-text-primary">{orgSlug || 'your-org'}</span>
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSlugEditOpen(!slugEditOpen)}
+                      className={cn(
+                        'p-1.5 rounded-lg text-xs font-medium transition-colors shrink-0',
+                        slugEditOpen
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-text-muted hover:text-text-secondary hover:bg-surface'
+                      )}
+                    >
+                      {slugEditOpen ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Pencil className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-text-muted mt-1.5 px-1">
+                    Auto-generated from organization name. Click the pencil to customize.
+                  </p>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-2">Description</label>
@@ -243,13 +301,17 @@ export function SignupPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4 }}
-              className="glass-strong rounded-2xl p-10 text-center"
+              className="glass-strong rounded-2xl p-10 text-center relative overflow-hidden"
             >
+              {/* Celebration gradient orbs */}
+              <div className="pointer-events-none absolute -top-20 -right-20 h-40 w-40 rounded-full bg-success/10 blur-[60px]" />
+              <div className="pointer-events-none absolute -bottom-20 -left-20 h-40 w-40 rounded-full bg-secondary/10 blur-[60px]" />
+
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', delay: 0.15, duration: 0.5 }}
-                className="h-16 w-16 rounded-2xl bg-success/20 flex items-center justify-center mx-auto mb-6"
+                initial={{ scale: 0, rotate: -30 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', delay: 0.15, stiffness: 200, damping: 15 }}
+                className="h-16 w-16 rounded-2xl bg-gradient-to-br from-success/30 to-success/10 flex items-center justify-center mx-auto mb-6 border border-success/30"
               >
                 <CheckCircle2 className="h-8 w-8 text-success" />
               </motion.div>
@@ -265,21 +327,24 @@ export function SignupPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="text-text-secondary"
+                className="text-text-secondary mb-6"
               >
-                Your organization registration request has been submitted. The superadmin will review it shortly.
+                Your organization registration request has been submitted. The superadmin will review it shortly — you'll get access once approved.
               </motion.p>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="mt-8"
+                className="space-y-3"
               >
                 <Link to="/">
-                  <Button variant="primary" size="lg">
-                    Back to Home
+                  <Button variant="gradient" size="lg" glow>
+                    Browse Events
                   </Button>
                 </Link>
+                <p className="text-xs text-text-muted">
+                  While you wait, check out the events happening on campus.
+                </p>
               </motion.div>
             </motion.div>
           )}

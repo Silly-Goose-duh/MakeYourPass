@@ -128,7 +128,7 @@ export function FeaturesSection() {
             </h2>
             <p className="text-text-secondary text-lg sm:text-xl max-w-2xl">
               No more juggling spreadsheets, payment links, and check-in apps.{' '}
-              MakeYourPass brings it all under one roof.
+              CampusPass brings it all under one roof.
             </p>
           </div>
         </motion.div>

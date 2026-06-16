@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Building2, Calendar, MapPin, Clock, Sparkles } from 'lucide-react'
+import { Search, Building2, Calendar, MapPin, Clock, Sparkles, AlertTriangle } from 'lucide-react'
 import { getPublishedEvents, getApprovedOrganizations } from '@/lib/supabase'
 import type { CampusEvent, Organization } from '@/types'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -107,7 +107,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.25 }}
-            className="mb-4 text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl"
+            className="mb-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
           >
             <span className="gradient-text">CampusPass</span>
           </motion.h1>
@@ -116,24 +116,50 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.35 }}
-            className="mb-3 text-lg font-medium text-text-primary/90 sm:text-xl"
+            className="mb-2 text-base font-medium text-text-primary/90 sm:text-lg"
           >
-            Marian Engineering College's Official Event Platform
+            Get your pass. Show up. Done.
           </motion.p>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.45 }}
-            className="mx-auto px-6 text-base text-text-secondary sm:text-lg"
+            className="mx-auto px-6 mb-8 text-sm text-text-secondary sm:text-base"
           >
             Discover and register for events hosted by clubs and departments
-            across campus.
+            across Marian Engineering College.
           </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.55 }}
+            className="flex items-center justify-center gap-4"
+          >
+            <Link
+              to="#events"
+              onClick={(e) => {
+                e.preventDefault()
+                document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 hover:bg-primary-hover transition-all hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98]"
+            >
+              Browse Events
+              <Calendar className="h-4 w-4" />
+            </Link>
+            <Link
+              to="/signup"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface/80 px-6 py-3 text-sm font-medium text-text-secondary hover:text-text-primary hover:border-primary/30 transition-all"
+            >
+              Register Your Club
+              <Building2 className="h-4 w-4" />
+            </Link>
+          </motion.div>
         </motion.div>
       </section>
 
-      <section className="px-6 pb-20">
+      <section id="events-section" className="px-6 pb-20">
         <div className="flex gap-8">
           <aside className="hidden w-[260px] flex-shrink-0 lg:block">
             <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-hidden rounded-2xl border border-border bg-surface">
@@ -164,9 +190,11 @@ export default function HomePage() {
                     <Sparkles className="h-4 w-4" />
                   </span>
                   <span className="flex-1 font-medium">All Organizations</span>
-                  <span className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-text-muted">
-                    {events.length}
-                  </span>
+                  {events.length > 0 && (
+                    <span className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-text-muted">
+                      {events.length}
+                    </span>
+                  )}
                 </motion.button>
 
                 {organizations.map((org, i) => {
@@ -202,9 +230,11 @@ export default function HomePage() {
                       <span className="flex-1 truncate font-medium">
                         {org.name}
                       </span>
-                      <span className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-text-muted">
-                        {count}
-                      </span>
+                      {count > 0 && (
+                        <span className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-text-muted">
+                          {count}
+                        </span>
+                      )}
                     </motion.button>
                   )
                 })}
@@ -295,20 +325,20 @@ export default function HomePage() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface px-6 py-20 text-center"
+                  className="flex flex-col items-center justify-center rounded-2xl border border-error/30 bg-error/5 px-6 py-20 text-center"
                 >
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-error/10">
-                    <Clock className="h-6 w-6 text-error" />
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-error/15">
+                    <AlertTriangle className="h-6 w-6 text-error" />
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold text-text-primary">
-                    Something went wrong
+                  <h3 className="mb-2 text-lg font-semibold text-error">
+                    Failed to load events
                   </h3>
                   <p className="mb-6 max-w-sm text-sm text-text-secondary">
                     {error}
                   </p>
                   <button
                     onClick={() => window.location.reload()}
-                    className="rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+                    className="rounded-xl bg-error px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-error/90"
                   >
                     Try again
                   </button>
@@ -319,20 +349,22 @@ export default function HomePage() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface px-6 py-20 text-center"
+                  className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface/50 px-6 py-20 text-center"
                 >
                   <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-elevated">
-                    <Search className="h-6 w-6 text-text-muted" />
+                    <Calendar className="h-6 w-6 text-text-muted" />
                   </div>
                   <h3 className="mb-2 text-lg font-semibold text-text-primary">
-                    No events found
+                    {searchQuery
+                      ? 'No matching events'
+                      : 'No events yet'}
                   </h3>
                   <p className="max-w-sm text-sm text-text-secondary">
                     {searchQuery
                       ? `No events match "${searchQuery}". Try a different search term.`
                       : selectedOrgId
-                        ? 'This organization has no published events yet.'
-                        : 'There are no published events at the moment. Check back later!'}
+                        ? 'This organization has no published events at the moment.'
+                        : 'There are no published events yet. Check back later!'}
                   </p>
                 </motion.div>
               ) : (

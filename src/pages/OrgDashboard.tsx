@@ -5,6 +5,7 @@ import { Plus, Calendar, Eye, BarChart3, Edit, ExternalLink, Sparkles, Building2
 import { Button } from '@/components/ui/Button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { Card, CardContent } from '@/components/ui/Card'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { cn, formatDate } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { getProfile, getUserOrganizations, getEventsByOrganization } from '@/lib/supabase'
@@ -35,6 +36,7 @@ export function OrgDashboard() {
   const [selectedOrgId, setSelectedOrgId] = useState<string>('')
   const [events, setEvents] = useState<CampusEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
   const [activeTab, setActiveTab] = useState('active')
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false)
@@ -59,10 +61,17 @@ export function OrgDashboard() {
   useEffect(() => {
     if (!selectedOrgId) return
     setLoading(true)
+    setLoadingTimeout(false)
+    const timer = setTimeout(() => setLoadingTimeout(true), 8000)
     getEventsByOrganization(selectedOrgId, 'all').then(({ data }) => {
       if (data) setEvents(data)
       setLoading(false)
+      clearTimeout(timer)
+    }).catch(() => {
+      setLoading(false)
+      clearTimeout(timer)
     })
+    return () => clearTimeout(timer)
   }, [selectedOrgId])
 
   const today = new Date()
@@ -249,7 +258,7 @@ export function OrgDashboard() {
                 <Building2 className="h-8 w-8 text-primary" />
               </div>
               <h3 className="text-lg font-semibold text-text-primary text-center mb-1">
-                {selectedOrg?.name || 'Unnamed Organization'}
+                {selectedOrg?.name || (organizations.length > 0 ? organizations[0]?.name : 'Your Organization')}
               </h3>
               {selectedOrg?.slug && (
                 <p className="text-xs text-text-muted text-center mb-4 font-mono">
@@ -309,8 +318,36 @@ export function OrgDashboard() {
 
               {/* Loading State */}
               {loading && (
-                <div className="flex items-center justify-center h-64">
-                  <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div>
+                  {loadingTimeout ? (
+                    <div className="text-center py-20">
+                      <div className="h-16 w-16 rounded-2xl bg-surface border border-border mx-auto mb-4 flex items-center justify-center">
+                        <Clock className="h-8 w-8 text-text-muted" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-text-primary mb-1">Taking longer than expected</h3>
+                      <p className="text-text-secondary text-sm mb-6">Events are still loading. You can try refreshing.</p>
+                      <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
+                        Refresh Page
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="overflow-hidden rounded-2xl border border-border bg-surface">
+                          <Skeleton variant="rectangular" className="h-32 sm:h-36 w-full !rounded-none" />
+                          <div className="p-4 space-y-3">
+                            <Skeleton variant="text" width="80%" />
+                            <Skeleton variant="text" width="50%" />
+                            <div className="flex gap-2 pt-2">
+                              <Skeleton variant="text" width="30%" />
+                              <Skeleton variant="text" width="30%" />
+                              <Skeleton variant="text" width="30%" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
