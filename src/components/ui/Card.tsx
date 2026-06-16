@@ -13,7 +13,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     const baseStyles = 'rounded-2xl transition-all duration-300'
 
     const variants = {
-      default: 'bg-white border border-border',
+      default: 'bg-white border border-border shadow-sm',
       glass: 'glass',
       'glass-primary': 'glass-primary',
       'glass-accent': 'glass-accent',
