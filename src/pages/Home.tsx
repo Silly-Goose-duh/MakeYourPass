@@ -69,7 +69,12 @@ export default function HomePage() {
         setEvents((eventsRes.data ?? []) as EventWithOrg[])
         setOrganizations(orgsRes.data ?? [])
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong')
+        const message = err instanceof Error ? err.message : 'Something went wrong'
+        if (message.includes('RLS_RECURSION')) {
+          setError('Events are unavailable while the database is being configured. Please apply the SQL fix in the Supabase dashboard SQL editor.')
+        } else {
+          setError(message)
+        }
       } finally {
         setLoading(false)
       }

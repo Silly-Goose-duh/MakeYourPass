@@ -1,6 +1,32 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Profile, Organization, OrganizationMember, OrgRegistrationRequest, CampusEvent, EventQuestion, EventResponse, ResponseAnswer } from '@/types'
 
+// Helper to detect RLS recursion errors
+function isRlsRecursionError(error: unknown): boolean {
+  if (error && typeof error === 'object' && 'message' in error) {
+    const msg = (error as { message: string }).message
+    return msg.includes('infinite recursion') || msg.includes('recursion detected in policy')
+  }
+  return false
+}
+
+// Try an RPC call; if it returns 404 (function doesn't exist), return null without error
+async function tryRpc<T>(name: string, params?: Record<string, unknown>): Promise<{ data: T | null; error: Error | null; found: boolean }> {
+  try {
+    const { data, error } = await supabase.rpc(name, params || {})
+    if (error) {
+      // PGRST202 = function not found in schema cache
+      if ('code' in error && (error as { code: string }).code === 'PGRST202') {
+        return { data: null, error: null, found: false }
+      }
+      return { data: null, error, found: true }
+    }
+    return { data: data as T, error: null, found: true }
+  } catch {
+    return { data: null, error: null, found: false }
+  }
+}
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 const hasCredentials = !!(supabaseUrl && supabaseAnonKey)
@@ -131,51 +157,155 @@ export async function getUserOrganizations() {
     .from('organization_members')
     .select('*, organizations(*)')
     .eq('user_id', user.id)
+  if (isRlsRecursionError(error)) {
+    return { data: [], error: new Error('RLS_RECURSION') }
+  }
   return { data: data as (OrganizationMember & { organizations: Organization })[] | null, error }
 }
 
 export async function getOrgMembers(orgId: string) {
   const { data, error } = await supabase.from('organization_members').select('*').eq('organization_id', orgId)
+  if (isRlsRecursionError(error)) {
+    return { data: [], error: new Error('RLS_RECURSION') }
+  }
   return { data: data as OrganizationMember[] | null, error }
 }
 
-// ==================== Events ====================
+// ==================== Events (RPC-first with direct fallback) ====================
 
 export async function getPublishedEvents() {
+  // Try SECURITY DEFINER RPC first (bypasses RLS - requires rls-fix-v2.sql applied)
+  const rpcResult = await tryRpc<CampusEvent[]>('get_published_events')
+  if (rpcResult.found) {
+    if (rpcResult.error) return { data: null, error: rpcResult.error }
+    // Enrich with org data
+    const events = (rpcResult.data || []) as (CampusEvent & { organizations?: Pick<Organization, 'name' | 'slug' | 'logo_url'> })[]
+    const orgIds = [...new Set(events.map(e => e.organization_id))]
+    if (orgIds.length > 0) {
+      const { data: orgs } = await supabase
+        .from('organizations')
+        .select('id, name, slug, logo_url')
+        .in('id', orgIds) as { data: { id: string; name: string; slug: string; logo_url: string }[] | null }
+      const orgMap = new Map((orgs || []).map(o => [o.id, { name: o.name, slug: o.slug, logo_url: o.logo_url }]))
+      for (const event of events) {
+        event.organizations = orgMap.get(event.organization_id) || { name: '', slug: '', logo_url: '' }
+      }
+    }
+    return { data: events as (CampusEvent & { organizations: Pick<Organization, 'name' | 'slug' | 'logo_url'> })[], error: null }
+  }
+
+  // Fallback: direct query (will fail with RLS recursion until SQL fix is applied)
   const { data, error } = await supabase
     .from('events')
     .select('*, organizations(name, slug, logo_url)')
     .eq('status', 'published')
     .order('date', { ascending: true })
+  if (isRlsRecursionError(error)) {
+    return { data: [], error: new Error('RLS_RECURSION') }
+  }
   return { data: data as (CampusEvent & { organizations: Pick<Organization, 'name' | 'slug' | 'logo_url'> })[] | null, error }
 }
 
 export async function getEventsByOrganization(orgId: string, filterStatus: string = 'all') {
+  // Try RPC first
+  const rpcResult = await tryRpc<CampusEvent[]>('get_organization_events', {
+    org_id: orgId,
+    filter_status: filterStatus === 'all' ? 'all' : filterStatus
+  })
+  if (rpcResult.found) {
+    if (rpcResult.error) return { data: null, error: rpcResult.error }
+    return { data: (rpcResult.data || []) as CampusEvent[], error: null }
+  }
+
+  // Fallback: direct query
   let query = supabase.from('events').select('*').eq('organization_id', orgId)
   if (filterStatus !== 'all') {
     query = query.eq('status', filterStatus)
   }
   const { data, error } = await query.order('created_at', { ascending: false })
+  if (isRlsRecursionError(error)) {
+    return { data: [], error: new Error('RLS_RECURSION') }
+  }
   return { data: data as CampusEvent[] | null, error }
 }
 
 export async function getEventBySlug(slug: string) {
-  const { data, error } = await supabase.from('events').select('*, organizations(name, slug, logo_url, description)').eq('slug', slug).single()
-  return { data: data as CampusEvent & { organizations: Organization } | null, error }
+  // Try direct query first
+  const { data, error } = await supabase.from('events')
+    .select('*, organizations(name, slug, logo_url, description)')
+    .eq('slug', slug).single()
+  if (isRlsRecursionError(error)) {
+    return { data: null, error: new Error('RLS_RECURSION') }
+  }
+  if (!error && data) return { data: data as CampusEvent & { organizations: Organization } | null, error }
+
+  // Fallback: try RPC
+  const rpcResult = await tryRpc<CampusEvent[]>('get_published_events')
+  if (rpcResult.found && rpcResult.data) {
+    const found = (rpcResult.data as CampusEvent[]).find(e => e.slug === slug)
+    if (found) {
+      const { data: org } = await supabase.from('organizations').select('*').eq('id', found.organization_id).single()
+      return { data: { ...found, organizations: org as Organization } as CampusEvent & { organizations: Organization }, error: null }
+    }
+  }
+  return { data: null, error: new Error('RLS_RECURSION') }
 }
 
 export async function getEventById(id: string) {
-  const { data, error } = await supabase.from('events').select('*, organizations(name, slug, logo_url)').eq('id', id).single()
-  return { data: data as CampusEvent & { organizations: Pick<Organization, 'name' | 'slug' | 'logo_url'> } | null, error }
+  // Try direct query first
+  const { data, error } = await supabase.from('events')
+    .select('*, organizations(name, slug, logo_url)')
+    .eq('id', id).single()
+  if (isRlsRecursionError(error)) {
+    return { data: null, error: new Error('RLS_RECURSION') }
+  }
+  if (!error && data) return { data: data as CampusEvent & { organizations: Pick<Organization, 'name' | 'slug' | 'logo_url'> } | null, error }
+
+  // Fallback: try RPC
+  const rpcResult = await tryRpc<CampusEvent[]>('get_published_events')
+  if (rpcResult.found && rpcResult.data) {
+    const found = (rpcResult.data as CampusEvent[]).find(e => e.id === id)
+    if (found) {
+      const { data: org } = await supabase.from('organizations').select('name, slug, logo_url').eq('id', found.organization_id).single()
+      return { data: { ...found, organizations: org as Pick<Organization, 'name' | 'slug' | 'logo_url'> } as CampusEvent & { organizations: Pick<Organization, 'name' | 'slug' | 'logo_url'> }, error: null }
+    }
+  }
+  return { data: null, error: new Error('RLS_RECURSION') }
 }
 
 export async function createEvent(event: Partial<CampusEvent>) {
+  // Try RPC first (SECURITY DEFINER - bypasses RLS)
+  const rpcResult = await tryRpc<{ id: string }>('create_event', {
+    org_id: event.organization_id,
+    event_title: event.title,
+    event_slug: event.slug,
+    event_description: event.description || '',
+    event_date: event.date || null,
+    event_time: event.time || null,
+    event_venue: event.venue || '',
+    event_form_type: event.form_type || 'manual',
+    event_payment_type: event.payment_type || 'free',
+    event_price: event.price || 0,
+    event_status: event.status || 'draft',
+  })
+  if (rpcResult.found && rpcResult.data) {
+    // Fetch the full event
+    return getEventById(rpcResult.data.id as string)
+  }
+
+  // Fallback: direct insert
   const { data, error } = await supabase.from('events').insert(event).select().single()
+  if (isRlsRecursionError(error)) {
+    return { data: null, error: new Error('RLS_RECURSION') }
+  }
   return { data: data as CampusEvent | null, error }
 }
 
 export async function updateEvent(id: string, updates: Partial<CampusEvent>) {
   const { data, error } = await supabase.from('events').update(updates).eq('id', id).select().single()
+  if (isRlsRecursionError(error)) {
+    return { data: null, error: new Error('RLS_RECURSION') }
+  }
   return { data: data as CampusEvent | null, error }
 }
 
@@ -183,11 +313,17 @@ export async function updateEvent(id: string, updates: Partial<CampusEvent>) {
 
 export async function getEventQuestions(eventId: string) {
   const { data, error } = await supabase.from('event_questions').select('*').eq('event_id', eventId).order('sort_order')
+  if (isRlsRecursionError(error)) {
+    return { data: [], error: new Error('RLS_RECURSION') }
+  }
   return { data: data as EventQuestion[] | null, error }
 }
 
 export async function saveEventQuestions(eventId: string, questions: { title: string; description: string; question_type: string; options: string[]; required: boolean; sort_order: number }[]) {
   const { error: deleteError } = await supabase.from('event_questions').delete().eq('event_id', eventId)
+  if (isRlsRecursionError(deleteError)) {
+    return { data: null, error: new Error('RLS_RECURSION') }
+  }
   if (deleteError) return { data: null, error: deleteError }
   if (questions.length === 0) return { data: [] as EventQuestion[], error: null }
   const inserts = questions.map((q, i) => ({
@@ -200,6 +336,9 @@ export async function saveEventQuestions(eventId: string, questions: { title: st
     sort_order: i,
   }))
   const { data, error } = await supabase.from('event_questions').insert(inserts).select()
+  if (isRlsRecursionError(error)) {
+    return { data: null, error: new Error('RLS_RECURSION') }
+  }
   return { data: data as EventQuestion[] | null, error }
 }
 
@@ -207,6 +346,9 @@ export async function saveEventQuestions(eventId: string, questions: { title: st
 
 export async function submitEventResponse(eventId: string, data: { respondent_name: string; respondent_email: string; respondent_phone?: string }) {
   const { data: result, error } = await supabase.from('event_responses').insert({ event_id: eventId, ...data }).select().single()
+  if (isRlsRecursionError(error)) {
+    return { data: null, error: new Error('RLS_RECURSION') }
+  }
   return { data: result as EventResponse | null, error }
 }
 
@@ -214,17 +356,26 @@ export async function submitResponseAnswers(responseId: string, answers: { quest
   if (answers.length === 0) return { data: [] as ResponseAnswer[], error: null }
   const inserts = answers.map(a => ({ response_id: responseId, question_id: a.question_id, value: a.value }))
   const { data, error } = await supabase.from('response_answers').insert(inserts).select()
+  if (isRlsRecursionError(error)) {
+    return { data: null, error: new Error('RLS_RECURSION') }
+  }
   return { data: data as ResponseAnswer[] | null, error }
 }
 
 export async function getEventResponses(eventId: string) {
   const { data, error } = await supabase.from('event_responses').select('*').eq('event_id', eventId).order('submitted_at', { ascending: false })
+  if (isRlsRecursionError(error)) {
+    return { data: [], error: new Error('RLS_RECURSION') }
+  }
   return { data: data as EventResponse[] | null, error }
 }
 
 export async function getResponseAnswers(responseIds: string[]) {
   if (responseIds.length === 0) return { data: [] as ResponseAnswer[], error: null }
   const { data, error } = await supabase.from('response_answers').select('*').in('response_id', responseIds)
+  if (isRlsRecursionError(error)) {
+    return { data: null, error: new Error('RLS_RECURSION') }
+  }
   return { data: data as ResponseAnswer[] | null, error }
 }
 
@@ -253,6 +404,20 @@ export async function uploadBrochure(file: File, path: string) {
 export function getBrochurePublicUrl(path: string) {
   const { data } = supabase.storage.from('event-posters').getPublicUrl(path)
   return data.publicUrl
+}
+
+// ==================== RLS Status ====================
+
+export async function checkRlsStatus(): Promise<{ eventsOk: boolean; membersOk: boolean }> {
+  // Check if events can be read
+  const { error: eventsErr } = await supabase.from('events').select('id').limit(1).maybeSingle()
+  const eventsOk = !isRlsRecursionError(eventsErr)
+
+  // Check if organization_members can be read
+  const { error: membersErr } = await supabase.from('organization_members').select('id').limit(1).maybeSingle()
+  const membersOk = !isRlsRecursionError(membersErr)
+
+  return { eventsOk, membersOk }
 }
 
 // ==================== Superadmin ====================

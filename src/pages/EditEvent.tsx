@@ -40,7 +40,12 @@ export function EditEvent() {
 
       const { data: eventData, error: eventErr } = await getEventById(eid!)
       if (eventErr || !eventData) {
-        setError(eventErr?.message || 'Failed to load event')
+        const msg = eventErr?.message || 'Failed to load event'
+        if (msg.includes('RLS_RECURSION')) {
+          setError('Events are unavailable while the database is being configured. Please apply the SQL fix in the Supabase dashboard SQL editor.')
+        } else {
+          setError(msg)
+        }
         setLoading(false)
         return
       }
@@ -101,14 +106,22 @@ export function EditEvent() {
     })
 
     if (updateErr) {
-      setError(updateErr.message)
+      if (updateErr.message?.includes('RLS_RECURSION')) {
+        setError('Event editing is unavailable while the database is being configured. Please apply the SQL fix in the Supabase dashboard SQL editor.')
+      } else {
+        setError(updateErr.message)
+      }
       setSaving(false)
       return
     }
 
     const { error: questionsErr } = await saveEventQuestions(id, questions)
     if (questionsErr) {
-      setError('Event saved but failed to save questions: ' + questionsErr.message)
+      if (questionsErr.message?.includes('RLS_RECURSION')) {
+        setError('Form questions could not be saved due to a database configuration issue. Please apply the SQL fix in the Supabase dashboard SQL editor.')
+      } else {
+        setError('Event saved but failed to save questions: ' + questionsErr.message)
+      }
       setSaving(false)
       return
     }

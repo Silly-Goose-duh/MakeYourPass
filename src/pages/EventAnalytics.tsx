@@ -53,7 +53,12 @@ export function EventAnalytics() {
       ])
 
       if (eventRes.error || !eventRes.data) {
-        setError(eventRes.error?.message || 'Failed to load event')
+        const msg = eventRes.error?.message || 'Failed to load event'
+        if (msg.includes('RLS_RECURSION')) {
+          setError('Analytics are unavailable while the database is being configured. Please apply the SQL fix in the Supabase dashboard SQL editor.')
+        } else {
+          setError(msg)
+        }
         setLoading(false)
         return
       }

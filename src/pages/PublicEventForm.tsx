@@ -31,14 +31,23 @@ export function PublicEventForm() {
       try {
         const { data: eventData, error: eventError } = await getEventBySlug(eventSlug)
         if (eventError || !eventData) {
+          if (eventError?.message?.includes('RLS_RECURSION')) {
+            setError('Events are unavailable while the database is being configured. Please apply the SQL fix in the Supabase dashboard SQL editor.')
+            return
+          }
           setNotFound(true)
           return
         }
         setEvent(eventData as unknown as CampusEvent & { organizations: Organization })
         const { data: questionsData } = await getEventQuestions(eventData.id)
         if (questionsData) setQuestions(questionsData)
-      } catch {
-        setError('Failed to load event')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load event'
+        if (message.includes('RLS_RECURSION')) {
+          setError('Events are unavailable while the database is being configured. Please apply the SQL fix in the Supabase dashboard SQL editor.')
+        } else {
+          setError(message)
+        }
       } finally {
         setLoading(false)
       }
@@ -95,7 +104,12 @@ export function PublicEventForm() {
         respondent_phone: respondentPhone.trim() || undefined,
       })
       if (responseError || !responseData) {
-        setError(responseError?.message || 'Failed to submit response')
+        const msg = responseError?.message || 'Failed to submit response'
+        if (msg.includes('RLS_RECURSION')) {
+          setError('Registration is temporarily unavailable while the database is being configured. Please try again later.')
+        } else {
+          setError(msg)
+        }
         return
       }
       const formattedAnswers = questions
@@ -110,12 +124,22 @@ export function PublicEventForm() {
         }))
       const { error: answersError } = await submitResponseAnswers(responseData.id, formattedAnswers)
       if (answersError) {
-        setError(answersError.message || 'Failed to save answers')
+        const msg = answersError.message || 'Failed to save answers'
+        if (msg.includes('RLS_RECURSION')) {
+          setError('Registration is temporarily unavailable while the database is being configured. Please try again later.')
+        } else {
+          setError(msg)
+        }
         return
       }
       setSubmitted(true)
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+      if (message.includes('RLS_RECURSION')) {
+        setError('Registration is temporarily unavailable while the database is being configured. Please try again later.')
+      } else {
+        setError(message)
+      }
     } finally {
       setSubmitting(false)
     }

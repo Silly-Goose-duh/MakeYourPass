@@ -100,28 +100,44 @@ export function MCPanel() {
 
   async function loadPendingRequests() {
     setRequestsLoading(true)
-    const { data } = await getPendingRequests()
-    if (data) setPendingRequests(data as unknown as PendingRequest[])
+    const { data, error } = await getPendingRequests()
+    if (error?.message?.includes('RLS_RECURSION')) {
+      setToast({ message: 'Database configuration needed. Please apply the SQL fix in the Supabase dashboard.', type: 'error' })
+    } else if (data) {
+      setPendingRequests(data as unknown as PendingRequest[])
+    }
     setRequestsLoading(false)
   }
 
   async function loadOrganizations() {
     setOrgsLoading(true)
-    const { data } = await getOrganizationsWithCounts()
-    if (data) setOrganizations(data)
+    const { data, error } = await getOrganizationsWithCounts()
+    if (error?.message?.includes('RLS_RECURSION')) {
+      setToast({ message: 'Database configuration needed. Please apply the SQL fix in the Supabase dashboard.', type: 'error' })
+    } else if (data) {
+      setOrganizations(data)
+    }
     setOrgsLoading(false)
   }
 
   async function loadEvents() {
     setEventsLoading(true)
-    const { data } = await getAllEvents()
-    if (data) setEvents(data)
+    const { data, error } = await getAllEvents()
+    if (error?.message?.includes('RLS_RECURSION')) {
+      setToast({ message: 'Database configuration needed. Please apply the SQL fix in the Supabase dashboard.', type: 'error' })
+    } else if (data) {
+      setEvents(data)
+    }
     setEventsLoading(false)
   }
 
   async function loadProfiles() {
-    const { data } = await getAllProfiles()
-    if (data) setProfiles(data)
+    const { data, error } = await getAllProfiles()
+    if (error?.message?.includes('RLS_RECURSION')) {
+      setToast({ message: 'Database configuration needed. Please apply the SQL fix in the Supabase dashboard.', type: 'error' })
+    } else if (data) {
+      setProfiles(data)
+    }
   }
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {

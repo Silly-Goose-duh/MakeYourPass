@@ -60,7 +60,11 @@ export function OrgDashboard() {
   useEffect(() => {
     if (!selectedOrgId) return
     const timer = setTimeout(() => setLoadingTimeout(true), 8000)
-    getEventsByOrganization(selectedOrgId, 'all').then(({ data }) => {
+    getEventsByOrganization(selectedOrgId, 'all').then(({ data, error }) => {
+      if (error?.message?.includes('RLS_RECURSION')) {
+        setLoading(false)
+        return
+      }
       if (data) setEvents(data)
       clearTimeout(timer)
       setLoading(false)

@@ -59,6 +59,9 @@ export function CreateEvent() {
       if (!user) return
       const { data, error: err } = await getUserOrganizations()
       if (err) {
+        if (err.message?.includes('RLS_RECURSION')) {
+          setError('Organizations are unavailable while the database is being configured. Event creation may be limited.')
+        }
         setLoadingOrgs(false)
         return
       }
@@ -174,7 +177,12 @@ export function CreateEvent() {
 
       navigate('/dashboard')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const message = err instanceof Error ? err.message : 'Something went wrong'
+      if (message.includes('RLS_RECURSION')) {
+        setError('Event creation is unavailable while the database is being configured. Please apply the SQL fix in the Supabase dashboard SQL editor.')
+      } else {
+        setError(message)
+      }
     } finally {
       setSaving(false)
     }
