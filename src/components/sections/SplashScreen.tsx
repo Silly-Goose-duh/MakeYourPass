@@ -10,7 +10,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [show, setShow] = useState(true)
 
   useEffect(() => {
-    const timer = setTimeout(() => setShow(false), 3000)
+    const timer = setTimeout(() => setShow(false), 2000)
     return () => clearTimeout(timer)
   }, [])
 
