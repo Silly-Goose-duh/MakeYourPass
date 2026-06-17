@@ -12,6 +12,7 @@
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@fontsource/inter": "^5.2.8",
+    "@fontsource/space-grotesk": "^5.2.10",
     "@fontsource/syne": "^5.2.7",
     "@hookform/resolvers": "^5.4.0",
     "@react-three/drei": "^10.7.7",
