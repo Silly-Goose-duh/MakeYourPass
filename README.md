@@ -4,15 +4,22 @@
 
 ## Live Demo
 - [https://mec-campuspass.vercel.app](https://mec-campuspass.vercel.app)
+- Alias: [https://makeyourpass.vercel.app](https://makeyourpass.vercel.app)
 
 ## Master Control Panel
 [https://mec-campuspass.vercel.app/mc](https://mec-campuspass.vercel.app/mc)
+- Superadmin: `gooseisback4u@gmail.com`
+
+## Demo Data
+- **Organization**: FOSS Club @ MEC
+- **Event**: AI Workshop: Build with Opencode (published, Saturday this week)
 
 ## Tech Stack
 - React + TypeScript + Vite
 - Tailwind CSS + Framer Motion (animations throughout)
 - Supabase (auth, database, storage, RLS)
-- Razorpay (payment gateway — optional)
+- EmailJS (contact/notification emails)
+- Vercel (deployment)
 
 ## Getting Started
 
@@ -63,10 +70,26 @@ src/
 
 ## Database Setup
 
+### Step 1 — Initial migration
 Run the SQL migration in `supabase/migration.sql` via Supabase SQL Editor:
 1. Go to [Supabase Dashboard](https://supabase.com/dashboard/project/isvylfovcwtlemjpkdqp/sql/new)
 2. Paste the contents of `supabase/migration.sql`
-3. Run it (this wipes existing data and creates the new schema)
+3. Run it (creates the schema with tables, RLS, and functions)
+
+### Step 2 — RLS recursion fix (REQUIRED)
+
+⚠️ **This is critical.** The current `organization_members` SELECT policy causes infinite recursion because it self-references the table. Run `supabase/rls-fix-v2.sql` in the Supabase SQL Editor:
+
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard/project/isvylfovcwtlemjpkdqp/sql/new)
+2. Paste the contents of `supabase/rls-fix-v2.sql`
+3. Run it
+
+This creates an `is_org_admin(UUID)` SECURITY DEFINER function and rewrites ALL policies to use it instead of direct `organization_members` subqueries, eliminating the recursion.
+
+After applying, the app's event features will work fully:
+- Event browsing (public and org views)
+- Event creation and management
+- Analytics and responses
 
 ## Deployment
 
