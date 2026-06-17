@@ -7,16 +7,16 @@ interface SplashScreenProps {
 }
 
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
-  const [phase, setPhase] = useState<'visible' | 'exiting' | 'gone'>('visible')
+  const [show, setShow] = useState(true)
 
   useEffect(() => {
-    const timer = setTimeout(() => setPhase('exiting'), 3000)
+    const timer = setTimeout(() => setShow(false), 3000)
     return () => clearTimeout(timer)
   }, [])
 
   return (
     <AnimatePresence onExitComplete={onComplete}>
-      {phase !== 'gone' && (
+      {show && (
         <motion.div
           key="splash"
           className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
@@ -27,9 +27,6 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           transition={{
             duration: 1.4,
             ease: [0.32, 0.72, 0, 1],
-          }}
-          onAnimationComplete={() => {
-            if (phase === 'exiting') setPhase('gone')
           }}
         >
           {/* Ambient gradient orbs */}
@@ -54,7 +51,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
             />
           </div>
 
-          {/* Liquid sweep overlay — trails the container with a soft gradient edge */}
+          {/* Liquid sweep overlay — trails the container */}
           <motion.div
             className="pointer-events-none absolute inset-0 z-20"
             exit={{
