@@ -7,9 +7,9 @@
   /* ===== CAMPUSPASS v2 DESIGN SYSTEM ===== */
 
   /* Core backgrounds */
-  --color-cp-bg-base: #080C1A;
-  --color-cp-bg-surface: #0A0E1E;
-  --color-cp-bg-card: #0F1629;
+  --color-cp-bg-base: #0D1117;
+  --color-cp-bg-surface: #111827;
+  --color-cp-bg-card: #161D2F;
 
   /* Accent */
   --color-cp-accent-purple: #7C5CFC;
@@ -17,27 +17,27 @@
 
   /* Text */
   --color-cp-text-primary: #E8E8F0;
-  --color-cp-text-muted: #8892A4;
-  --color-cp-text-faint: #3D4466;
+  --color-cp-text-muted: #9AA3B8;
+  --color-cp-text-faint: #4A5580;
 
   /* Border */
-  --color-cp-border: rgba(124, 92, 252, 0.15);
+  --color-cp-border: rgba(124, 92, 252, 0.22);
 
   /* v1 aliases (keep working for backward compat) */
-  --color-void: #080C1A;
-  --color-dark: #0A0E1E;
-  --color-darker: #0F1629;
+  --color-void: #0D1117;
+  --color-dark: #111827;
+  --color-darker: #161D2F;
   --color-brand: #7C5CFC;
   --color-brand-light: #C4B5FD;
   --color-brand-dark: #534AB7;
-  --color-background: #080C1A;
-  --color-surface: #0A0E1E;
-  --color-surface-elevated: #0F1629;
-  --color-border: rgba(124, 92, 252, 0.15);
+  --color-background: #0D1117;
+  --color-surface: #111827;
+  --color-surface-elevated: #161D2F;
+  --color-border: rgba(124, 92, 252, 0.22);
   --color-border-light: rgba(124, 92, 252, 0.5);
   --color-text-primary: #E8E8F0;
   --color-text-secondary: #C4B5FD;
-  --color-text-muted: #8892A4;
+  --color-text-muted: #9AA3B8;
 
   /* Semantic */
   --color-success: #10B981;
