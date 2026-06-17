@@ -4,7 +4,6 @@
 
 ## Live Demo
 - [https://mec-campuspass.vercel.app](https://mec-campuspass.vercel.app)
-- [https://makeyourpass.vercel.app](https://makeyourpass.vercel.app)
 
 ## Master Control Panel
 [https://mec-campuspass.vercel.app/mc](https://mec-campuspass.vercel.app/mc)
