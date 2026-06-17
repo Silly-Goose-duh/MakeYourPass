@@ -110,7 +110,7 @@ function kMeansClustering(
   k: number
 ): { centroid: { r: number; g: number; b: number }; size: number }[] {
   // Initialize centroids by picking random samples
-  let centroids = []
+  const centroids: { r: number; g: number; b: number }[] = []
   const step = Math.max(1, Math.floor(samples.length / k))
   for (let i = 0; i < k; i++) {
     const idx = Math.min(i * step, samples.length - 1)
@@ -161,7 +161,7 @@ function kMeansClustering(
   }
 
   // Count sizes
-  return centroids.map((c, i) => {
+  return centroids.map((c) => {
     let size = 0
     for (const s of samples) {
       const dx = s.r - c.r; const dy = s.g - c.g; const dz = s.b - c.b
@@ -259,7 +259,8 @@ export function useColorExtractor(imageUrl: string | null | undefined) {
   }, [imageUrl])
 
   useEffect(() => {
-    extract()
+    const t = setTimeout(() => extract(), 0)
+    return () => clearTimeout(t)
   }, [extract])
 
   return { palette, loading, retrigger: extract }

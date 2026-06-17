@@ -20,12 +20,10 @@ export function Tooltip({
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const childRef = useRef<HTMLElement>(null)
 
   const showTooltip = () => {
     timeoutRef.current = setTimeout(() => setIsVisible(true), delay)
   }
-
   const hideTooltip = () => {
     clearTimeout(timeoutRef.current)
     setIsVisible(false)
@@ -39,16 +37,15 @@ export function Tooltip({
   }
 
   const arrows = {
-    top: 'top-full left-1/2 -translate-x-1/2 border-t-yellow-400',
-    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-yellow-400',
-    left: 'left-full top-1/2 -translate-y-1/2 border-l-yellow-400',
-    right: 'right-full top-1/2 -translate-y-1/2 border-r-yellow-400',
+    top: 'top-full left-1/2 -translate-x-1/2 border-t-darker',
+    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-darker',
+    left: 'left-full top-1/2 -translate-y-1/2 border-l-darker',
+    right: 'right-full top-1/2 -translate-y-1/2 border-r-darker',
   }
 
   return (
     <Fragment>
       <span
-        ref={childRef}
         className={cn('relative inline-flex', className)}
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
@@ -60,20 +57,15 @@ export function Tooltip({
       {isVisible && (
         <div
           className={cn(
-            'fixed z-50 px-3 py-1.5 text-xs font-medium text-black bg-yellow-400 rounded-lg shadow-lg',
-            'animate-fade-in',
+            'fixed z-50 px-2.5 py-1.5 text-[11px] font-medium text-white bg-darker border border-brand/30 rounded',
+            'animate-fade-in pointer-events-none',
             positions[position],
-            contentClassName
+            contentClassName,
           )}
           role="tooltip"
         >
           {content}
-          <div
-            className={cn(
-              'absolute w-0 h-0 border-4 border-transparent',
-              arrows[position]
-            )}
-          />
+          <div className={cn('absolute w-0 h-0 border-4 border-transparent', arrows[position])} />
         </div>
       )}
     </Fragment>

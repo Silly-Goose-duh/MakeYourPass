@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Calendar, Eye, BarChart3, Edit, ExternalLink, Sparkles, Building2, Clock, CheckCircle, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -30,7 +30,6 @@ const itemVariants = {
 
 export function OrgDashboard() {
   const { user, loading: authLoading } = useAuth()
-  const navigate = useNavigate()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [selectedOrgId, setSelectedOrgId] = useState<string>('')
@@ -60,16 +59,14 @@ export function OrgDashboard() {
 
   useEffect(() => {
     if (!selectedOrgId) return
-    setLoading(true)
-    setLoadingTimeout(false)
     const timer = setTimeout(() => setLoadingTimeout(true), 8000)
     getEventsByOrganization(selectedOrgId, 'all').then(({ data }) => {
       if (data) setEvents(data)
-      setLoading(false)
       clearTimeout(timer)
+      setLoading(false)
     }).catch(() => {
-      setLoading(false)
       clearTimeout(timer)
+      setLoading(false)
     })
     return () => clearTimeout(timer)
   }, [selectedOrgId])
@@ -140,7 +137,7 @@ export function OrgDashboard() {
             Create or request to join an organization to start managing events and registrations.
           </p>
           <Link to="/dashboard/orgs/new">
-            <Button variant="gradient" size="lg" glow>
+            <Button variant="primary" size="lg">
               <Plus className="h-5 w-5" />
               Create Organization
             </Button>
@@ -240,7 +237,7 @@ export function OrgDashboard() {
           )}
 
           <Link to="/dashboard/events/new">
-            <Button variant="gradient" size="sm" glow>
+            <Button variant="primary" size="sm">
               <Plus className="h-4 w-4" />
               Create Event
             </Button>
@@ -252,7 +249,7 @@ export function OrgDashboard() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left: Org Info Card */}
         <motion.div variants={itemVariants} className="lg:w-72 shrink-0">
-          <Card variant="glass" padding="md" className="sticky top-24">
+          <Card variant="default" padding="md" className="sticky top-24">
             <CardContent>
               <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-violet-600/20 border border-primary/20 flex items-center justify-center mb-4 mx-auto">
                 <Building2 className="h-8 w-8 text-primary" />
@@ -397,7 +394,7 @@ export function OrgDashboard() {
                     >
                       {filteredEvents.map(event => (
                         <motion.div key={event.id} variants={itemVariants} layout>
-                          <Card variant="glass" hover className="group h-full overflow-hidden">
+                          <Card variant="default" hover className="group h-full overflow-hidden">
                             {/* Poster / Gradient Placeholder */}
                             <div className="relative h-32 sm:h-36 overflow-hidden">
                               {event.poster_url ? (

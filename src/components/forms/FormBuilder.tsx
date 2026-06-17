@@ -2,8 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, GripVertical, ChevronDown, Type, AlignLeft, List, CheckSquare, ListOrdered, Ruler } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { cn } from '@/lib/utils'
 import type { FormQuestion } from '@/types'
 
 const QUESTION_TYPES = [

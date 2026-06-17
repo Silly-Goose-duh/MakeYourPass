@@ -1,47 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Check, Save, Sparkles, Image, Upload, FileText, X, Loader2, Building2, Calendar, MapPin, Clock, IndianRupee } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Sparkles, Image, Upload, FileText, X, Loader2, Building2, IndianRupee } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { FormBuilder } from '@/components/forms/FormBuilder'
 import { cn, generateSlug } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { getProfile, getUserOrganizations, createEvent, saveEventQuestions, uploadPoster, getPosterPublicUrl, uploadBrochure, getBrochurePublicUrl } from '@/lib/supabase'
-import type { Profile, Organization, CampusEvent, FormQuestion } from '@/types'
-
-function ToggleSwitch({
-  enabled,
-  onChange,
-  label,
-}: {
-  enabled: boolean
-  onChange: (v: boolean) => void
-  label: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!enabled)}
-      className="w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-300 group cursor-pointer border-border bg-surface/50 hover:border-primary/30"
-    >
-      <span className="text-sm font-medium text-text-primary">{label}</span>
-      <div
-        className={cn(
-          'relative w-11 h-6 rounded-full transition-all duration-300 shrink-0 ml-4',
-          enabled ? 'bg-primary shadow-[0_0_12px_rgba(99,102,241,0.3)]' : 'bg-border'
-        )}
-      >
-        <motion.div
-          className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md"
-          animate={{ x: enabled ? 20 : 0 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        />
-      </div>
-    </button>
-  )
-}
+import { getUserOrganizations, createEvent, saveEventQuestions, uploadPoster, getPosterPublicUrl, uploadBrochure, getBrochurePublicUrl } from '@/lib/supabase'
+import type { Organization, CampusEvent, FormQuestion } from '@/types'
 
 const slideVariants = {
   enter: (direction: number) => ({
@@ -542,7 +510,7 @@ export function CreateEvent() {
 
               <div className="flex justify-end pt-2">
                 <Button
-                  variant="gradient"
+                  variant="primary"
                   size="lg"
                   onClick={() => goToStep(1)}
                   disabled={!canProceedFromStep1}
@@ -579,7 +547,7 @@ export function CreateEvent() {
                   Back
                 </Button>
                 <Button
-                  variant="gradient"
+                  variant="primary"
                   size="lg"
                   onClick={() => goToStep(2)}
                   disabled={!canProceedFromStep2}
@@ -719,7 +687,7 @@ export function CreateEvent() {
                   Back
                 </Button>
                 <Button
-                  variant="gradient"
+                  variant="primary"
                   size="lg"
                   onClick={handlePublish}
                   loading={saving || posterUploading}

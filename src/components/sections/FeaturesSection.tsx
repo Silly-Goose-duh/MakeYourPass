@@ -12,96 +12,72 @@ const features = [
     title: 'Smart Ticketing',
     description: 'Create custom ticket types, set pricing, and sell with built-in payment processing. Group bookings, early bird, and promo codes included.',
     badge: 'Popular',
-    glass: 'glass-primary',
-    glow: 'primary' as const,
   },
   {
     icon: QrCode,
     title: 'QR Check-In',
     description: 'Fast, contactless entry with QR scanning. Real-time validation prevents duplicates and flags suspicious tickets instantly.',
     badge: 'New',
-    glass: 'glass-accent',
-    glow: 'accent' as const,
   },
   {
     icon: BarChart3,
     title: 'Live Analytics',
     description: 'Track ticket sales, check-ins, and revenue in real-time. Export reports for stakeholders without spreadsheets.',
     badge: '',
-    glass: 'glass-primary',
-    glow: 'primary' as const,
   },
   {
     icon: CreditCard,
     title: 'Payment Processing',
     description: 'Accept payments via Razorpay, Slice, and more. No setup fees, no monthly charges — just seamless transactions.',
     badge: 'Free',
-    glass: 'glass-primary',
-    glow: 'primary' as const,
   },
   {
     icon: Users,
     title: 'Attendee Management',
     description: 'View, search, and manage all attendees in one place. Send bulk updates, export lists, and track engagement.',
     badge: '',
-    glass: 'glass-accent',
-    glow: 'accent' as const,
   },
   {
     icon: Bell,
     title: 'Automated Notifications',
     description: 'Keep attendees informed with automated email and WhatsApp reminders. Customize templates for every touchpoint.',
     badge: '',
-    glass: 'glass-primary',
-    glow: 'primary' as const,
   },
   {
     icon: Palette,
     title: 'Event Branding',
     description: 'Customize your event page with your brand colors, logo, and domain. No coding or design skills needed.',
     badge: '',
-    glass: 'glass-primary',
-    glow: 'primary' as const,
   },
   {
     icon: Shield,
     title: 'Fraud Protection',
     description: 'Built-in anti-scalping, duplicate ticket detection, and secure QR codes. Your event, protected.',
     badge: 'Secure',
-    glass: 'glass-accent',
-    glow: 'accent' as const,
   },
   {
     icon: Share2,
     title: 'Social Sharing',
     description: 'Built-in social sharing tools. Let attendees spread the word with shareable ticket graphics and referral links.',
     badge: '',
-    glass: 'glass-primary',
-    glow: 'primary' as const,
   },
   {
     icon: Zap,
     title: 'Instant Setup',
     description: 'Create a professional event page in minutes. No coding required — just fill in details and publish.',
     badge: 'Fast',
-    glass: 'glass-primary',
-    glow: 'primary' as const,
   },
   {
     icon: Globe,
     title: 'Multi-Event Support',
     description: 'Manage recurring events, conferences with multiple tracks, and multi-day festivals from a single dashboard.',
     badge: '',
-    glass: 'glass-accent',
-    glow: 'accent' as const,
   },
   {
     icon: Sparkles,
     title: 'AI Poster Generator',
     description: 'Just describe your event — the AI generates a stunning poster in seconds. No design skills needed.',
     badge: 'Soon',
-    glass: 'glass-primary',
-    glow: 'primary' as const,
   },
 ]
 
@@ -118,7 +94,7 @@ export function FeaturesSection() {
           className="mb-16 sm:mb-20"
         >
           <div className="left-accent">
-            <Badge variant="primary" size="lg" className="mb-4">
+            <Badge variant="primary" size="md" className="mb-4">
               Everything You Need
             </Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-text-primary mb-4">
@@ -144,10 +120,9 @@ export function FeaturesSection() {
               transition={{ duration: 0.5, delay: index * 0.05 }}
             >
               <Card
-                variant={feature.glass as 'glass-primary' | 'glass-accent'}
+                variant="default"
                 padding="lg"
                 hover
-                glow={feature.glow}
                 className="group h-full"
               >
                 <CardContent>
@@ -156,7 +131,7 @@ export function FeaturesSection() {
                       <feature.icon className="h-5 w-5" />
                     </div>
                     {feature.badge && (
-                      <Badge variant={feature.glow === 'accent' ? 'accent' : 'primary'} size="sm" className="ml-auto">
+                      <Badge variant="primary" size="sm" className="ml-auto">
                         {feature.badge}
                       </Badge>
                     )}

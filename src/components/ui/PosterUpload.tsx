@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Upload, X, Image as ImageIcon } from 'lucide-react'
+import { X, Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 
@@ -19,13 +19,11 @@ export function PosterUpload({ currentUrl, onUpload, eventId }: PosterUploadProp
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate type
     if (!file.type.startsWith('image/')) {
       setError('Only image files are accepted')
       return
     }
 
-    // Validate size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image must be under 5MB')
       return
@@ -34,12 +32,10 @@ export function PosterUpload({ currentUrl, onUpload, eventId }: PosterUploadProp
     setError('')
     setUploading(true)
 
-    // Show local preview immediately
     const localUrl = URL.createObjectURL(file)
     setPreview(localUrl)
 
     try {
-      // Upload to Supabase storage
       const fileExt = file.name.split('.').pop() || 'png'
       const filePath = `posters/${eventId || 'new'}-${Date.now()}.${fileExt}`
 
@@ -51,7 +47,6 @@ export function PosterUpload({ currentUrl, onUpload, eventId }: PosterUploadProp
         })
 
       if (uploadError) {
-        // If bucket doesn't exist, use a data URL fallback
         setError('Storage unavailable. Using local preview only.')
         onUpload(localUrl)
         setUploading(false)
@@ -66,7 +61,6 @@ export function PosterUpload({ currentUrl, onUpload, eventId }: PosterUploadProp
         onUpload(publicUrl)
       }
     } catch {
-      // Fallback: use the local blob URL
       onUpload(localUrl)
     }
 
@@ -80,24 +74,24 @@ export function PosterUpload({ currentUrl, onUpload, eventId }: PosterUploadProp
   }
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-text-primary">
-        Event Poster <span className="text-text-muted text-xs">(9:16 recommended)</span>
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium text-brand-light">
+        Event Poster <span className="text-text-muted">(9:16 recommended)</span>
       </label>
 
       {preview ? (
-        <div className="relative w-full max-w-[200px]">
+        <div className="relative w-full max-w-[180px]">
           <img
             src={preview}
             alt="Event poster"
-            className="w-full aspect-[9/16] object-cover rounded-xl border border-border"
+            className="w-full aspect-[9/16] object-cover rounded border border-brand/20"
           />
           <button
             type="button"
             onClick={handleRemove}
-            className="absolute -top-2 -right-2 p-1 bg-error text-white rounded-full shadow-lg hover:bg-error/90 transition-colors"
+            className="absolute -top-1.5 -right-1.5 p-1 bg-error text-white rounded-full hover:bg-error/80 transition-colors"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-3 w-3" />
           </button>
         </div>
       ) : (
@@ -106,20 +100,20 @@ export function PosterUpload({ currentUrl, onUpload, eventId }: PosterUploadProp
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
           className={cn(
-            'w-full max-w-[200px] aspect-[9/16] rounded-xl border-2 border-dashed border-border',
-            'flex flex-col items-center justify-center gap-2 transition-all',
-            'hover:border-primary/50 hover:bg-primary/5',
-            uploading && 'opacity-50 cursor-not-allowed'
+            'w-full max-w-[180px] aspect-[9/16] rounded border-2 border-dashed border-brand/20',
+            'flex flex-col items-center justify-center gap-1.5 transition-all',
+            'hover:border-brand/50 hover:bg-brand/5',
+            uploading && 'opacity-50 cursor-not-allowed',
           )}
         >
           {uploading ? (
-            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="h-4 w-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
           ) : (
             <>
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <ImageIcon className="h-5 w-5 text-primary" />
+              <div className="h-8 w-8 rounded-full bg-brand/10 flex items-center justify-center">
+                <ImageIcon className="h-4 w-4 text-brand" />
               </div>
-              <span className="text-xs text-text-muted">Upload Poster</span>
+              <span className="text-[11px] text-text-muted">Upload Poster</span>
             </>
           )}
         </button>
@@ -133,7 +127,7 @@ export function PosterUpload({ currentUrl, onUpload, eventId }: PosterUploadProp
         className="hidden"
       />
 
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && <p className="text-[11px] text-error">{error}</p>}
     </div>
   )
 }

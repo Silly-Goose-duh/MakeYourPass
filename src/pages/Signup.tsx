@@ -1,15 +1,13 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, ArrowLeft, Building2, CheckCircle2, Loader2, Pencil } from 'lucide-react'
+import { Sparkles, ArrowLeft, Building2, CheckCircle2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { signUp, createOrganizationRequest } from '@/lib/supabase'
 import { generateSlug, cn } from '@/lib/utils'
 
 export function SignupPage() {
-  const navigate = useNavigate()
-
   const [step, setStep] = useState<'account' | 'organization' | 'success'>('account')
 
   const [fullName, setFullName] = useState('')
@@ -23,7 +21,6 @@ export function SignupPage() {
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [userId, setUserId] = useState<string | null>(null)
 
   const handleAccountSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,9 +33,8 @@ export function SignupPage() {
 
     setLoading(true)
     try {
-      const { data, error } = await signUp(email, password, fullName)
+      const { error } = await signUp(email, password, fullName)
       if (error) { setError(error.message); return }
-      if (data?.user) setUserId(data.user.id)
       setStep('organization')
     } catch {
       setError('Something went wrong. Please try again.')
@@ -60,7 +56,7 @@ export function SignupPage() {
 
     setLoading(true)
     try {
-      const { data, error } = await createOrganizationRequest(orgName.trim(), orgSlug.trim(), orgDescription.trim())
+      const { error } = await createOrganizationRequest(orgName.trim(), orgSlug.trim(), orgDescription.trim())
       if (error) { setError(error.message); return }
       setStep('success')
     } catch {
@@ -338,7 +334,7 @@ export function SignupPage() {
                 className="space-y-3"
               >
                 <Link to="/">
-                  <Button variant="gradient" size="lg" glow>
+                  <Button variant="primary" size="lg">
                     Browse Events
                   </Button>
                 </Link>

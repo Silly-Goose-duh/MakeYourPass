@@ -8,7 +8,7 @@ import type { Profile, Organization } from '@/types'
 import { cn } from '@/lib/utils'
 
 export function Navbar() {
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
   const location = useLocation()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)

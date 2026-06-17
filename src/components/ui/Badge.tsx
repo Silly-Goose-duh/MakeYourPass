@@ -1,15 +1,15 @@
 import { cn } from '@/lib/utils'
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'primary' | 'accent' | 'outline'
-  size?: 'sm' | 'md' | 'lg'
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'primary' | 'outline'
+  size?: 'sm' | 'md'
   dot?: boolean
 }
 
 export function Badge({
   className,
   variant = 'default',
-  size = 'md',
+  size = 'sm',
   dot = false,
   children,
   ...props
@@ -17,20 +17,17 @@ export function Badge({
   const baseStyles = 'inline-flex items-center gap-1.5 font-medium rounded-full'
 
   const variants = {
-    default: 'bg-surface text-text-secondary border border-border',
-    success: 'bg-success/10 text-success border border-success/20',
-    warning: 'bg-warning/10 text-warning border border-warning/20',
-    error: 'bg-error/10 text-error border border-error/20',
-    info: 'bg-accent-teal/10 text-accent-teal border border-accent-teal/20',
-    primary: 'bg-primary text-white border border-primary',
-    accent: 'bg-secondary text-white border border-secondary',
-    outline: 'bg-transparent text-text-secondary border border-border-light',
+    default: 'bg-dark text-brand-light border border-brand/30',
+    success: 'bg-success/10 text-success border border-success/30',
+    warning: 'bg-warning/10 text-warning border border-warning/30',
+    error: 'bg-error/10 text-error border border-error/30',
+    primary: 'bg-brand text-white border border-brand',
+    outline: 'bg-transparent text-brand-light border border-brand/40',
   }
 
   const sizes = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-sm',
-    lg: 'px-4 py-1.5 text-base',
+    sm: 'px-2.5 py-0.5 text-[11px]',
+    md: 'px-3 py-1 text-xs',
   }
 
   return (
@@ -42,11 +39,9 @@ export function Badge({
             variant === 'success' && 'bg-success',
             variant === 'warning' && 'bg-warning',
             variant === 'error' && 'bg-error',
-            variant === 'info' && 'bg-accent-teal',
-            variant === 'primary' && 'bg-surface',
-            variant === 'accent' && 'bg-surface',
+            variant === 'primary' && 'bg-white',
             variant === 'default' && 'bg-text-muted',
-            variant === 'outline' && 'bg-text-muted'
+            variant === 'outline' && 'bg-brand-light',
           )}
         />
       )}

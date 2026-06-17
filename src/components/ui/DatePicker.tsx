@@ -26,7 +26,6 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
 
   const selectedDate = value ? parse(value, 'yyyy-MM-dd', new Date()) : null
 
-  // Close on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -75,83 +74,78 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
 
   return (
     <div ref={ref} className="relative">
-      {/* Label */}
       {label && (
-        <label className="block text-sm font-medium text-text-secondary mb-2">
-          {label}{required && <span className="text-error ml-1">*</span>}
+        <label className="block text-xs font-medium text-brand-light mb-1.5">
+          {label}{required && <span className="text-error ml-0.5">*</span>}
         </label>
       )}
 
-      {/* Trigger button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-surface border border-border rounded-xl text-left transition-all hover:border-primary/40 focus:outline-none focus:border-primary/60"
+        className="w-full flex items-center gap-2.5 px-3 py-2 bg-darker border border-brand/20 rounded text-left transition-colors hover:border-brand/40 focus:outline-none focus:border-brand/60 text-xs"
       >
-        <CalendarIcon className="h-5 w-5 text-primary flex-shrink-0" />
-        <span className={displayValue ? 'text-text-primary' : 'text-text-muted'}>
+        <CalendarIcon className="h-3.5 w-3.5 text-brand flex-shrink-0" />
+        <span className={displayValue ? 'text-white' : 'text-text-muted'}>
           {displayValue || 'Select date'}
         </span>
       </button>
 
-      {/* Calendar popover */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            initial={{ opacity: 0, y: -6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-2 w-[320px] bg-surface rounded-xl border border-border shadow-lg shadow-black/40 overflow-hidden"
+            exit={{ opacity: 0, y: -6, scale: 0.96 }}
+            transition={{ duration: 0.12 }}
+            className="absolute z-50 mt-1.5 w-[300px] bg-darker border border-brand/30 rounded-lg overflow-hidden"
           >
-            {/* Header with month/year navigation */}
-            <div className="flex items-center justify-between p-3 border-b border-border">
+            {/* Header */}
+            <div className="flex items-center justify-between p-2.5 border-b border-brand/20">
               <button
                 type="button"
                 onClick={goToPrevMonth}
-                className="p-1.5 rounded-lg hover:bg-primary-muted text-text-secondary hover:text-text-primary transition-colors"
+                className="p-1 rounded hover:bg-brand/10 text-text-muted hover:text-white transition-colors"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-3.5 w-3.5" />
               </button>
-
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => { setShowMonthPicker(true); setShowYearPicker(false) }}
-                  className="px-2 py-1 rounded-lg hover:bg-primary-muted text-sm font-semibold text-text-primary transition-colors"
+                  className="px-2 py-0.5 rounded hover:bg-brand/10 text-xs font-semibold text-white transition-colors"
                 >
                   {format(viewDate, 'MMMM')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowYearPicker(true); setShowMonthPicker(false) }}
-                  className="px-2 py-1 rounded-lg hover:bg-primary-muted text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors"
+                  className="px-2 py-0.5 rounded hover:bg-brand/10 text-xs font-semibold text-brand-light hover:text-white transition-colors"
                 >
                   {format(viewDate, 'yyyy')}
                 </button>
               </div>
-
               <button
                 type="button"
                 onClick={goToNextMonth}
-                className="p-1.5 rounded-lg hover:bg-primary-muted text-text-secondary hover:text-text-primary transition-colors"
+                className="p-1 rounded hover:bg-brand/10 text-text-muted hover:text-white transition-colors"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
 
             {/* Year picker */}
             {showYearPicker && (
-              <div className="grid grid-cols-4 gap-1 p-3 max-h-[240px] overflow-y-auto">
+              <div className="grid grid-cols-4 gap-0.5 p-2.5 max-h-[220px] overflow-y-auto">
                 {YEARS.map(year => (
                   <button
                     key={year}
                     type="button"
                     onClick={() => handleYearSelect(year)}
-                    className={`py-2 rounded-lg text-sm font-medium transition-colors ${
-                       getYear(viewDate) === year
-                        ? 'bg-primary text-white'
-                        : 'text-text-secondary hover:bg-primary-muted hover:text-text-primary'
+                    className={`py-1.5 rounded text-xs font-medium transition-colors ${
+                      getYear(viewDate) === year
+                        ? 'bg-brand text-white'
+                        : 'text-text-muted hover:bg-brand/10 hover:text-white'
                     }`}
                   >
                     {year}
@@ -162,16 +156,16 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
 
             {/* Month picker */}
             {showMonthPicker && !showYearPicker && (
-              <div className="grid grid-cols-3 gap-1 p-3">
+              <div className="grid grid-cols-3 gap-0.5 p-2.5">
                 {MONTHS.map((month, idx) => (
                   <button
                     key={month}
                     type="button"
                     onClick={() => handleMonthSelect(idx)}
-                    className={`py-2 rounded-lg text-sm font-medium transition-colors ${
-                       getMonth(viewDate) === idx
-                        ? 'bg-primary text-white'
-                        : 'text-text-secondary hover:bg-primary-muted hover:text-text-primary'
+                    className={`py-1.5 rounded text-xs font-medium transition-colors ${
+                      getMonth(viewDate) === idx
+                        ? 'bg-brand text-white'
+                        : 'text-text-muted hover:bg-brand/10 hover:text-white'
                     }`}
                   >
                     {month.slice(0, 3)}
@@ -183,16 +177,13 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
             {/* Calendar grid */}
             {!showYearPicker && !showMonthPicker && (
               <>
-                {/* Day headers */}
                 <div className="grid grid-cols-7 gap-0 p-2 pb-0">
                   {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                    <div key={d} className="h-8 flex items-center justify-center text-xs font-medium text-text-muted">
+                    <div key={d} className="h-7 flex items-center justify-center text-[10px] font-medium text-text-muted">
                       {d}
                     </div>
                   ))}
                 </div>
-
-                {/* Day cells */}
                 <div className="grid grid-cols-7 gap-0 p-2 pt-0">
                   {days.map((day, idx) => {
                     const isCurrentMonth = isSameMonth(day, viewDate)
@@ -206,14 +197,14 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                         type="button"
                         disabled={!!isDisabled}
                         onClick={() => handleSelect(day)}
-                        className={`h-10 w-full rounded-lg text-sm font-medium transition-all flex items-center justify-center ${
+                        className={`h-8 w-full rounded text-xs font-medium transition-all flex items-center justify-center ${
                           isSelected
-                            ? 'bg-primary text-white font-bold shadow-lg shadow-primary/20'
+                            ? 'bg-brand text-white font-bold'
                             : isTodayDay && !isSelected
-                            ? 'border border-primary/30 text-primary'
+                            ? 'border border-brand/40 text-brand'
                             : isCurrentMonth
-                            ? 'text-text-primary hover:bg-primary-muted'
-                            : 'text-text-muted/40'
+                            ? 'text-white hover:bg-brand/10'
+                            : 'text-text-muted/30'
                         } ${isDisabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
                       >
                         {format(day, 'd')}
@@ -221,18 +212,16 @@ export function DatePicker({ label, value, onChange, minDate, required }: DatePi
                     )
                   })}
                 </div>
-
-                {/* Footer with Today button */}
-                <div className="flex items-center justify-between p-2 border-t border-border">
+                <div className="flex items-center justify-between p-2 border-t border-brand/20">
                   <button
                     type="button"
                     onClick={handleToday}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-primary hover:bg-primary-muted transition-colors"
+                    className="px-2.5 py-1 rounded text-[11px] font-medium text-brand hover:bg-brand/10 transition-colors"
                   >
                     Today
                   </button>
                   {selectedDate && (
-                    <span className="text-xs text-text-muted">
+                    <span className="text-[11px] text-text-muted">
                       {format(selectedDate, 'EEE, dd MMM')}
                     </span>
                   )}

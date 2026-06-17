@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Sparkles, Code, Heart, Mail, MessageCircle, Building2, Shield } from 'lucide-react'
+import { Sparkles, Code, Heart, Mail, MessageCircle } from 'lucide-react'
 
 const footerLinks = {
   Product: [

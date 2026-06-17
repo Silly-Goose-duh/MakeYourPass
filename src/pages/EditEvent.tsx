@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Save, Sparkles, Loader2, Calendar, MapPin, Clock, IndianRupee, Image, FileText } from 'lucide-react'
+import { ArrowLeft, Save, Sparkles, Loader2, IndianRupee, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -12,7 +12,6 @@ import type { CampusEvent, EventQuestion, FormQuestion } from '@/types'
 export function EditEvent() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  if (!id) return <div>Event not found</div>
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -35,10 +34,11 @@ export function EditEvent() {
     const eid = id
     if (!eid) return
     async function load() {
+      if (!eid) return
       setLoading(true)
       setError('')
 
-      const { data: eventData, error: eventErr } = await getEventById(eid)
+      const { data: eventData, error: eventErr } = await getEventById(eid!)
       if (eventErr || !eventData) {
         setError(eventErr?.message || 'Failed to load event')
         setLoading(false)
@@ -57,7 +57,7 @@ export function EditEvent() {
       setPrice(event.price ? String(event.price) : '')
       setStatus(event.status || 'draft')
 
-      const { data: questionsData } = await getEventQuestions(eid)
+      const { data: questionsData } = await getEventQuestions(eid!)
       if (questionsData) {
         setQuestions(
           (questionsData as EventQuestion[]).map(q => ({
@@ -324,7 +324,7 @@ export function EditEvent() {
                 </Button>
               </Link>
               <Button
-                variant="gradient"
+                variant="primary"
                 size="lg"
                 onClick={handleSave}
                 loading={saving}

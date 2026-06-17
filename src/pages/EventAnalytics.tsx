@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Users, BarChart3, Download, Share2, ExternalLink, Loader2, CheckCircle, Clock, ChevronDown, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Users, BarChart3, Download, Share2, ExternalLink, CheckCircle, ChevronDown, ChevronRight, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
@@ -27,14 +27,14 @@ function SkeletonCard() {
 
 export function EventAnalytics() {
   const { id } = useParams<{ id: string }>()
-  if (!id) return <div>Event not found</div>
 
   const [event, setEvent] = useState<CampusEvent | null>(null)
   const [questions, setQuestions] = useState<EventQuestion[]>([])
   const [responses, setResponses] = useState<EventResponse[]>([])
   const [answers, setAnswers] = useState<ResponseAnswer[]>([])
-  const [analytics, setAnalytics] = useState<Record<string, number> | null>(null)
   const [loading, setLoading] = useState(true)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [analytics, setAnalytics] = useState<Record<string, number> | null>(null)
   const [expandedResponse, setExpandedResponse] = useState<string | null>(null)
   const [error, setError] = useState('')
 
@@ -46,10 +46,10 @@ export function EventAnalytics() {
       setError('')
 
       const [eventRes, questionsRes, responsesRes, analyticsRes] = await Promise.all([
-        getEventById(eid),
-        getEventQuestions(eid),
-        getEventResponses(eid),
-        getEventAnalytics(eid),
+        getEventById(eid!),
+        getEventQuestions(eid!),
+        getEventResponses(eid!),
+        getEventAnalytics(eid!),
       ])
 
       if (eventRes.error || !eventRes.data) {

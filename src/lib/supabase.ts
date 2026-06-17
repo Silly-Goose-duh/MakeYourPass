@@ -23,9 +23,9 @@ function createSupabaseClient() {
     apply() { return Promise.resolve({ data: null, error: new Error('Supabase not configured') }) },
   })
   return new Proxy({} as ReturnType<typeof createClient>, {
-    get(_, p) {
+    get(_t, p) {
       if (p === 'auth') return new Proxy({} as ReturnType<typeof createClient>['auth'], {
-        get(_, m) { return () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }) },
+        get() { return () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }) },
       })
       return proxy
     },
@@ -109,7 +109,7 @@ export async function getUserRequests() {
 
 export async function getPendingRequests() {
   const { data, error } = await supabase.from('organization_registration_requests').select('*, profiles:user_id(full_name, email)').eq('status', 'pending').order('created_at')
-  return { data: data as any[] | null, error }
+  return { data: data as Record<string, unknown>[] | null, error }
 }
 
 export async function approveRequest(requestId: string) {
@@ -232,7 +232,7 @@ export async function getResponseAnswers(responseIds: string[]) {
 
 export async function getEventAnalytics(eventId: string) {
   const { data, error } = await supabase.rpc('get_event_analytics', { event_id_param: eventId })
-  return { data: data as any, error }
+  return { data: data as Record<string, unknown> | null, error }
 }
 
 // ==================== Storage ====================

@@ -49,59 +49,50 @@ export function Modal({
   if (!isOpen) return null
 
   const sizes = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-2xl',
     full: 'max-w-[90vw]',
   }
 
   return (
     <Fragment>
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-fade-in"
+        className="fixed inset-0 bg-void/80 z-50"
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
       <div
-        className={cn(
-          'fixed inset-0 z-50 flex items-center justify-center p-4 animate-slide-up',
-          sizes[size]
-        )}
+        className={cn('fixed inset-0 z-50 flex items-center justify-center p-4', sizes[size])}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
         aria-describedby={description ? 'modal-description' : undefined}
       >
-        <div className={cn('w-full bg-surface-elevated border border-border rounded-2xl glass-strong shadow-xl overflow-hidden')}>
+        <div className="w-full bg-darker border border-brand/30 rounded-lg overflow-hidden">
           {(title || showCloseButton) && (
-            <div className="flex items-start justify-between p-6 border-b border-border">
+            <div className="flex items-start justify-between p-4 border-b border-brand/20">
               <div>
                 {title && (
-                  <h2 id="modal-title" className="text-xl font-bold text-text-primary">
+                  <h2 id="modal-title" className="text-base font-semibold text-white">
                     {title}
                   </h2>
                 )}
                 {description && (
-                  <p id="modal-description" className="mt-1 text-sm text-text-secondary">
+                  <p id="modal-description" className="mt-0.5 text-sm text-brand-light">
                     {description}
                   </p>
                 )}
               </div>
               {showCloseButton && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClose}
-                  aria-label="Close modal"
-                  className="text-text-secondary hover:text-text-primary"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
+                <button onClick={onClose} aria-label="Close modal" className="p-1 text-text-muted hover:text-white transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
               )}
             </div>
           )}
-          <div className="p-6">{children}</div>
+          <div className="p-4">{children}</div>
         </div>
       </div>
     </Fragment>
@@ -133,12 +124,12 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
-      <p className="text-text-secondary mb-6">{message}</p>
-      <div className="flex justify-end gap-3">
-        <Button variant="ghost" onClick={onClose} disabled={loading}>
+      <p className="text-brand-light text-sm mb-4">{message}</p>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onClose} disabled={loading}>
           {cancelText}
         </Button>
-        <Button variant={variant} onClick={onConfirm} loading={loading}>
+        <Button variant={variant === 'danger' ? 'danger' : 'primary'} size="sm" onClick={onConfirm} loading={loading}>
           {confirmText}
         </Button>
       </div>

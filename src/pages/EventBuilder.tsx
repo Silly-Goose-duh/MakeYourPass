@@ -326,11 +326,6 @@ export function EventBuilderPage() {
       }
 
       // RPC doesn't exist yet → fall through to Strategy 2
-      const rpcMissing =
-        rpcError?.message?.includes('does not exist') ||
-        rpcError?.message?.includes('function') ||
-        rpcError?.code === 'PGRST202' ||
-        rpcError?.code === '42883'
 
       // Strategy 2: RPC not available — fall back to direct inserts with RLS fix
       // Find or create organization
@@ -725,7 +720,7 @@ export function EventBuilderPage() {
                 <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
                 Change visibility
               </button>
-              <Badge variant={selectedVisibility === 'public' ? 'primary' : 'accent'}>
+              <Badge variant={selectedVisibility === 'public' ? 'primary' : 'default'}>
                 {selectedVisibility === 'public' ? '🌍 Public' : '🔒 Private'}
               </Badge>
             </div>
@@ -966,7 +961,7 @@ export function EventBuilderPage() {
                   {/* Navigation */}
                   <div className="flex justify-end pt-4">
                     <Button
-                      variant="gradient"
+                      variant="primary"
                       onClick={() => setFormStep(1)}
                       disabled={!manualMode && !parsedSuccess && !eventData.title}
                     >
@@ -1225,7 +1220,7 @@ export function EventBuilderPage() {
                       <ArrowLeft className="h-4 w-4" />
                       Back
                     </Button>
-                    <Button variant="gradient" onClick={() => setFormStep(2)}>
+                    <Button variant="primary" onClick={() => setFormStep(2)}>
                       Continue to Payment
                       <ArrowRight className="h-4 w-4" />
                     </Button>
@@ -1395,7 +1390,7 @@ export function EventBuilderPage() {
                     )}
 
                     <Button
-                      variant="gradient"
+                      variant="primary"
                       onClick={handlePublish}
                       loading={saving}
                       className="text-base px-8"

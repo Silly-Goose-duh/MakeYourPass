@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Shield, CheckCircle, XCircle, Clock, Building2, Calendar, Users,
-  BarChart3, Search, ArrowLeft, Sparkles, ExternalLink, Trash2, Loader2,
-  Download, Eye, AlertTriangle, RefreshCw
+  BarChart3, Search, ArrowLeft, Loader2,
+  Eye, AlertTriangle, RefreshCw
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card'
@@ -15,10 +15,19 @@ import { cn, formatDate, formatDateTime, truncate } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import {
   getProfile, getPendingRequests, approveRequest, rejectRequest,
-  getAllOrganizations, getAllEvents, getOrganizationsWithCounts,
+  getAllEvents, getOrganizationsWithCounts,
   getAllProfiles, signOut
 } from '@/lib/supabase'
-import type { Profile, Organization, CampusEvent, OrgRegistrationRequest } from '@/types'
+import type { Profile, Organization, CampusEvent } from '@/types'
+
+interface PendingRequest {
+  id: string
+  organization_name: string
+  organization_slug: string
+  description: string | null
+  profiles: { full_name: string; email: string } | null
+  created_at: string
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,7 +46,7 @@ const itemVariants = {
   },
 }
 
-const statusConfig: Record<string, { variant: 'success' | 'warning' | 'error' | 'info' | 'default'; label: string }> = {
+const statusConfig: Record<string, { variant: 'success' | 'warning' | 'error' | 'default'; label: string }> = {
   approved: { variant: 'success', label: 'Approved' },
   pending: { variant: 'warning', label: 'Pending' },
   rejected: { variant: 'error', label: 'Rejected' },
@@ -52,7 +61,7 @@ export function MCPanel() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [pendingRequests, setPendingRequests] = useState<any[]>([])
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
   const [requestsLoading, setRequestsLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
@@ -70,7 +79,8 @@ export function MCPanel() {
   const [selectedEvent, setSelectedEvent] = useState<(CampusEvent & { organizations: Pick<Organization, 'name'> }) | null>(null)
   const [eventModalOpen, setEventModalOpen] = useState(false)
 
-  const [profiles, setProfiles] = useState<Profile[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_profiles, setProfiles] = useState<Profile[]>([])
 
   useEffect(() => {
     if (!user) return
@@ -91,7 +101,7 @@ export function MCPanel() {
   async function loadPendingRequests() {
     setRequestsLoading(true)
     const { data } = await getPendingRequests()
-    if (data) setPendingRequests(data)
+    if (data) setPendingRequests(data as unknown as PendingRequest[])
     setRequestsLoading(false)
   }
 
@@ -947,7 +957,7 @@ export function MCPanel() {
                     </Card>
 
                     {/* Admin Info */}
-                    <Card variant="glass" padding="md" className="mt-4">
+                    <Card variant="default" padding="md" className="mt-4">
                       <CardContent>
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-full bg-secondary/20 border border-secondary/30 flex items-center justify-center">

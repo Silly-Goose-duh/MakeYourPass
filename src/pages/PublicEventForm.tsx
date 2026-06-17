@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Send, CheckCircle, Sparkles, Calendar, MapPin, Clock, Building2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Send, CheckCircle, Calendar, MapPin, Clock, Building2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { formatDate, formatTime, cn } from '@/lib/utils'
+import { formatTime, cn } from '@/lib/utils'
 import { getEventBySlug, getEventQuestions, submitEventResponse, submitResponseAnswers } from '@/lib/supabase'
 import type { CampusEvent, Organization, EventQuestion } from '@/types'
 

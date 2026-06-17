@@ -2,7 +2,6 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useEffect, useState } from 'react'
 import { getProfile, supabase } from '@/lib/supabase'
-import type { Profile } from '@/types'
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -13,31 +12,28 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export function OrgAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  const [profile, setProfile] = useState<Profile | null>(null)
   const [isOrgAdmin, setIsOrgAdmin] = useState(false)
-  const [checking, setChecking] = useState(true)
+  const [profileDone, setProfileDone] = useState(false)
 
   useEffect(() => {
-    if (!user) { setChecking(false); return }
-    ;(async () => {
+    if (!user) return
+    (async () => {
       const { data: profileData } = await getProfile(user.id)
-      setProfile(profileData)
       if (profileData?.is_superadmin) {
         setIsOrgAdmin(true)
-        setChecking(false)
-        return
+      } else {
+        const { data: memberships } = await supabase
+          .from('organization_members')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1)
+        setIsOrgAdmin(!!(memberships && memberships.length > 0))
       }
-      // Check if user is a member of any organization
-      const { data: memberships } = await supabase
-        .from('organization_members')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1)
-      setIsOrgAdmin(!!(memberships && memberships.length > 0))
-      setChecking(false)
+      setProfileDone(true)
     })()
   }, [user])
 
+  const checking = user !== undefined && !(user === null || profileDone)
   if (loading || checking) return <div className="min-h-screen bg-background flex items-center justify-center"><LoadingSpinner /></div>
   if (!user) return <Navigate to="/login" replace />
   if (!isOrgAdmin) return <Navigate to="/dashboard" replace />
@@ -46,20 +42,22 @@ export function OrgAdminRoute({ children }: { children: React.ReactNode }) {
 
 export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [checking, setChecking] = useState(true)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [profileDone, setProfileDone] = useState(false)
 
   useEffect(() => {
-    if (!user) { setChecking(false); return }
+    if (!user) return
     getProfile(user.id).then(({ data }) => {
-      setProfile(data)
-      setChecking(false)
+      setIsSuperAdmin(!!data?.is_superadmin)
+      setProfileDone(true)
     })
   }, [user])
 
+  const checking = user !== undefined && !(user === null || profileDone)
+
   if (loading || checking) return <div className="min-h-screen bg-background flex items-center justify-center"><LoadingSpinner /></div>
   if (!user) return <Navigate to="/login" replace />
-  if (!profile?.is_superadmin) return <Navigate to="/" replace />
+  if (!isSuperAdmin) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 

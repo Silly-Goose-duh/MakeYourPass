@@ -14,7 +14,7 @@ export function CTASection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <Badge variant="primary" size="lg" className="mb-6">
+          <Badge variant="primary" size="md" className="mb-6">
             Start Building
           </Badge>
 
@@ -31,13 +31,13 @@ export function CTASection() {
 
           <div className="flex flex-col sm:flex-row items-start gap-4 mb-12">
             <Link to="/signup">
-              <Button variant="gradient" size="xl" glow className="group text-lg px-10">
+              <Button variant="primary" size="lg" className="group">
                 Create Your First Event
-                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
             <a href="/#features">
-              <Button variant="outline" size="xl" className="text-lg px-8">
+              <Button variant="secondary" size="lg">
                 Explore Features
               </Button>
             </a>
