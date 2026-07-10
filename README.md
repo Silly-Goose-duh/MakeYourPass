@@ -21,6 +21,12 @@
 - EmailJS (contact/notification emails)
 - Vercel (deployment)
 
+## Design System
+UI runs on the **v3 "Aurora"** design system (premium dark, violet→fuchsia,
+Luma/Partiful-inspired). All tokens live in `src/index.css` (`@theme` block);
+retuning a token restyles the whole app. See **[DESIGN.md](./DESIGN.md)** for the
+full design language, token map, utility classes, and extension conventions.
+
 ## Getting Started
 
 ```bash

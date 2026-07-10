@@ -12,7 +12,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     const baseStyles = 'rounded-lg transition-all duration-200'
 
     const variants = {
-      default: 'bg-dark border border-brand/30',
+      default: 'bg-dark border border-brand/30 shadow-[0_1px_2px_rgba(0,0,0,0.4),0_4px_16px_rgba(0,0,0,0.25)]',
       bordered: 'bg-dark border-2 border-brand/50',
     }
 

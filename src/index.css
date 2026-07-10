@@ -4,45 +4,60 @@
 @import "@fontsource/space-grotesk";
 
 @theme {
-  /* ===== CAMPUSPASS v2 DESIGN SYSTEM ===== */
+  /* ===== CAMPUSPASS v3 "AURORA" DESIGN SYSTEM =====
+     Premium event-platform dark theme (Luma / Partiful inspired).
+     Warmer layered backgrounds, violet→fuchsia signature gradient,
+     higher-contrast text, richer elevation. All v1/v2 token names
+     preserved for backward-compat with existing components. */
 
-  /* Core backgrounds */
-  --color-cp-bg-base: #0D1117;
-  --color-cp-bg-surface: #111827;
-  --color-cp-bg-card: #161D2F;
+  /* Core backgrounds — deeper, slightly warm neutrals with more layer separation */
+  --color-cp-bg-base: #0A0A0F;
+  --color-cp-bg-surface: #12121A;
+  --color-cp-bg-card: #191922;
+  --color-cp-bg-elevated: #212130;
 
-  /* Accent */
-  --color-cp-accent-purple: #7C5CFC;
-  --color-cp-accent-cyan: #00D4FF;
+  /* Accent — violet → fuchsia signature, cyan kept as secondary spark */
+  --color-cp-accent-purple: #8B5CF6;
+  --color-cp-accent-fuchsia: #E248D8;
+  --color-cp-accent-cyan: #22D3EE;
 
-  /* Text */
-  --color-cp-text-primary: #E8E8F0;
-  --color-cp-text-muted: #9AA3B8;
-  --color-cp-text-faint: #4A5580;
+  /* Text — brighter for WCAG-friendlier contrast on dark */
+  --color-cp-text-primary: #F4F4F8;
+  --color-cp-text-muted: #B4B7C8;
+  --color-cp-text-faint: #6E7391;
 
   /* Border */
-  --color-cp-border: rgba(124, 92, 252, 0.22);
+  --color-cp-border: rgba(139, 92, 246, 0.20);
 
-  /* v1 aliases (keep working for backward compat) */
-  --color-void: #0D1117;
-  --color-dark: #111827;
-  --color-darker: #161D2F;
-  --color-brand: #7C5CFC;
-  --color-brand-light: #C4B5FD;
-  --color-brand-dark: #534AB7;
-  --color-background: #0D1117;
-  --color-surface: #111827;
-  --color-surface-elevated: #161D2F;
-  --color-border: rgba(124, 92, 252, 0.22);
-  --color-border-light: rgba(124, 92, 252, 0.5);
-  --color-text-primary: #E8E8F0;
-  --color-text-secondary: #C4B5FD;
-  --color-text-muted: #9AA3B8;
+  /* v1/v2 aliases (keep working for backward compat) */
+  --color-void: #0A0A0F;
+  --color-dark: #12121A;
+  --color-darker: #191922;
+  --color-brand: #8B5CF6;
+  --color-brand-light: #C9B8FF;
+  --color-brand-dark: #6D3EE0;
+  --color-background: #0A0A0F;
+  --color-surface: #12121A;
+  --color-surface-elevated: #212130;
+  --color-border: rgba(139, 92, 246, 0.20);
+  --color-border-light: rgba(139, 92, 246, 0.45);
+  --color-text-primary: #F4F4F8;
+  --color-text-secondary: #C9B8FF;
+  --color-text-muted: #B4B7C8;
+  --color-primary: #8B5CF6;
+  --color-primary-hover: #A97FFF;
+  --color-secondary: #22D3EE;
+  --color-accent-rose: #E248D8;
+  --color-accent-teal: #22D3EE;
 
   /* Semantic */
-  --color-success: #10B981;
-  --color-error: #EF4444;
-  --color-warning: #F59E0B;
+  --color-success: #22C55E;
+  --color-error: #F04452;
+  --color-warning: #FBBF24;
+
+  /* Signature gradient */
+  --gradient-brand: linear-gradient(135deg, #8B5CF6 0%, #E248D8 100%);
+  --gradient-brand-soft: linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(226,72,216,0.15) 100%);
 
   /* Fonts */
   --font-display: "Space Grotesk", sans-serif;
@@ -70,6 +85,11 @@
   --radius-2xl: 1rem;
   --radius-3xl: 1.5rem;
   --radius-full: 9999px;
+
+  /* Shadows / elevation */
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
+  --shadow-elevated: 0 8px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(139,92,246,0.08);
+  --shadow-glow: 0 0 40px rgba(139,92,246,0.25);
 }
 
 /* ===== GLOBAL ===== */
@@ -87,6 +107,20 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Subtle aurora backdrop — fixed, non-interactive, sits behind everything */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 15% 0%, rgba(139,92,246,0.10), transparent 70%),
+    radial-gradient(50% 45% at 90% 10%, rgba(226,72,216,0.08), transparent 70%),
+    radial-gradient(40% 40% at 50% 100%, rgba(34,211,238,0.05), transparent 70%);
+}
+#root { position: relative; z-index: 1; }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display), sans-serif;
@@ -109,28 +143,45 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-cp-border); border-radius: var(--radius-full); }
-::-webkit-scrollbar-thumb:hover { background: rgba(124, 92, 252, 0.35); }
+::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.40); }
+
+/* ===== GRADIENT TEXT (used by SplashScreen + hero) ===== */
+.gradient-text {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ===== GLASS SURFACE (navbar / floating panels) ===== */
+.glass {
+  background: rgba(18, 18, 26, 0.72);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
 
 /* ===== FILTER CHIPS ===== */
 .filter-chip {
   background: var(--color-cp-bg-card);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--color-cp-text-faint);
+  color: var(--color-cp-text-muted);
   font-size: 11px;
-  padding: 5px 14px;
+  font-weight: 500;
+  padding: 6px 15px;
   border-radius: 20px;
   transition: all 0.15s ease;
   cursor: pointer;
   white-space: nowrap;
 }
 .filter-chip:hover {
-  border-color: rgba(124, 92, 252, 0.35);
+  border-color: rgba(139, 92, 246, 0.40);
   color: var(--color-cp-text-primary);
 }
 .filter-chip.active {
-  background: rgba(124, 92, 252, 0.2);
-  border: 1px solid rgba(124, 92, 252, 0.6);
-  color: #C4B5FD;
+  background: var(--gradient-brand-soft);
+  border: 1px solid rgba(139, 92, 246, 0.65);
+  color: #E9DEFF;
 }
 
 /* ===== PULSING DOT ===== */
@@ -156,7 +207,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .animate-float { animation: float 5s ease-in-out infinite; }
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(124, 92, 252, 0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.08), transparent);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }

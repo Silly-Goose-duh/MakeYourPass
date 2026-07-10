@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Menu, X, User, LayoutDashboard, Shield, LogOut, ChevronDown, Zap } from 'lucide-react'
+import { Menu, X, User, LayoutDashboard, Shield, LogOut, ChevronDown, Zap } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getProfile, getUserOrganizations, signOut } from '@/lib/supabase'
 import type { Profile, Organization } from '@/types'
@@ -56,10 +56,12 @@ export function Navbar() {
 
   return (
     <nav
-      className="sticky top-0 z-50 transition-all duration-200"
+      className="glass sticky top-0 z-50 transition-all duration-200"
       style={{
-        background: 'var(--color-cp-bg-surface)',
-        borderBottom: '0.5px solid rgba(124,92,252,0.2)',
+        borderBottom: scrolled
+          ? '0.5px solid rgba(139,92,246,0.30)'
+          : '0.5px solid rgba(139,92,246,0.14)',
+        boxShadow: scrolled ? '0 4px 24px rgba(0,0,0,0.35)' : 'none',
       }}
     >
       <div className="px-4 sm:px-6">
@@ -68,7 +70,7 @@ export function Navbar() {
           <Link to="/" className="flex items-center gap-2.5 group">
             <div
               className="h-[30px] w-[30px] rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #7C5CFC, #00D4FF)' }}
+              style={{ background: 'var(--gradient-brand)', boxShadow: '0 2px 10px rgba(139,92,246,0.4)' }}
             >
               <Zap className="h-3.5 w-3.5 text-white" />
             </div>
@@ -132,7 +134,7 @@ export function Navbar() {
                   >
                     <div
                       className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white"
-                      style={{ background: 'linear-gradient(135deg, #7C5CFC, #00D4FF)' }}
+                      style={{ background: 'var(--gradient-brand)' }}
                     >
                       {profile?.full_name
                         ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -285,7 +287,7 @@ export function Navbar() {
                   onClick={() => setMobileOpen(false)}
                   className="block text-center text-sm font-semibold px-4 py-2.5 rounded-full"
                   style={{
-                    background: 'linear-gradient(135deg, #7C5CFC, #00D4FF)',
+                    background: 'var(--gradient-brand)',
                     color: '#fff',
                   }}
                 >

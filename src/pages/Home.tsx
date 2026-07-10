@@ -12,7 +12,6 @@ import {
   PanelLeftClose,
   PanelLeft,
   ArrowRight,
-  Zap,
 } from 'lucide-react'
 import { getPublishedEvents, getApprovedOrganizations } from '@/lib/supabase'
 import type { CampusEvent, Organization } from '@/types'
@@ -236,7 +235,7 @@ export default function HomePage() {
                     >
                       <div
                         className="flex h-9 w-9 items-center justify-center rounded-lg text-white text-xs font-bold"
-                        style={{ background: 'linear-gradient(135deg, #7C5CFC, #00D4FF)' }}
+                        style={{ background: 'var(--gradient-brand)' }}
                       >
                         <Building2 className="h-4 w-4" />
                       </div>
@@ -448,15 +447,15 @@ export default function HomePage() {
                 ))}
               </motion.div>
 
-              {/* "UPCOMING" section label */}
+              {/* Section label — reflects actual filter state */}
               <div className="mb-4 flex items-center gap-3">
                 <span
                   className="text-[10px] font-semibold uppercase tracking-[0.1em]"
                   style={{ color: 'var(--color-cp-text-faint)' }}
                 >
-                  Upcoming
+                  {searchQuery || activeFilter !== 'All events' || selectedOrgId ? 'Results' : 'All Events'}
                 </span>
-                <div className="flex-1 h-px" style={{ background: 'rgba(124,92,252,0.1)' }} />
+                <div className="flex-1 h-px" style={{ background: 'rgba(139,92,246,0.1)' }} />
                 <span className="text-[10px]" style={{ color: 'var(--color-cp-text-faint)' }}>
                   {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}
                 </span>
@@ -571,10 +570,11 @@ export default function HomePage() {
                             className="group relative overflow-hidden rounded-xl transition-all duration-150"
                             style={{
                               background: 'var(--color-cp-bg-card)',
-                              border: '1px solid rgba(124,92,252,0.12)',
+                              border: '1px solid rgba(139,92,246,0.12)',
+                              boxShadow: 'var(--shadow-card)',
                             }}
-                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,92,252,0.5)'}
-                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124,92,252,0.12)'}
+                            onMouseEnter={e => { const t = e.currentTarget as HTMLElement; t.style.borderColor = 'rgba(139,92,246,0.5)'; t.style.boxShadow = 'var(--shadow-elevated)' }}
+                            onMouseLeave={e => { const t = e.currentTarget as HTMLElement; t.style.borderColor = 'rgba(139,92,246,0.12)'; t.style.boxShadow = 'var(--shadow-card)' }}
                           >
                             <Link to={`/event/${event.slug}`} className="block">
                               {/* Banner area - 90px */}

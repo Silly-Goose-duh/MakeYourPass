@@ -35,7 +35,7 @@ export function Footer() {
             <Link to="/" className="flex items-center gap-2.5 mb-4">
               <div
                 className="h-[30px] w-[30px] rounded-lg flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #7C5CFC, #00D4FF)' }}
+                style={{ background: 'var(--gradient-brand)', boxShadow: '0 2px 10px rgba(139,92,246,0.4)' }}
               >
                 <Zap className="h-3.5 w-3.5 text-white" />
               </div>
