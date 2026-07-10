@@ -138,7 +138,7 @@ export default function HomePage() {
             </span>
             <h1
               className="mt-4 font-extrabold tracking-tighter"
-              style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(2.75rem, 9vw, 6rem)', lineHeight: 0.9, color: '#14110E' }}
+              style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(2.25rem, 8.5vw, 6rem)', lineHeight: 0.9, color: '#14110E' }}
             >
               GET YOUR <span className="text-outline">PASS.</span><br />
               SHOW UP. <span style={{ color: '#FF4D2E' }}>DONE.</span>
@@ -306,7 +306,7 @@ export default function HomePage() {
               <AnimatePresence mode="wait">
                 {loading ? (
                   <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' }}>
+                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))', gap: '20px' }}>
                     {Array.from({ length: 6 }).map((_, i) => (
                       <div key={i} className="zine-border" style={{ background: '#fff' }}>
                         <Skeleton variant="rectangular" className="h-[120px] w-full !rounded-none" />
@@ -341,7 +341,7 @@ export default function HomePage() {
                   </motion.div>
                 ) : (
                   <motion.div key="grid" variants={containerVariants} initial="hidden" animate="visible"
-                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' }}>
+                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))', gap: '20px' }}>
                     <AnimatePresence mode="popLayout">
                       {filteredEvents.map((event) => {
                         const orgName = event.organizations?.name ?? ''

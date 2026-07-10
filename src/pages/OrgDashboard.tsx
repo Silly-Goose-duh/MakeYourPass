@@ -140,7 +140,7 @@ export function OrgDashboard() {
           <p className="text-text-secondary max-w-md mb-8">
             Create or request to join an organization to start managing events and registrations.
           </p>
-          <Link to="/dashboard/orgs/new">
+          <Link to="/signup">
             <Button variant="primary" size="lg">
               <Plus className="h-5 w-5" />
               Create Organization

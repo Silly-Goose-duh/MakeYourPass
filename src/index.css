@@ -89,6 +89,7 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
+  overflow-x: hidden;
   font-family: var(--font-body), sans-serif;
   background-color: var(--color-cp-bg-base);
   color: var(--color-cp-text-primary);
