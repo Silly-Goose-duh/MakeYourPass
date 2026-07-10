@@ -42,7 +42,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         <motion.div
           key="splash"
           className="fixed inset-0 z-50 overflow-hidden"
-          style={{ backgroundColor: '#08080D' }}
+          style={{ backgroundColor: '#FFD23F' }}
           // ── Liquid wobble sweep ──
           animate={
             phase === 'sweeping'
@@ -77,10 +77,10 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
               background: `
                 linear-gradient(to right,
                   transparent 0%,
-                  rgba(8,8,13,0.3) 15%,
-                  rgba(8,8,13,0.7) 35%,
-                  #08080D 55%,
-                  #08080D 100%
+                  rgba(255,210,63,0.3) 15%,
+                  rgba(255,210,63,0.7) 35%,
+                  #FFD23F 55%,
+                  #FFD23F 100%
                 )
               `,
               maskImage: `

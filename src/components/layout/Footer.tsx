@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Code, Heart, Mail, MessageCircle, Zap } from 'lucide-react'
+import { Code, Heart, Mail, MessageCircle, Ticket } from 'lucide-react'
 
 const footerLinks = {
   Product: [
@@ -21,96 +21,52 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer
-      className="mt-auto"
-      style={{
-        background: 'var(--color-cp-bg-surface)',
-        borderTop: '0.5px solid rgba(124,92,252,0.15)',
-      }}
-    >
-      <div className="relative mx-auto px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+    <footer className="mt-auto" style={{ background: '#14110E', borderTop: '2.5px solid #14110E' }}>
+      <div className="relative mx-auto px-6 py-14">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2.5 mb-4">
-              <div
-                className="h-[30px] w-[30px] rounded-lg flex items-center justify-center"
-                style={{ background: 'var(--gradient-brand)', boxShadow: '0 2px 10px rgba(139,92,246,0.4)' }}
-              >
-                <Zap className="h-3.5 w-3.5 text-white" />
+              <div className="h-10 w-10 flex items-center justify-center" style={{ background: '#FF4D2E', border: '2.5px solid #FBF8F0' }}>
+                <Ticket className="h-5 w-5 text-white" strokeWidth={2.5} />
               </div>
-              <span className="text-[13px] font-bold" style={{ color: 'var(--color-cp-text-primary)' }}>
-                CampusPass
-              </span>
+              <span className="text-xl font-extrabold" style={{ fontFamily: 'Syne, sans-serif', color: '#FBF8F0' }}>CampusPass</span>
             </Link>
-            <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--color-cp-text-muted)' }}>
-              Marian Engineering College's event platform. Register, organize, and attend campus events seamlessly.
+            <p className="text-sm font-semibold leading-relaxed mb-4" style={{ color: '#B8B2A6' }}>
+              Marian Engineering College's event platform. Register, organize, and show up.
             </p>
-            <div className="flex items-center gap-3">
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 transition-colors"
-                style={{ color: 'var(--color-cp-text-muted)' }}
-                onMouseEnter={e => (e.target as HTMLElement).style.color = '#7C5CFC'}
-                onMouseLeave={e => (e.target as HTMLElement).style.color = 'var(--color-cp-text-muted)'}
-                aria-label="GitHub"
-              >
-                <Code className="h-5 w-5" />
-              </a>
-              <a
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 transition-colors"
-                style={{ color: 'var(--color-cp-text-muted)' }}
-                onMouseEnter={e => (e.target as HTMLElement).style.color = '#7C5CFC'}
-                onMouseLeave={e => (e.target as HTMLElement).style.color = 'var(--color-cp-text-muted)'}
-                aria-label="Twitter"
-              >
-                <MessageCircle className="h-5 w-5" />
-              </a>
-              <a
-                href="mailto:hello@campuspass.app"
-                className="p-2 transition-colors"
-                style={{ color: 'var(--color-cp-text-muted)' }}
-                onMouseEnter={e => (e.target as HTMLElement).style.color = '#7C5CFC'}
-                onMouseLeave={e => (e.target as HTMLElement).style.color = 'var(--color-cp-text-muted)'}
-                aria-label="Email"
-              >
-                <Mail className="h-5 w-5" />
-              </a>
+            <div className="flex items-center gap-2">
+              {[
+                { href: 'https://github.com', icon: Code, label: 'GitHub' },
+                { href: 'https://twitter.com', icon: MessageCircle, label: 'Twitter' },
+                { href: 'mailto:hello@campuspass.app', icon: Mail, label: 'Email' },
+              ].map(({ href, icon: Icon, label }) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
+                  className="flex h-9 w-9 items-center justify-center"
+                  style={{ background: '#FFD23F', border: '2.5px solid #FBF8F0', color: '#14110E' }}>
+                  <Icon className="h-4 w-4" strokeWidth={2.5} />
+                </a>
+              ))}
             </div>
           </div>
 
           {/* Link columns */}
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
-              <h4 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-cp-text-primary)' }}>{category}</h4>
-              <ul className="space-y-3">
+              <h4 className="text-xs font-extrabold uppercase tracking-widest mb-4" style={{ fontFamily: 'Syne, sans-serif', color: '#FFD23F' }}>{category}</h4>
+              <ul className="space-y-2.5">
                 {links.map((link) => (
                   <li key={link.label}>
-                    {link.href.startsWith('http') ? (
-                      <a
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm transition-colors"
-                        style={{ color: 'var(--color-cp-text-muted)' }}
-                        onMouseEnter={e => (e.target as HTMLElement).style.color = '#7C5CFC'}
-                        onMouseLeave={e => (e.target as HTMLElement).style.color = 'var(--color-cp-text-muted)'}
-                      >
+                    {link.href.startsWith('http') || link.href.startsWith('mailto') ? (
+                      <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-sm font-bold transition-colors" style={{ color: '#B8B2A6' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#FF4D2E'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#B8B2A6'}>
                         {link.label}
                       </a>
                     ) : (
-                      <Link
-                        to={link.href}
-                        className="text-sm transition-colors"
-                        style={{ color: 'var(--color-cp-text-muted)' }}
-                        onMouseEnter={e => (e.target as HTMLElement).style.color = '#7C5CFC'}
-                        onMouseLeave={e => (e.target as HTMLElement).style.color = 'var(--color-cp-text-muted)'}
-                      >
+                      <Link to={link.href} className="text-sm font-bold transition-colors" style={{ color: '#B8B2A6' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#FF4D2E'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#B8B2A6'}>
                         {link.label}
                       </Link>
                     )}
@@ -122,15 +78,12 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div
-          className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4"
-          style={{ borderTop: '0.5px solid rgba(124,92,252,0.1)' }}
-        >
-          <p className="text-sm" style={{ color: 'var(--color-cp-text-muted)' }}>
-            &copy; {new Date().getFullYear()} CampusPass. All rights reserved.
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3" style={{ borderTop: '2px solid #4A4640' }}>
+          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#B8B2A6' }}>
+            &copy; {new Date().getFullYear()} CampusPass — All rights reserved
           </p>
-          <p className="text-sm flex items-center gap-1" style={{ color: 'var(--color-cp-text-muted)' }}>
-            Made with <Heart className="h-3.5 w-3.5" style={{ color: '#EF4444' }} /> by the CampusPass team
+          <p className="text-xs font-bold flex items-center gap-1.5" style={{ color: '#B8B2A6' }}>
+            Made with <Heart className="h-3.5 w-3.5" strokeWidth={2.5} style={{ color: '#FF4D2E' }} fill="#FF4D2E" /> by the CampusPass team
           </p>
         </div>
       </div>

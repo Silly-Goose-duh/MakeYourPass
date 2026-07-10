@@ -4,98 +4,87 @@
 @import "@fontsource/space-grotesk";
 
 @theme {
-  /* ===== CAMPUSPASS v3 "AURORA" DESIGN SYSTEM =====
-     Premium event-platform dark theme (Luma / Partiful inspired).
-     Warmer layered backgrounds, violet→fuchsia signature gradient,
-     higher-contrast text, richer elevation. All v1/v2 token names
-     preserved for backward-compat with existing components. */
+  /* ===== CAMPUSPASS v4 "ZINE" — BRUTALIST CAMPUS-ZINE DESIGN SYSTEM =====
+     High-contrast cream paper + hard black ink, chunky borders, offset
+     shadows, sticker/tape motifs, expressive heavy display type.
+     Legacy token names retained (remapped) so every page shifts automatically. */
 
-  /* Core backgrounds — deeper, slightly warm neutrals with more layer separation */
-  --color-cp-bg-base: #0A0A0F;
-  --color-cp-bg-surface: #12121A;
-  --color-cp-bg-card: #191922;
-  --color-cp-bg-elevated: #212130;
+  /* Paper / ink core */
+  --color-cp-bg-base: #F4EFE1;
+  --color-cp-bg-surface: #FBF8F0;
+  --color-cp-bg-card: #FFFFFF;
+  --color-cp-bg-elevated: #FFFFFF;
+  --color-ink: #14110E;
 
-  /* Accent — violet → fuchsia signature, cyan kept as secondary spark */
-  --color-cp-accent-purple: #8B5CF6;
-  --color-cp-accent-fuchsia: #E248D8;
-  --color-cp-accent-cyan: #22D3EE;
+  /* Zine accent palette */
+  --color-cp-accent-purple: #FF4D2E;  /* primary = electric vermilion */
+  --color-cp-accent-fuchsia: #E84AC4;
+  --color-cp-accent-cyan: #2D5BFF;
+  --color-zine-yellow: #FFD23F;
+  --color-zine-blue: #2D5BFF;
+  --color-zine-green: #14B87A;
+  --color-zine-pink: #E84AC4;
+  --color-zine-red: #FF4D2E;
 
-  /* Text — brighter for WCAG-friendlier contrast on dark */
-  --color-cp-text-primary: #F4F4F8;
-  --color-cp-text-muted: #B4B7C8;
-  --color-cp-text-faint: #6E7391;
+  /* Text — dark ink on paper */
+  --color-cp-text-primary: #14110E;
+  --color-cp-text-muted: #4A4640;
+  --color-cp-text-faint: #7A756B;
 
-  /* Border */
-  --color-cp-border: rgba(139, 92, 246, 0.20);
+  /* Border — always hard ink */
+  --color-cp-border: #14110E;
 
-  /* v1/v2 aliases (keep working for backward compat) */
-  --color-void: #0A0A0F;
-  --color-dark: #12121A;
-  --color-darker: #191922;
-  --color-brand: #8B5CF6;
-  --color-brand-light: #C9B8FF;
-  --color-brand-dark: #6D3EE0;
-  --color-background: #0A0A0F;
-  --color-surface: #12121A;
-  --color-surface-elevated: #212130;
-  --color-border: rgba(139, 92, 246, 0.20);
-  --color-border-light: rgba(139, 92, 246, 0.45);
-  --color-text-primary: #F4F4F8;
-  --color-text-secondary: #C9B8FF;
-  --color-text-muted: #B4B7C8;
-  --color-primary: #8B5CF6;
-  --color-primary-hover: #A97FFF;
-  --color-secondary: #22D3EE;
-  --color-accent-rose: #E248D8;
-  --color-accent-teal: #22D3EE;
+  /* Legacy aliases (remapped to zine palette) */
+  --color-void: #F4EFE1;
+  --color-dark: #FFFFFF;
+  --color-darker: #FBF8F0;
+  --color-brand: #FF4D2E;
+  --color-brand-light: #FF7A63;
+  --color-brand-dark: #D6371B;
+  --color-background: #F4EFE1;
+  --color-surface: #FFFFFF;
+  --color-surface-elevated: #FFFFFF;
+  --color-border: #14110E;
+  --color-border-light: #14110E;
+  --color-text-primary: #14110E;
+  --color-text-secondary: #4A4640;
+  --color-text-muted: #4A4640;
+  --color-primary: #FF4D2E;
+  --color-primary-hover: #D6371B;
+  --color-secondary: #2D5BFF;
+  --color-accent-rose: #E84AC4;
+  --color-accent-teal: #14B87A;
 
   /* Semantic */
-  --color-success: #22C55E;
-  --color-error: #F04452;
-  --color-warning: #FBBF24;
+  --color-success: #14B87A;
+  --color-error: #FF4D2E;
+  --color-warning: #FFD23F;
 
-  /* Signature gradient */
-  --gradient-brand: linear-gradient(135deg, #8B5CF6 0%, #E248D8 100%);
-  --gradient-brand-soft: linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(226,72,216,0.15) 100%);
+  /* Signature "gradient" kept flat-ish for brutalism */
+  --gradient-brand: linear-gradient(135deg, #FF4D2E 0%, #E84AC4 100%);
+  --gradient-brand-soft: #FFE9E3;
 
-  /* Fonts */
-  --font-display: "Space Grotesk", sans-serif;
+  /* Fonts — Syne for chunky display, Space Grotesk for body */
+  --font-display: "Syne", sans-serif;
   --font-body: "Space Grotesk", sans-serif;
 
   /* Spacing — 8px grid */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-  --space-20: 5rem;
-  --space-24: 6rem;
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+  --space-12: 3rem; --space-16: 4rem; --space-20: 5rem; --space-24: 6rem;
 
-  /* Border radius */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
-  --radius-3xl: 1.5rem;
-  --radius-full: 9999px;
+  /* Border radius — mostly sharp; brutalism favors hard corners */
+  --radius-sm: 0; --radius-md: 0; --radius-lg: 2px; --radius-xl: 4px;
+  --radius-2xl: 6px; --radius-3xl: 8px; --radius-full: 9999px;
 
-  /* Shadows / elevation */
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
-  --shadow-elevated: 0 8px 40px rgba(0,0,0,0.5), 0 2px 8px rgba(139,92,246,0.08);
-  --shadow-glow: 0 0 40px rgba(139,92,246,0.25);
+  /* Hard offset shadows (the signature brutalist look) */
+  --shadow-card: 4px 4px 0 #14110E;
+  --shadow-elevated: 7px 7px 0 #14110E;
+  --shadow-glow: 4px 4px 0 #14110E;
 }
 
 /* ===== GLOBAL ===== */
-
 * { box-sizing: border-box; }
-
 html { scroll-behavior: smooth; }
 
 body {
@@ -103,116 +92,134 @@ body {
   font-family: var(--font-body), sans-serif;
   background-color: var(--color-cp-bg-base);
   color: var(--color-cp-text-primary);
-  line-height: 1.6;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Subtle aurora backdrop — fixed, non-interactive, sits behind everything */
+/* Halftone-dot paper texture backdrop */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(60% 50% at 15% 0%, rgba(139,92,246,0.10), transparent 70%),
-    radial-gradient(50% 45% at 90% 10%, rgba(226,72,216,0.08), transparent 70%),
-    radial-gradient(40% 40% at 50% 100%, rgba(34,211,238,0.05), transparent 70%);
+  opacity: 0.5;
+  background-image: radial-gradient(#14110E 1px, transparent 1.4px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 100% 80% at 50% 0%, black, transparent 75%);
+  mask-image: radial-gradient(ellipse 100% 80% at 50% 0%, black, transparent 75%);
 }
 #root { position: relative; z-index: 1; }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display), sans-serif;
-  font-weight: 700;
-  line-height: 1.1;
+  font-weight: 800;
+  line-height: 0.98;
   letter-spacing: -0.02em;
 }
 
-::selection {
-  background-color: var(--color-cp-accent-purple);
-  color: #ffffff;
-}
+::selection { background-color: var(--color-zine-yellow); color: #14110E; }
 
-:focus-visible {
-  outline: 2px solid var(--color-cp-accent-purple);
-  outline-offset: 2px;
-}
+:focus-visible { outline: 3px solid #14110E; outline-offset: 2px; }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-cp-border); border-radius: var(--radius-full); }
-::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.40); }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--color-cp-bg-base); border-left: 2px solid #14110E; }
+::-webkit-scrollbar-thumb { background: #14110E; border: 2px solid var(--color-cp-bg-base); }
 
-/* ===== GRADIENT TEXT (used by SplashScreen + hero) ===== */
-.gradient-text {
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-}
+/* ===== BRUTALIST PRIMITIVES ===== */
+.zine-border { border: 2.5px solid #14110E; }
+.zine-shadow { box-shadow: var(--shadow-card); }
+.zine-shadow-lg { box-shadow: var(--shadow-elevated); }
 
-/* ===== GLASS SURFACE (navbar / floating panels) ===== */
-.glass {
-  background: rgba(18, 18, 26, 0.72);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-}
-
-/* ===== FILTER CHIPS ===== */
-.filter-chip {
+/* Card that lifts on hover (shadow grows, block nudges up-left) */
+.zine-card {
   background: var(--color-cp-bg-card);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--color-cp-text-muted);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 6px 15px;
-  border-radius: 20px;
-  transition: all 0.15s ease;
+  border: 2.5px solid #14110E;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.zine-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-elevated);
+}
+
+/* Chunky button */
+.zine-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 800; letter-spacing: 0.01em;
+  border: 2.5px solid #14110E;
+  box-shadow: 3px 3px 0 #14110E;
+  padding: 0.6rem 1.1rem;
+  background: #FFD23F; color: #14110E;
   cursor: pointer;
-  white-space: nowrap;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
-.filter-chip:hover {
-  border-color: rgba(139, 92, 246, 0.40);
-  color: var(--color-cp-text-primary);
-}
-.filter-chip.active {
-  background: var(--gradient-brand-soft);
-  border: 1px solid rgba(139, 92, 246, 0.65);
-  color: #E9DEFF;
+.zine-btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 #14110E; }
+.zine-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #14110E; }
+.zine-btn-accent { background: #FF4D2E; color: #FFF; }
+.zine-btn-blue { background: #2D5BFF; color: #FFF; }
+
+/* Sticker chip / tag */
+.zine-sticker {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-family: var(--font-display), sans-serif; font-weight: 800;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  border: 2px solid #14110E;
+  padding: 3px 9px;
+  background: #FFF; color: #14110E;
+  box-shadow: 2px 2px 0 #14110E;
 }
 
-/* ===== PULSING DOT ===== */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.3); }
-}
-.pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  animation: pulse-dot 1.8s ease-in-out infinite;
+/* Masking-tape strip */
+.zine-tape {
+  position: absolute;
+  font-family: var(--font-display), sans-serif; font-weight: 800;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 3px 14px;
+  background: rgba(255, 210, 63, 0.9);
+  border-left: 1px dashed rgba(20,17,14,0.4);
+  border-right: 1px dashed rgba(20,17,14,0.4);
+  color: #14110E;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
-/* ===== ANIMATIONS ===== */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+/* Filter chips (reused by existing markup) */
+.filter-chip {
+  font-family: var(--font-display), sans-serif; font-weight: 700;
+  background: #FFF; border: 2px solid #14110E; color: #14110E;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.02em;
+  padding: 6px 14px; border-radius: 9999px;
+  box-shadow: 2px 2px 0 #14110E;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+  cursor: pointer; white-space: nowrap;
 }
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
+.filter-chip:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #14110E; }
+.filter-chip.active { background: #FF4D2E; color: #FFF; }
+
+/* Pulsing dot */
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.4)} }
+.pulse-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #14110E; animation: pulse-dot 1.6s ease-in-out infinite; }
+
+/* Marquee ticker */
+@keyframes marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+.zine-marquee { display: inline-flex; white-space: nowrap; animation: marquee 22s linear infinite; }
+
+/* Text helpers */
+.gradient-text { color: #FF4D2E; }
+.text-outline { -webkit-text-stroke: 2px #14110E; color: transparent; }
+
+/* Legacy glass class → neutralized to solid paper */
+.glass { background: var(--color-cp-bg-surface); }
+
+/* Legacy animations */
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
 .animate-float { animation: float 5s ease-in-out infinite; }
-.animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.08), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
+@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+.animate-shimmer { background: linear-gradient(90deg, transparent, rgba(20,17,14,0.06), transparent); background-size: 200% 100%; animation: shimmer 2s infinite; }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
