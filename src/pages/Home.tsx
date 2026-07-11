@@ -1,56 +1,25 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
 import {
   Search,
-  Building2,
   Calendar,
-  MapPin,
-  Clock,
-  Sparkles,
   AlertTriangle,
-  PanelLeftClose,
-  PanelLeft,
-  ArrowRight,
 } from 'lucide-react'
 import { getPublishedEvents, getApprovedOrganizations } from '@/lib/supabase'
-import type { CampusEvent, Organization } from '@/types'
+import type { Organization } from '@/types'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { cn } from '@/lib/utils'
 import SplashScreen from '@/components/sections/SplashScreen'
+import { OrgSidebar, SidebarReopen } from '@/components/event/OrgSidebar'
+import { EventCard } from '@/components/event/EventCard'
+import { type EventWithOrg } from '@/components/event/eventUtils'
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
 }
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
-}
-
-const sidebarItemVariants = {
-  hidden: { opacity: 0, x: -16 },
-  visible: (i: number) => ({
-    opacity: 1, x: 0,
-    transition: { delay: i * 0.04, duration: 0.35, ease: 'easeOut' as const },
-  }),
-}
-
 const FILTER_CATEGORIES = ['All events', 'Workshops', 'Hackathons', 'Talks', 'Competitions'] as const
 type FilterCategory = (typeof FILTER_CATEGORIES)[number]
-
-type EventWithOrg = CampusEvent & {
-  organizations: Pick<Organization, 'name' | 'slug' | 'logo_url'>
-}
-
-// Zine accent palette rotated per card for a collage feel
-const ZINE_COLORS = ['#FF4D2E', '#2D5BFF', '#14B87A', '#E84AC4', '#FFD23F']
-function zineColorFor(key: string): string {
-  let h = 0
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0
-  return ZINE_COLORS[h % ZINE_COLORS.length]
-}
 
 function getEventCategory(event: EventWithOrg): FilterCategory {
   const text = `${event.title} ${event.description || ''}`.toLowerCase()
@@ -59,16 +28,6 @@ function getEventCategory(event: EventWithOrg): FilterCategory {
   if (/talk|seminar|guest|keynote|lecture/.test(text)) return 'Talks'
   if (/competition|contest|quiz|challenge|olympiad/.test(text)) return 'Competitions'
   return 'Workshops'
-}
-
-function getDaysAway(dateStr: string): string {
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const eventDate = new Date(dateStr); eventDate.setHours(0, 0, 0, 0)
-  const diffDays = Math.round((eventDate.getTime() - today.getTime()) / 86400000)
-  if (diffDays < 0) return 'Past'
-  if (diffDays === 0) return 'Today'
-  if (diffDays === 1) return 'Tomorrow'
-  return `${diffDays} days`
 }
 
 export default function HomePage() {
@@ -96,8 +55,6 @@ export default function HomePage() {
     past.sort((a, b) => (b.date || '').localeCompare(a.date || ''))
     return { upcomingEvents: up, pastEvents: past }
   }, [events])
-
-  const isSoldOut = (e: EventWithOrg) => e.capacity > 0 && (e.response_count ?? 0) >= e.capacity
 
   useEffect(() => {
     async function fetchData() {
@@ -186,102 +143,17 @@ export default function HomePage() {
 
         <section id="events-section" className="px-4 sm:px-6 pb-16 pt-6">
           <div className="flex gap-0 sm:gap-6">
-            {/* ─── SIDEBAR ─── */}
-            <motion.aside
-              animate={{ width: sidebarOpen ? 300 : 0, opacity: sidebarOpen ? 1 : 0, marginRight: sidebarOpen ? 0 : -12 }}
-              transition={{ duration: 0.35, ease: 'easeInOut' }}
-              className={cn('hidden lg:block overflow-hidden flex-shrink-0', !sidebarOpen && 'pointer-events-none')}
-            >
-              <div className="sticky top-24 w-[300px]">
-                <div className="zine-border" style={{ background: '#fff', boxShadow: '5px 5px 0 #14110E' }}>
-                  <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '2.5px solid #14110E', background: '#2D5BFF' }}>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5 text-white" strokeWidth={2.5} />
-                      <span className="text-sm font-extrabold uppercase tracking-wide text-white" style={{ fontFamily: 'Syne, sans-serif' }}>Organizations</span>
-                    </div>
-                    <button onClick={() => setSidebarOpen(false)} className="p-1 text-white" title="Collapse sidebar">
-                      <PanelLeftClose className="h-4 w-4" strokeWidth={2.5} />
-                    </button>
-                  </div>
-
-                  {/* Register CTA */}
-                  <div className="px-3 pt-3 pb-2">
-                    <Link to="/signup" className="group flex items-center gap-3 px-3 py-3" style={{ background: '#FFD23F', border: '2.5px solid #14110E', boxShadow: '3px 3px 0 #14110E' }}>
-                      <div className="flex h-9 w-9 items-center justify-center text-white" style={{ background: '#FF4D2E', border: '2px solid #14110E' }}>
-                        <Building2 className="h-4 w-4" strokeWidth={2.5} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-extrabold" style={{ color: '#14110E', fontFamily: 'Syne, sans-serif' }}>Register Your Club</p>
-                        <p className="text-[11px] font-semibold truncate" style={{ color: '#4A4640' }}>Get on MakeYourPass</p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" strokeWidth={2.5} style={{ color: '#14110E' }} />
-                    </Link>
-                  </div>
-
-                  {/* Org list */}
-                  <div className="space-y-1.5 overflow-y-auto px-3 pb-3" style={{ maxHeight: 'calc(100vh - 22rem)' }}>
-                    <motion.button
-                      variants={sidebarItemVariants} initial="hidden" animate="visible" custom={0}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setSelectedOrgId(null)}
-                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm"
-                      style={{
-                        border: '2px solid #14110E',
-                        background: selectedOrgId === null ? '#FF4D2E' : '#fff',
-                        color: selectedOrgId === null ? '#fff' : '#14110E',
-                        boxShadow: selectedOrgId === null ? '3px 3px 0 #14110E' : 'none',
-                        fontFamily: 'Syne, sans-serif', fontWeight: 800,
-                      }}
-                    >
-                      <Sparkles className="h-4 w-4" strokeWidth={2.5} />
-                      <span className="flex-1">All Organizations</span>
-                      {events.length > 0 && (
-                        <span className="px-2 text-xs" style={{ border: '2px solid currentColor', fontWeight: 800 }}>{events.length}</span>
-                      )}
-                    </motion.button>
-
-                    {organizations.map((org, i) => {
-                      const count = orgEventCounts[org.id] ?? 0
-                      const active = selectedOrgId === org.id
-                      const c = zineColorFor(org.name)
-                      return (
-                        <motion.button
-                          key={org.id}
-                          variants={sidebarItemVariants} initial="hidden" animate="visible" custom={i + 1}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => setSelectedOrgId(org.id)}
-                          className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm"
-                          style={{
-                            border: '2px solid #14110E',
-                            background: active ? c : '#fff',
-                            color: active ? '#fff' : '#14110E',
-                            boxShadow: active ? '3px 3px 0 #14110E' : 'none',
-                            fontFamily: 'Syne, sans-serif', fontWeight: 700,
-                          }}
-                        >
-                          <span className="flex h-6 w-6 items-center justify-center text-[11px] font-extrabold" style={{ background: active ? '#fff' : c, color: active ? c : '#fff', border: '2px solid #14110E' }}>
-                            {org.logo_url ? <img src={org.logo_url} alt="" className="h-full w-full object-cover" /> : org.name.charAt(0)}
-                          </span>
-                          <span className="flex-1 truncate">{org.name}</span>
-                          {count > 0 && <span className="px-2 text-xs" style={{ border: '2px solid currentColor', fontWeight: 800 }}>{count}</span>}
-                        </motion.button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            </motion.aside>
-
-            {/* Collapsed re-open trigger */}
-            <motion.div
-              animate={{ opacity: sidebarOpen ? 0 : 1, width: sidebarOpen ? 0 : 'auto' }}
-              transition={{ duration: 0.3 }}
-              className={cn('hidden lg:flex items-start pt-1 flex-shrink-0 overflow-hidden', sidebarOpen && 'pointer-events-none')}
-            >
-              <button onClick={() => setSidebarOpen(true)} className="p-2.5" style={{ border: '2.5px solid #14110E', background: '#fff', boxShadow: '3px 3px 0 #14110E', color: '#14110E' }} title="Expand sidebar">
-                <PanelLeft className="h-4 w-4" strokeWidth={2.5} />
-              </button>
-            </motion.div>
+            {/* ─── SIDEBAR (shared, same as Events page) ─── */}
+            <OrgSidebar
+              organizations={organizations}
+              selectedOrgId={selectedOrgId}
+              onSelectOrg={setSelectedOrgId}
+              eventCounts={orgEventCounts}
+              totalEvents={events.length}
+              sidebarOpen={sidebarOpen}
+              onToggleSidebar={setSidebarOpen}
+            />
+            <SidebarReopen open={sidebarOpen} onOpen={() => setSidebarOpen(true)} />
 
             {/* ─── CENTER ─── */}
             <main className="min-w-0 flex-1">
@@ -390,62 +262,9 @@ export default function HomePage() {
                   <motion.div key="grid" variants={containerVariants} initial="hidden" animate="visible"
                     style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))', gap: '20px' }}>
                     <AnimatePresence mode="popLayout">
-                      {filteredEvents.map((event) => {
-                        const orgName = event.organizations?.name ?? ''
-                        const c = zineColorFor(orgName || event.title)
-                        const daysAway = event.date ? getDaysAway(event.date) : ''
-                        const soldOut = isSoldOut(event)
-                        return (
-                          <motion.div key={event.id} layout variants={itemVariants} transition={{ layout: { duration: 0.3 } }}
-                            className="zine-card group relative"
-                            style={soldOut ? { opacity: 0.6, filter: 'grayscale(0.9)' } : undefined}
-                          >
-                            <Link to={`/event/${event.slug}`} className="block">
-                              {/* Poster band */}
-                              <div className="relative h-[120px] overflow-hidden flex items-center justify-center" style={{ background: c, borderBottom: '2.5px solid #14110E' }}>
-                                <span className="text-outline font-extrabold" style={{ fontFamily: 'Syne, sans-serif', fontSize: '3.5rem', opacity: 0.35, WebkitTextStrokeColor: '#14110E' }}>
-                                  {orgName.charAt(0) || '★'}
-                                </span>
-                                <span className="zine-sticker absolute bottom-2 left-2" style={{ background: '#fff' }}>{orgName || 'Event'}</span>
-                                <span className="absolute top-0 right-0 px-2 py-1 text-[10px] font-extrabold uppercase text-white" style={{ background: '#14110E', fontFamily: 'Syne, sans-serif' }}>{daysAway}</span>
-                                {soldOut && (
-                                  <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-white" style={{ background: '#E11D1D', border: '2.5px solid #14110E', transform: 'rotate(-6deg)', fontFamily: 'Syne, sans-serif', boxShadow: '2px 2px 0 #14110E' }}>
-                                    Sold out
-                                  </span>
-                                )}
-                              </div>
-                              {/* Body */}
-                              <div className="p-4 space-y-3">
-                                <h3 className="text-base font-extrabold leading-tight line-clamp-2" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>{event.title}</h3>
-                                <div className="space-y-1.5">
-                                  {event.date && (
-                                    <div className="flex items-center gap-2 text-xs font-bold" style={{ color: '#4A4640' }}>
-                                      <Calendar className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
-                                      <span>{new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                                    </div>
-                                  )}
-                                  {event.time && (
-                                    <div className="flex items-center gap-2 text-xs font-bold" style={{ color: '#4A4640' }}>
-                                      <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} /><span>{event.time.substring(0, 5)}</span>
-                                    </div>
-                                  )}
-                                  {event.venue && (
-                                    <div className="flex items-center gap-2 text-xs font-bold" style={{ color: '#4A4640' }}>
-                                      <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} /><span className="truncate">{event.venue}</span>
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex items-center justify-between pt-2" style={{ borderTop: '2px solid #14110E' }}>
-                                  <span className="pulse-dot" style={{ background: c }} />
-                                  <span className="inline-flex items-center gap-1 text-xs font-extrabold uppercase" style={{ fontFamily: 'Syne, sans-serif', color: '#FF4D2E' }}>
-                                    Register <ArrowRight className="h-3.5 w-3.5" strokeWidth={3} />
-                                  </span>
-                                </div>
-                              </div>
-                            </Link>
-                          </motion.div>
-                        )
-                      })}
+                      {filteredEvents.map((event) => (
+                        <EventCard key={event.id} event={event} />
+                      ))}
                     </AnimatePresence>
                   </motion.div>
                 )}

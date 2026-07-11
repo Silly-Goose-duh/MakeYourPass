@@ -42,7 +42,7 @@ export function Navbar() {
     window.location.href = '/'
   }
 
-  const navLinks = [{ label: 'Events', href: '/' }]
+  const navLinks = [{ label: 'Events', href: '/events' }]
 
   return (
     <nav

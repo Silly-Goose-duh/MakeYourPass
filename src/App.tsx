@@ -15,6 +15,7 @@ const EditEvent = lazy(() => import('@/pages/EditEvent').then(m => ({ default: m
 const EventAnalytics = lazy(() => import('@/pages/EventAnalytics').then(m => ({ default: m.EventAnalytics })))
 const MCPanel = lazy(() => import('@/pages/MCPanel').then(m => ({ default: m.MCPanel })))
 const NotFoundPage = lazy(() => import('@/pages/NotFound'))
+const EventsPage = lazy(() => import('@/pages/EventsPage').then(m => ({ default: m.default })))
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -39,6 +40,7 @@ function AppRoutes() {
         {/* Public routes */}
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
+          <Route path="events" element={<PageSuspense><EventsPage /></PageSuspense>} />
           <Route path="event/:eventSlug" element={<PageSuspense><PublicEventForm /></PageSuspense>} />
           <Route path="login" element={<LoginPage />} />
           <Route path="signup" element={<SignupPage />} />
