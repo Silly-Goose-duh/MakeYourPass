@@ -299,6 +299,33 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 VALUES ('event-posters', 'event-posters', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'])
 ON CONFLICT (id) DO NOTHING;
 
+-- Storage object policies for the event-posters bucket.
+-- Public bucket: anyone (anon) can read poster objects.
+DROP POLICY IF EXISTS "Public can view event posters" ON storage.objects;
+CREATE POLICY "Public can view event posters"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'event-posters');
+
+-- Authenticated users can upload posters.
+DROP POLICY IF EXISTS "Auth users can upload event posters" ON storage.objects;
+CREATE POLICY "Auth users can upload event posters"
+  ON storage.objects FOR INSERT
+  TO authenticated
+  WITH CHECK (bucket_id = 'event-posters');
+
+-- Uploaders can update/delete their own posters.
+DROP POLICY IF EXISTS "Auth users can update event posters" ON storage.objects;
+CREATE POLICY "Auth users can update event posters"
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING (bucket_id = 'event-posters');
+
+DROP POLICY IF EXISTS "Auth users can delete event posters" ON storage.objects;
+CREATE POLICY "Auth users can delete event posters"
+  ON storage.objects FOR DELETE
+  TO authenticated
+  USING (bucket_id = 'event-posters');
+
 -- ============================================================
 -- RPC FUNCTIONS
 -- ============================================================

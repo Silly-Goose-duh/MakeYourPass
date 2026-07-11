@@ -40,7 +40,7 @@ export function PosterUpload({ currentUrl, onUpload, eventId }: PosterUploadProp
       const filePath = `posters/${eventId || 'new'}-${Date.now()}.${fileExt}`
 
       const { data, error: uploadError } = await supabase.storage
-        .from('event-images')
+        .from('event-posters')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: true,
@@ -55,7 +55,7 @@ export function PosterUpload({ currentUrl, onUpload, eventId }: PosterUploadProp
 
       if (data) {
         const { data: { publicUrl } } = supabase.storage
-          .from('event-images')
+          .from('event-posters')
           .getPublicUrl(data.path)
 
         onUpload(publicUrl)
