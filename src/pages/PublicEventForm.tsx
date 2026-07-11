@@ -167,7 +167,7 @@ export function PublicEventForm() {
           <div className="h-16 w-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="h-8 w-8 text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-3">Event not found</h2>
+          <h2 className="text-2xl font-bold text-[#14110E] mb-3">Event not found</h2>
           <p className="text-text-secondary mb-6">
             This event doesn't exist or has been removed.
           </p>
@@ -203,7 +203,7 @@ export function PublicEventForm() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="text-2xl font-bold text-white mb-3"
+            className="text-2xl font-bold text-[#14110E] mb-3"
           >
             Response Submitted!
           </motion.h2>
@@ -213,7 +213,7 @@ export function PublicEventForm() {
             transition={{ delay: 0.5 }}
             className="text-text-secondary mb-2"
           >
-            Thank you for registering for <strong className="text-white">{event?.title}</strong>.
+            Thank you for registering for <strong className="text-[#14110E]">{event?.title}</strong>.
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
@@ -281,7 +281,7 @@ export function PublicEventForm() {
                     </div>
                   )}
                   <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-white mb-1">{event.title}</h1>
+                    <h1 className="text-2xl font-bold text-[#14110E] mb-1">{event.title}</h1>
                     {event.organizations?.name && (
                       <p className="text-text-secondary text-sm">{event.organizations.name}</p>
                     )}
@@ -323,7 +323,7 @@ export function PublicEventForm() {
             >
               {/* Respondent info */}
               <div>
-                <h2 className="text-lg font-semibold text-white mb-4">Your Information</h2>
+                <h2 className="text-lg font-semibold text-[#14110E] mb-4">Your Information</h2>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-text-primary mb-2">
@@ -369,7 +369,7 @@ export function PublicEventForm() {
               {/* Questions */}
               {questions.length > 0 && (
                 <div>
-                  <h2 className="text-lg font-semibold text-white mb-4">Questions</h2>
+                  <h2 className="text-lg font-semibold text-[#14110E] mb-4">Questions</h2>
                   <div className="space-y-6">
                     {questions.map((q, index) => (
                       <motion.div

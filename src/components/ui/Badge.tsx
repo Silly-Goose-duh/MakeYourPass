@@ -17,12 +17,12 @@ export function Badge({
   const baseStyles = 'inline-flex items-center gap-1.5 font-medium rounded-full'
 
   const variants = {
-    default: 'bg-dark text-brand-light border border-brand/30',
-    success: 'bg-success/10 text-success border border-success/30',
-    warning: 'bg-warning/10 text-warning border border-warning/30',
-    error: 'bg-error/10 text-error border border-error/30',
-    primary: 'bg-brand text-white border border-brand',
-    outline: 'bg-transparent text-brand-light border border-brand/40',
+    default: 'bg-white text-[#14110E] border-2 border-[#14110E]',
+    success: 'bg-[#14B87A]/15 text-[#0E8C5C] border-2 border-[#14B87A]',
+    warning: 'bg-[#FFD23F]/20 text-[#8A6D00] border-2 border-[#FFD23F]',
+    error: 'bg-[#FF4D2E]/15 text-[#C2331F] border-2 border-[#FF4D2E]',
+    primary: 'bg-[#FF4D2E] text-white border-2 border-[#14110E]',
+    outline: 'bg-transparent text-[#14110E] border-2 border-[#14110E]/40',
   }
 
   const sizes = {

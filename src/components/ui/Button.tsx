@@ -11,21 +11,21 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'sm', loading, fullWidth, disabled, children, ...props }, ref) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium rounded-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-void disabled:opacity-50 disabled:cursor-not-allowed min-h-[36px]'
+      'inline-flex items-center justify-center font-extrabold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF4D2E] disabled:opacity-50 disabled:cursor-not-allowed min-h-[38px] border-2 border-[#14110E]'
 
     const variants = {
       primary:
-        'bg-brand text-white hover:brightness-110 active:brightness-95 shadow-[0_2px_12px_rgba(139,92,246,0.35)] focus-visible:ring-brand',
+        'bg-[#FF4D2E] text-white shadow-[3px_3px_0_#14110E] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#14110E] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_#14110E]',
       secondary:
-        'bg-transparent border border-brand/40 text-brand-light hover:border-brand/60 hover:text-white focus-visible:ring-brand',
+        'bg-[#2D5BFF] text-white shadow-[3px_3px_0_#14110E] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#14110E] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_#14110E]',
       outline:
-        'bg-transparent border-2 border-brand text-brand-light hover:bg-brand/10 active:bg-brand/20 focus-visible:ring-brand',
+        'bg-white text-[#14110E] shadow-[3px_3px_0_#14110E] hover:bg-[#FFF6D6] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_#14110E]',
       ghost:
-        'bg-transparent text-brand-light hover:bg-brand/10 active:bg-brand/20 focus-visible:ring-brand',
+        'bg-transparent border-transparent text-[#14110E] hover:bg-[#14110E] hover:text-white',
       danger:
-        'bg-error text-white hover:bg-red-500 active:bg-red-600 focus-visible:ring-error',
+        'bg-[#E2483B] text-white shadow-[3px_3px_0_#14110E] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#14110E] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_#14110E]',
       success:
-        'bg-success text-white hover:bg-emerald-500 active:bg-emerald-600 focus-visible:ring-success',
+        'bg-[#14B87A] text-white shadow-[3px_3px_0_#14110E] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#14110E] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_#14110E]',
     }
 
     const sizes = {
@@ -42,7 +42,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           variants[variant],
           sizes[size],
           fullWidth && 'w-full',
-          disabled && 'bg-[#4A4A5E] text-text-muted border-none',
+          disabled && 'bg-[#B8B2A6] text-[#FFF] border-[#14110E] shadow-none cursor-not-allowed translate-x-0 translate-y-0',
           className,
         )}
         disabled={disabled || loading}

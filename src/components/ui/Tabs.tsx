@@ -55,9 +55,9 @@ interface TabsListProps {
 export function TabsList({ children, className }: TabsListProps) {
   const { variant } = useTabsContext()
   const variantStyles: Record<string, string> = {
-    line: 'bg-dark border border-brand/30 rounded-lg p-0.5',
+    line: 'bg-[#FFFFFF] border-2 border-[#14110E] rounded-lg p-0.5',
     pills: 'bg-transparent',
-    underline: 'border-b border-brand/20',
+    underline: 'border-b-2 border-[#14110E]/20',
   }
   return (
     <div role="tablist" aria-orientation="horizontal" className={cn('flex gap-0.5', variantStyles[variant], className)}>
@@ -88,14 +88,14 @@ export function TabsTrigger({
 
   const variantStyles: Record<string, string> = {
     line: isActive
-      ? 'bg-brand text-white'
-      : 'text-brand-light hover:text-white hover:bg-brand/10',
+      ? 'bg-[#FF4D2E] text-white border-2 border-[#14110E]'
+      : 'text-[#14110E] hover:bg-[#14110E]/10 border-2 border-transparent',
     pills: isActive
-      ? 'bg-brand text-white'
-      : 'text-brand-light hover:text-white hover:bg-brand/10',
+      ? 'bg-[#FF4D2E] text-white border-2 border-[#14110E]'
+      : 'text-[#14110E] hover:bg-[#14110E]/10 border-2 border-transparent',
     underline: isActive
-      ? 'text-brand border-b-2 border-brand -mb-px'
-      : 'text-brand-light hover:text-white',
+      ? 'text-[#FF4D2E] border-b-2 border-[#FF4D2E] -mb-px'
+      : 'text-[#14110E] hover:text-[#FF4D2E]',
   }
 
   return (

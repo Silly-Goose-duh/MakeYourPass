@@ -212,8 +212,9 @@ h1, h2, h3, h4, h5, h6 {
 .gradient-text { color: #FF4D2E; }
 .text-outline { -webkit-text-stroke: 2px #14110E; color: transparent; }
 
-/* Legacy glass class → neutralized to solid paper */
+/* Legacy glass classes → solid paper/white card with ink border (zine-consistent) */
 .glass { background: var(--color-cp-bg-surface); }
+.glass-strong { background: #FFFFFF; border: 2px solid #14110E; box-shadow: 4px 4px 0 #14110E; }
 
 /* Legacy animations */
 @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }

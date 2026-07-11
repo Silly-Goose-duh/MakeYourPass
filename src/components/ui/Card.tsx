@@ -9,11 +9,11 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = 'default', padding = 'md', hover = false, children, ...props }, ref) => {
-    const baseStyles = 'rounded-lg transition-all duration-200'
+    const baseStyles = 'rounded-lg transition-all duration-150'
 
     const variants = {
-      default: 'bg-dark border border-brand/30 shadow-[0_1px_2px_rgba(0,0,0,0.4),0_4px_16px_rgba(0,0,0,0.25)]',
-      bordered: 'bg-dark border-2 border-brand/50',
+      default: 'bg-white border-2 border-[#14110E] shadow-[4px_4px_0_#14110E]',
+      bordered: 'bg-white border-2 border-[#14110E] shadow-[4px_4px_0_#14110E]',
     }
 
     const paddings = {
@@ -24,7 +24,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     }
 
     const hoverStyles = hover
-      ? 'hover:border-brand/60 cursor-pointer'
+      ? 'hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0_#14110E] cursor-pointer'
       : ''
 
     return (
@@ -47,7 +47,7 @@ CardHeader.displayName = 'CardHeader'
 
 export const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn('text-base font-semibold text-white', className)} {...props} />
+    <h3 ref={ref} className={cn('text-base font-extrabold', className)} style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }} {...props} />
   ),
 )
 
@@ -55,7 +55,7 @@ CardTitle.displayName = 'CardTitle'
 
 export const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn('text-sm text-brand-light mt-0.5', className)} {...props} />
+    <p ref={ref} className={cn('text-sm mt-0.5', className)} style={{ color: '#4A4640' }} {...props} />
   ),
 )
 
@@ -71,7 +71,7 @@ CardContent.displayName = 'CardContent'
 
 export const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('mt-3 pt-3 border-t border-brand/20', className)} {...props} />
+    <div ref={ref} className={cn('mt-3 pt-3 border-t-2 border-[#14110E]/15', className)} {...props} />
   ),
 )
 
