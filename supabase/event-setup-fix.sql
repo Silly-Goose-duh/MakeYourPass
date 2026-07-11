@@ -35,7 +35,7 @@ AS $$
 BEGIN
   -- Default "Email" question so the public form always has at least one field.
   INSERT INTO public.event_questions (event_id, title, description, question_type, options, required, sort_order)
-  VALUES (NEW.id, 'Email', 'Your email address', 'email', '[]', true, 0)
+  VALUES (NEW.id, 'Email', 'Your email address', 'short_text', '[]', true, 0)
   ON CONFLICT DO NOTHING;
   RETURN NEW;
 END;
