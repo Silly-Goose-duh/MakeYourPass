@@ -311,12 +311,43 @@ export async function updateEvent(id: string, updates: Partial<CampusEvent>) {
 
 // ==================== Event Questions ====================
 
+/**
+ * The `event_questions.options` column is stored as a JSON string
+ * (see saveEventQuestions: JSON.stringify(q.options)). Postgres returns it
+ * as a string, not an array, so consumers calling .map() on it would throw
+ * "e.options.map is not a function". Normalize defensively to always be string[].
+ */
+function normalizeQuestionOptions(q: EventQuestion): EventQuestion {
+  // options is typed string[] but stored as a JSON string in Postgres;
+  // treat it as unknown to avoid TS narrowing it to never.
+  const rawOptions = (q.options as unknown) as string[] | string | null | undefined
+  let options: string[] = []
+  if (Array.isArray(rawOptions)) {
+    options = rawOptions
+  } else if (typeof rawOptions === 'string') {
+    const raw = rawOptions.trim()
+    if (raw.length === 0) {
+      options = []
+    } else {
+      try {
+        const parsed = JSON.parse(raw)
+        options = Array.isArray(parsed) ? parsed.map(String) : String(parsed).split(',').map((s: string) => s.trim())
+      } catch {
+        options = raw.split(',').map((s: string) => s.trim()).filter(Boolean)
+      }
+    }
+  }
+  return { ...q, options }
+}
+
 export async function getEventQuestions(eventId: string) {
   const { data, error } = await supabase.from('event_questions').select('*').eq('event_id', eventId).order('sort_order')
   if (isRlsRecursionError(error)) {
     return { data: [], error: new Error('RLS_RECURSION') }
   }
-  return { data: data as EventQuestion[] | null, error }
+  if (!data) return { data: null, error }
+  const normalized = (data as EventQuestion[]).map(normalizeQuestionOptions)
+  return { data: normalized as EventQuestion[] | null, error }
 }
 
 export async function saveEventQuestions(eventId: string, questions: { title: string; description: string; question_type: string; options: string[]; required: boolean; sort_order: number }[]) {

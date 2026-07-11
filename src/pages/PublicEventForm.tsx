@@ -423,6 +423,15 @@ function QuestionField({
   onChange: (val: string) => void
   onCheckboxToggle: (option: string) => void
 }) {
+  const rawOpts = (question.options as unknown) as string[] | string | null | undefined
+  const options = Array.isArray(rawOpts)
+    ? rawOpts
+    : typeof rawOpts === 'string' && rawOpts.trim()
+      ? (() => {
+          try { const p = JSON.parse(rawOpts); return Array.isArray(p) ? p.map(String) : String(p).split(',').map((s: string) => s.trim()) }
+          catch { return rawOpts.split(',').map((s: string) => s.trim()) }
+        })()
+      : []
   const inputClasses = cn(
     'w-full px-4 py-3 bg-primary/50 border rounded-xl text-text-primary placeholder:text-text-muted',
     'transition-all duration-200 hover:border-border-light',
@@ -462,7 +471,7 @@ function QuestionField({
 
       {question.question_type === 'multiple_choice' && (
         <div className="space-y-2">
-          {question.options.map((opt) => (
+          {options.map((opt) => (
             <label
               key={opt}
               className={cn(
@@ -496,7 +505,7 @@ function QuestionField({
 
       {question.question_type === 'checkboxes' && (
         <div className="space-y-2">
-          {question.options.map((opt) => {
+          {options.map((opt) => {
             const checked = (value as string[])?.includes(opt) ?? false
             return (
               <label
@@ -544,7 +553,7 @@ function QuestionField({
             )}
           >
             <option value="" disabled>Select an option</option>
-            {question.options.map((opt) => (
+            {options.map((opt) => (
               <option key={opt} value={opt} className="bg-surface-elevated text-text-primary">{opt}</option>
             ))}
           </select>
