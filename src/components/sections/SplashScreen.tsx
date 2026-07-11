@@ -22,17 +22,17 @@ interface SplashScreenProps {
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [phase, setPhase] = useState<'visible' | 'fading' | 'sweeping' | 'gone'>('visible')
 
-  // After 2s → start content fade
+  // After 1.7s → start content fade (1.7s + 0.3s fade = 2s total)
   useEffect(() => {
     if (phase !== 'visible') return
-    const timer = setTimeout(() => setPhase('fading'), 2000)
+    const timer = setTimeout(() => setPhase('fading'), 1700)
     return () => clearTimeout(timer)
   }, [phase])
 
-  // 0.3s after fade starts → begin the sweep
+  // 0.3s after fade starts → remove splash (total visible time ≈ 2s)
   useEffect(() => {
     if (phase !== 'fading') return
-    const timer = setTimeout(() => setPhase('sweeping'), 300)
+    const timer = setTimeout(() => setPhase('gone'), 300)
     return () => clearTimeout(timer)
   }, [phase])
 
