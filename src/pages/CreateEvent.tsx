@@ -217,7 +217,7 @@ export function CreateEvent() {
             <Sparkles className="h-3.5 w-3.5 text-white" />
           </div>
                           <span className="text-sm font-bold">
-                            <span className="text-text-primary">Campus</span>
+                            <span className="text-text-primary">MakeYour</span>
                             <span className="text-primary">Pass</span>
                           </span>
         </div>

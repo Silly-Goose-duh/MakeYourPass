@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#F4EFE1"/>
+  <!-- decorative ticket shapes -->
+  <g opacity="0.12" stroke="#14110E" stroke-width="3" fill="none">
+    <rect x="940" y="90" width="180" height="110" rx="14"/>
+    <rect x="1000" y="230" width="150" height="90" rx="12"/>
+  </g>
+  <g fill="#FF4D2E">
+    <circle cx="1010" cy="430" r="10"/>
+    <circle cx="1075" cy="480" r="7"/>
+    <circle cx="955" cy="500" r="6"/>
+  </g>
+  <!-- brand -->
+  <text x="80" y="300" font-family="Syne, Arial, sans-serif" font-size="120" font-weight="800" fill="#14110E">MakeYour<tspan fill="#FF4D2E">Pass</tspan></text>
+  <text x="84" y="370" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="600" fill="#4A4640">Get your pass. Show up. Done.</text>
+  <text x="84" y="420" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500" fill="#7A756B">Marian Engineering College — campus events, workshops &amp; hackathons.</text>
+  <!-- sparkle -->
+  <g fill="#FF4D2E">
+    <path d="M84 470 l8 22 22 8 -22 8 -8 22 -8 -22 -22 -8 22 -8 z"/>
+  </g>
+</svg>

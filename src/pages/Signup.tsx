@@ -123,7 +123,7 @@ export function SignupPage() {
                     <Sparkles className="h-5 w-5 text-white" strokeWidth={2.5} />
                   </div>
                   <span className="text-xl font-extrabold" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
-                    Campus<span style={{ color: '#FF4D2E' }}>Pass</span>
+                    MakeYour<span style={{ color: '#FF4D2E' }}>Pass</span>
                   </span>
                 </Link>
                 <h1 className="text-3xl font-extrabold mb-2" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>Create your account</h1>
