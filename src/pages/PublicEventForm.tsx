@@ -1,11 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Send, CheckCircle, Calendar, MapPin, Clock, Building2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Send, CheckCircle, Calendar, MapPin, Clock, Building2, AlertCircle, Palette } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { formatTime, cn } from '@/lib/utils'
 import { getEventBySlug, getEventQuestions, submitEventResponse, submitResponseAnswers } from '@/lib/supabase'
 import type { CampusEvent, Organization, EventQuestion } from '@/types'
+
+interface PosterTheme {
+  palette: {
+    primary: string
+    secondary: string
+    accent: string
+    background: string
+    text: string
+  }
+  vibe: string
+  isDark: boolean
+  suggestedAccent: string
+}
 
 export function PublicEventForm() {
   const { eventSlug } = useParams<{ eventSlug: string }>()
@@ -14,6 +27,10 @@ export function PublicEventForm() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notFound, setNotFound] = useState(false)
+
+  // Poster-driven theme
+  const [theme, setTheme] = useState<PosterTheme | null>(null)
+  const [themeLoading, setThemeLoading] = useState(false)
 
   const [respondentName, setRespondentName] = useState('')
   const [respondentEmail, setRespondentEmail] = useState('')
@@ -54,6 +71,24 @@ export function PublicEventForm() {
     }
     loadEvent()
   }, [eventSlug])
+
+  // When the event has a poster, analyze it with Groq to auto-theme the form.
+  useEffect(() => {
+    if (!event?.poster_url) return
+    let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setThemeLoading(true)
+    fetch('/api/poster-theme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageUrl: event.poster_url }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('theme failed'))))
+      .then((data: PosterTheme) => { if (!cancelled) setTheme(data) })
+      .catch(() => { if (!cancelled) { /* keep default zine theme */ } })
+      .finally(() => { if (!cancelled) setThemeLoading(false) })
+    return () => { cancelled = true }
+  }, [event?.poster_url])
 
   function getAnswer(questionId: string): string | string[] {
     return answers[questionId] ?? (questions.find(q => q.id === questionId)?.question_type === 'checkboxes' ? [] : '')
@@ -239,8 +274,25 @@ export function PublicEventForm() {
     )
   }
 
+  // Compute theme-aware style props. Falls back to the zine defaults.
+  const accent = theme?.suggestedAccent ?? '#FF4D2E'
+  const accentSoft = theme ? `${accent}1A` : 'rgba(255,77,46,0.1)'
+  const rootStyle: React.CSSProperties = theme
+    ? {
+        // Expose theme tokens as CSS variables; the form UI references them.
+        ['--event-accent' as string]: accent,
+        ['--event-accent-soft' as string]: accentSoft,
+        ['--event-secondary' as string]: theme.palette.secondary,
+        ['--event-bg' as string]: theme.palette.background,
+        ['--event-text' as string]: theme.palette.text,
+        background: theme.isDark
+          ? `linear-gradient(160deg, ${theme.palette.background} 0%, #0c0c0c 100%)`
+          : `linear-gradient(160deg, ${theme.palette.background} 0%, #F4EFE1 100%)`,
+      }
+    : {}
+
   return (
-    <div className="min-h-screen bg-background py-12 px-4 relative">
+    <div className="min-h-screen bg-background py-12 px-4 relative" style={rootStyle}>
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-secondary/5 rounded-full blur-[100px] pointer-events-none" />
 
@@ -310,6 +362,23 @@ export function PublicEventForm() {
                 {event.description && (
                   <p className="mt-4 text-text-secondary text-sm leading-relaxed">{event.description}</p>
                 )}
+              </motion.div>
+            )}
+
+            {/* Auto-themed notice — tell respondents the page adapted to the poster */}
+            {event?.poster_url && (theme || themeLoading) && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-strong rounded-2xl px-5 py-3 mb-6 flex items-center gap-3"
+                style={{ borderColor: 'var(--event-accent, #14110E)' }}
+              >
+                <Palette className="h-5 w-5 shrink-0" style={{ color: 'var(--event-accent, #FF4D2E)' }} />
+                <p className="text-sm font-semibold" style={{ color: 'var(--event-text, #14110E)' }}>
+                  {themeLoading
+                    ? 'Reading the event poster to theme this page…'
+                    : `This page is themed to match the ${theme?.vibe || 'event'} poster 🎨`}
+                </p>
               </motion.div>
             )}
 
@@ -398,7 +467,14 @@ export function PublicEventForm() {
                 </div>
               )}
 
-              <Button type="submit" variant="primary" size="lg" fullWidth loading={submitting}>
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                fullWidth
+                loading={submitting}
+                style={{ background: 'var(--event-accent, #FF4D2E)', borderColor: '#14110E' }}
+              >
                 <Send className="h-4 w-4" />
                 Submit Registration
               </Button>
@@ -477,17 +553,17 @@ function QuestionField({
               className={cn(
                 'flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all duration-200',
                 value === opt
-                  ? 'border-primary bg-primary/10 text-white'
+                  ? 'border-[color:var(--event-accent,#FF4D2E)] bg-[color:var(--event-accent,#FF4D2E)]/10 text-white'
                   : 'border-border bg-primary/30 text-text-secondary hover:border-border-light hover:bg-primary/40'
               )}
             >
               <div
                 className={cn(
                   'h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
-                  value === opt ? 'border-primary' : 'border-text-muted'
+                  value === opt ? 'border-[color:var(--event-accent,#FF4D2E)]' : 'border-text-muted'
                 )}
               >
-                {value === opt && <div className="h-2 w-2 rounded-full bg-primary" />}
+                {value === opt && <div className="h-2 w-2 rounded-full bg-[color:var(--event-accent,#FF4D2E)]" />}
               </div>
               <span className="text-sm">{opt}</span>
               <input
@@ -513,14 +589,14 @@ function QuestionField({
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all duration-200',
                   checked
-                    ? 'border-primary bg-primary/10 text-white'
+                    ? 'border-[color:var(--event-accent,#FF4D2E)] bg-[color:var(--event-accent,#FF4D2E)]/10 text-white'
                     : 'border-border bg-primary/30 text-text-secondary hover:border-border-light hover:bg-primary/40'
                 )}
               >
                 <div
                   className={cn(
                     'h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-all',
-                    checked ? 'border-primary bg-primary' : 'border-text-muted'
+                    checked ? 'border-[color:var(--event-accent,#FF4D2E)] bg-[color:var(--event-accent,#FF4D2E)]' : 'border-text-muted'
                   )}
                 >
                   {checked && (
@@ -576,7 +652,7 @@ function QuestionField({
                 className={cn(
                   'flex-1 py-3 rounded-xl border text-center font-semibold transition-all duration-200',
                   value === String(num)
-                    ? 'border-primary bg-primary text-white shadow-lg shadow-primary/25'
+                    ? 'border-[color:var(--event-accent,#FF4D2E)] bg-[color:var(--event-accent,#FF4D2E)] text-white shadow-lg shadow-primary/25'
                     : 'border-border bg-primary/30 text-text-secondary hover:border-border-light hover:bg-primary/40'
                 )}
               >
