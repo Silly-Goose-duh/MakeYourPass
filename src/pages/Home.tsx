@@ -172,9 +172,9 @@ export default function HomePage() {
           <div className="overflow-hidden" style={{ borderTop: '2.5px solid #14110E', background: '#14110E' }}>
             <div className="zine-marquee py-1.5">
               {Array.from({ length: 2 }).map((_, r) => (
-                <span key={r} className="flex shrink-0">
-                  {['WORKSHOPS', 'HACKATHONS', 'TALKS', 'COMPETITIONS', 'FESTS', 'CLUBS'].map((w) => (
-                    <span key={w + r} className="mx-6 text-sm font-extrabold uppercase tracking-widest" style={{ fontFamily: 'Syne, sans-serif', color: '#FFD23F' }}>
+                <span key={r} className="flex shrink-0" aria-hidden={r === 1}>
+                  {Array.from({ length: 4 }).flatMap(() => ['WORKSHOPS', 'HACKATHONS', 'TALKS', 'COMPETITIONS', 'FESTS', 'CLUBS']).map((w, i) => (
+                    <span key={w + r + i} className="mx-6 text-sm font-extrabold uppercase tracking-widest" style={{ fontFamily: 'Syne, sans-serif', color: '#FFD23F' }}>
                       {w} <span style={{ color: '#FF4D2E' }}>✦</span>
                     </span>
                   ))}
