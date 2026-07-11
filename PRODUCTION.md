@@ -1,6 +1,6 @@
-# CampusPass — Production Readiness Checklist
+# MakeYourPass — Production Readiness Checklist
 
-Status snapshot for shipping CampusPass to real users. Grouped by ownership.
+Status snapshot for shipping MakeYourPass to real users. Grouped by ownership.
 Items marked ✅ are done in-repo; 🔴/🟠/🟡 need **your** action (secrets, backend,
 or product decisions an autonomous agent shouldn't make blindly).
 

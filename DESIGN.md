@@ -1,4 +1,4 @@
-# CampusPass — UI Design System (v3 "Aurora")
+# MakeYourPass — UI Design System (v3 "Aurora")
 
 > Zero-context handoff doc for the UI rework. Written for another engineer/agent
 > picking this up cold. Describes the design language, where the tokens live, and

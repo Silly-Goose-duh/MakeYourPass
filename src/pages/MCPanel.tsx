@@ -353,7 +353,7 @@ export function MCPanel() {
                 className="flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="text-sm hidden sm:inline">Back to CampusPass</span>
+                <span className="text-sm hidden sm:inline">Back to MakeYourPass</span>
               </Link>
               <div className="h-6 w-px bg-border" />
               <div className="flex items-center gap-2.5">
@@ -362,7 +362,7 @@ export function MCPanel() {
                   <Shield className="h-4 w-4 text-white relative z-10" />
                 </div>
                 <span className="text-base font-bold">
-                  <span className="gradient-text-accent">CampusPass</span>
+                  <span className="gradient-text-accent">MakeYourPass</span>
                   <span className="text-text-primary ml-1">MC</span>
                 </span>
               </div>
@@ -967,7 +967,7 @@ export function MCPanel() {
                           onClick={() => navigate('/')}
                         >
                           <ArrowLeft className="h-4 w-4" />
-                          Back to CampusPass
+                          Back to MakeYourPass
                         </Button>
                       </CardContent>
                     </Card>

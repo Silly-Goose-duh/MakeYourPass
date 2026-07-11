@@ -1,4 +1,4 @@
-# CampusPass — TODO / Production-Readiness Backlog
+# MakeYourPass — TODO / Production-Readiness Backlog
 
 Findings from an end-to-end code audit (2026-07-11). Grouped by ownership.
 UI/design-system items in the first section are **done**; the rest need

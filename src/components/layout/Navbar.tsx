@@ -61,7 +61,7 @@ export function Navbar() {
             </div>
             <div className="leading-none">
               <span className="block text-lg font-extrabold tracking-tight" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
-                CampusPass
+                MakeYourPass
               </span>
               <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: '#7A756B' }}>
                 Marian Engineering College

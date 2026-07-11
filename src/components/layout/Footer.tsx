@@ -39,7 +39,7 @@ export function Footer() {
               <div className="h-10 w-10 flex items-center justify-center" style={{ background: '#FF4D2E', border: '2.5px solid #FBF8F0' }}>
                 <Ticket className="h-5 w-5 text-white" strokeWidth={2.5} />
               </div>
-              <span className="text-xl font-extrabold" style={{ fontFamily: 'Syne, sans-serif', color: '#FBF8F0' }}>CampusPass</span>
+              <span className="text-xl font-extrabold" style={{ fontFamily: 'Syne, sans-serif', color: '#FBF8F0' }}>MakeYourPass</span>
             </Link>
             <p className="text-sm font-semibold leading-relaxed mb-4" style={{ color: '#B8B2A6' }}>
               Marian Engineering College's event platform. Register, organize, and show up.
@@ -94,10 +94,10 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3" style={{ borderTop: '2px solid #4A4640' }}>
           <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#B8B2A6' }}>
-            &copy; {new Date().getFullYear()} CampusPass — All rights reserved
+            &copy; {new Date().getFullYear()} MakeYourPass — All rights reserved
           </p>
           <p className="text-xs font-bold flex items-center gap-1.5" style={{ color: '#B8B2A6' }}>
-            Made with <Heart className="h-3.5 w-3.5" strokeWidth={2.5} style={{ color: '#FF4D2E' }} fill="#FF4D2E" /> by the CampusPass team
+            Made with <Heart className="h-3.5 w-3.5" strokeWidth={2.5} style={{ color: '#FF4D2E' }} fill="#FF4D2E" /> by the MakeYourPass team
           </p>
         </div>
       </div>

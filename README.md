@@ -1,4 +1,4 @@
-# CampusPass 🎫
+# MakeYourPass 🎫
 
 **Marian Engineering College's Official Event Platform.** Create custom forms, manage registrations, and track analytics — all for college clubs and departments.
 

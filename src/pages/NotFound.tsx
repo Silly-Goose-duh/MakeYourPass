@@ -64,7 +64,7 @@ export default function NotFoundPage() {
           transition={{ delay: 0.7 }}
           className="mt-12 text-xs text-text-muted"
         >
-          CampusPass — Marian Engineering College
+          MakeYourPass — Marian Engineering College
         </motion.p>
       </motion.div>
     </div>

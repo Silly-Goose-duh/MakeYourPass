@@ -86,14 +86,14 @@ export default function App() {
 function HeadTags() {
   useEffect(() => {
     const tags: { property?: string; name?: string; content: string }[] = [
-      { property: 'og:title', content: 'CampusPass — Marian Engineering College' },
+      { property: 'og:title', content: 'MakeYourPass — Marian Engineering College' },
       { property: 'og:description', content: 'Discover and register for events hosted by clubs and departments across Marian Engineering College.' },
       { property: 'og:type', content: 'website' },
       { property: 'og:url', content: 'https://makeyourpass.vercel.app' },
       { name: 'twitter:card', content: 'summary_large_image' },
-      { name: 'twitter:title', content: 'CampusPass — Marian Engineering College' },
+      { name: 'twitter:title', content: 'MakeYourPass — Marian Engineering College' },
       { name: 'twitter:description', content: 'Discover and register for events hosted by clubs and departments across Marian Engineering College.' },
-      { name: 'description', content: 'CampusPass — Marian Engineering College\'s event platform. Register, organize, and attend campus events seamlessly.' },
+      { name: 'description', content: 'MakeYourPass — Marian Engineering College\'s event platform. Register, organize, and attend campus events seamlessly.' },
     ]
     const els = tags.map(t => {
       const el = document.createElement('meta')
@@ -105,7 +105,7 @@ function HeadTags() {
     })
     // Set title
     const titleEl = document.querySelector('title')
-    if (titleEl) titleEl.textContent = 'CampusPass — Marian Engineering College'
+    if (titleEl) titleEl.textContent = 'MakeYourPass — Marian Engineering College'
     return () => {
       els.forEach(el => document.head.removeChild(el))
     }

@@ -145,7 +145,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                 transition={{ duration: 0.6, delay: 0.25 }}
                 className="mb-4 text-5xl font-bold tracking-tight sm:text-7xl lg:text-8xl"
               >
-                <span className="gradient-text">CampusPass</span>
+                <span className="gradient-text">MakeYourPass</span>
               </motion.h1>
 
               <motion.p

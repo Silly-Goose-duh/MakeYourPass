@@ -191,7 +191,7 @@ export default function HomePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-extrabold" style={{ color: '#14110E', fontFamily: 'Syne, sans-serif' }}>Register Your Club</p>
-                        <p className="text-[11px] font-semibold truncate" style={{ color: '#4A4640' }}>Get on CampusPass</p>
+                        <p className="text-[11px] font-semibold truncate" style={{ color: '#4A4640' }}>Get on MakeYourPass</p>
                       </div>
                       <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" strokeWidth={2.5} style={{ color: '#14110E' }} />
                     </Link>

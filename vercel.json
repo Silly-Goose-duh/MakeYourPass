@@ -1,9 +1,8 @@
 {
   "framework": "vite",
   "outputDirectory": "dist",
-  "routes": [
-    { "source": "/api/(.*)", "dest": "/api/$1" },
-    { "handle": "filesystem" },
-    { "source": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
