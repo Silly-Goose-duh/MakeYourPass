@@ -47,6 +47,7 @@ export function CreateEvent() {
   const [posterPreview, setPosterPreview] = useState<string | null>(null)
   const [paymentType, setPaymentType] = useState<'free' | 'paid'>('free')
   const [price, setPrice] = useState('')
+  const [capacity, setCapacity] = useState('')
 
   const [questions, setQuestions] = useState<FormQuestion[]>([])
 
@@ -156,6 +157,7 @@ export function CreateEvent() {
         form_type: formType,
         payment_type: paymentType,
         price: paymentType === 'paid' ? (parseFloat(price) || 0) : 0,
+        capacity: capacity ? (parseInt(capacity, 10) || 0) : 0,
         status: 'published',
       }
 
@@ -512,6 +514,16 @@ export function CreateEvent() {
                         />
                       </div>
                     )}
+                    <div className="mt-3">
+                      <label className="block text-xs font-medium text-text-primary mb-1.5">Capacity (leave empty for unlimited)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Unlimited"
+                        value={capacity}
+                        onChange={e => setCapacity(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
               </Card>

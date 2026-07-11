@@ -148,6 +148,7 @@ CREATE TABLE events (
   form_type TEXT NOT NULL DEFAULT 'manual' CHECK (form_type IN ('brochure', 'manual')),
   payment_type TEXT NOT NULL DEFAULT 'free' CHECK (payment_type IN ('free', 'paid')),
   price NUMERIC(10,2) DEFAULT 0,
+  capacity INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'cancelled')),
   response_count INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

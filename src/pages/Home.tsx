@@ -81,6 +81,23 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('All events')
+  type TimeWindow = 'upcoming' | 'all' | 'past'
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>('upcoming')
+
+  // Sort upcoming first (soonest), then past (most recent first)
+  const { upcomingEvents, pastEvents } = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const up: EventWithOrg[] = []
+    const past: EventWithOrg[] = []
+    for (const e of events) {
+      const d = e.date ? new Date(e.date + 'T00:00:00') : null
+      if (d && d < today) past.push(e); else up.push(e)
+    }
+    past.sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    return { upcomingEvents: up, pastEvents: past }
+  }, [events])
+
+  const isSoldOut = (e: EventWithOrg) => e.capacity > 0 && (e.response_count ?? 0) >= e.capacity
 
   useEffect(() => {
     async function fetchData() {
@@ -109,13 +126,17 @@ export default function HomePage() {
   }, [])
 
   const filteredEvents = useMemo(() => {
-    return events.filter((event) => {
+    const windowEvents =
+      timeWindow === 'upcoming' ? upcomingEvents :
+      timeWindow === 'past' ? pastEvents :
+      events
+    return windowEvents.filter((event) => {
       const matchesOrg = !selectedOrgId || event.organization_id === selectedOrgId
       const matchesSearch = !searchQuery || event.title.toLowerCase().includes(searchQuery.toLowerCase())
       const matchesFilter = activeFilter === 'All events' || getEventCategory(event) === activeFilter
       return matchesOrg && matchesSearch && matchesFilter
     })
-  }, [events, selectedOrgId, searchQuery, activeFilter])
+  }, [events, upcomingEvents, pastEvents, selectedOrgId, searchQuery, activeFilter, timeWindow])
 
   const orgEventCounts = useMemo(
     () => organizations.reduce((acc, org) => {
@@ -292,10 +313,36 @@ export default function HomePage() {
                 ))}
               </div>
 
+              {/* Time-window tabs */}
+              <div className="mb-4 flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none">
+                {([
+                  { key: 'upcoming', label: 'Upcoming' },
+                  { key: 'all', label: 'All events' },
+                  { key: 'past', label: 'Past events' },
+                ] as const).map((tw) => (
+                  <button
+                    key={tw.key}
+                    onClick={() => setTimeWindow(tw.key)}
+                    className="filter-chip shrink-0"
+                    style={timeWindow === tw.key ? { background: '#FF4D2E', color: '#fff' } : {}}
+                  >
+                    {tw.label}
+                    {tw.key === 'upcoming' && upcomingEvents.length > 0 && (
+                      <span className="ml-1.5 px-1.5 text-[10px]" style={{ border: '1.5px solid currentColor', borderRadius: 999 }}>{upcomingEvents.length}</span>
+                    )}
+                    {tw.key === 'past' && pastEvents.length > 0 && (
+                      <span className="ml-1.5 px-1.5 text-[10px]" style={{ border: '1.5px solid currentColor', borderRadius: 999 }}>{pastEvents.length}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
               {/* Section header */}
               <div className="mb-5 flex items-end justify-between">
                 <h2 className="font-extrabold uppercase tracking-tight" style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(1.5rem, 4vw, 2.25rem)', color: '#14110E' }}>
-                  {searchQuery || activeFilter !== 'All events' || selectedOrgId ? 'Results' : 'All Events'}
+                  {searchQuery || activeFilter !== 'All events' || selectedOrgId
+                    ? 'Results'
+                    : timeWindow === 'upcoming' ? 'Upcoming Events' : timeWindow === 'past' ? 'Past Events' : 'All Events'}
                 </h2>
                 <span className="zine-sticker" style={{ background: '#14B87A', color: '#fff', transform: 'rotate(2deg)' }}>
                   {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}
@@ -334,9 +381,9 @@ export default function HomePage() {
                     <div className="mb-4 flex h-16 w-16 items-center justify-center" style={{ background: '#FFD23F', border: '2.5px solid #14110E' }}>
                       <Calendar className="h-7 w-7" strokeWidth={2.5} style={{ color: '#14110E' }} />
                     </div>
-                    <h3 className="mb-2 text-xl font-extrabold uppercase" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>{searchQuery ? 'No matching events' : 'No events yet'}</h3>
+                    <h3 className="mb-2 text-xl font-extrabold uppercase" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>{searchQuery ? 'No matching events' : timeWindow === 'past' ? 'No past events' : timeWindow === 'upcoming' ? 'No upcoming events' : 'No events yet'}</h3>
                     <p className="max-w-sm text-sm font-semibold" style={{ color: '#4A4640' }}>
-                      {searchQuery ? `Nothing matches "${searchQuery}". Try another search.` : selectedOrgId ? 'This club has no published events right now.' : 'No published events yet. Check back soon!'}
+                      {searchQuery ? `Nothing matches "${searchQuery}". Try another search.` : selectedOrgId ? 'This club has no published events right now.' : timeWindow === 'past' ? 'No completed events to show yet.' : timeWindow === 'upcoming' ? 'No upcoming events. Check back soon or browse all events.' : 'No published events yet. Check back soon!'}
                     </p>
                   </motion.div>
                 ) : (
@@ -347,8 +394,12 @@ export default function HomePage() {
                         const orgName = event.organizations?.name ?? ''
                         const c = zineColorFor(orgName || event.title)
                         const daysAway = event.date ? getDaysAway(event.date) : ''
+                        const soldOut = isSoldOut(event)
                         return (
-                          <motion.div key={event.id} layout variants={itemVariants} transition={{ layout: { duration: 0.3 } }} className="zine-card group relative">
+                          <motion.div key={event.id} layout variants={itemVariants} transition={{ layout: { duration: 0.3 } }}
+                            className="zine-card group relative"
+                            style={soldOut ? { opacity: 0.6, filter: 'grayscale(0.9)' } : undefined}
+                          >
                             <Link to={`/event/${event.slug}`} className="block">
                               {/* Poster band */}
                               <div className="relative h-[120px] overflow-hidden flex items-center justify-center" style={{ background: c, borderBottom: '2.5px solid #14110E' }}>
@@ -357,6 +408,11 @@ export default function HomePage() {
                                 </span>
                                 <span className="zine-sticker absolute bottom-2 left-2" style={{ background: '#fff' }}>{orgName || 'Event'}</span>
                                 <span className="absolute top-0 right-0 px-2 py-1 text-[10px] font-extrabold uppercase text-white" style={{ background: '#14110E', fontFamily: 'Syne, sans-serif' }}>{daysAway}</span>
+                                {soldOut && (
+                                  <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-white" style={{ background: '#E11D1D', border: '2.5px solid #14110E', transform: 'rotate(-6deg)', fontFamily: 'Syne, sans-serif', boxShadow: '2px 2px 0 #14110E' }}>
+                                    Sold out
+                                  </span>
+                                )}
                               </div>
                               {/* Body */}
                               <div className="p-4 space-y-3">

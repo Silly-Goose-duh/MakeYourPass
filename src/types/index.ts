@@ -57,6 +57,7 @@ export interface CampusEvent {
   form_type: 'brochure' | 'manual'
   payment_type: 'free' | 'paid'
   price: number
+  capacity: number
   status: 'draft' | 'published' | 'cancelled'
   response_count: number
   created_at: string
