@@ -376,6 +376,20 @@ export async function saveEventQuestions(eventId: string, questions: { title: st
 // ==================== Event Responses ====================
 
 export async function submitEventResponse(eventId: string, data: { respondent_name: string; respondent_email: string; respondent_phone?: string }) {
+  // Route through a SECURITY DEFINER RPC so anonymous form submissions
+  // always succeed (bypasses event_responses RLS). Falls back to direct
+  // insert if the RPC is unavailable.
+  try {
+    const { data: rpcId, error: rpcError } = await supabase.rpc('submit_event_response', {
+      p_event_id: eventId,
+      p_name: data.respondent_name,
+      p_email: data.respondent_email,
+      p_phone: data.respondent_phone ?? '',
+    })
+    if (!rpcError && rpcId) {
+      return { data: { id: rpcId } as EventResponse, error: null }
+    }
+  } catch { /* fall through to direct insert */ }
   const { data: result, error } = await supabase.from('event_responses').insert({ event_id: eventId, ...data }).select().single()
   if (isRlsRecursionError(error)) {
     return { data: null, error: new Error('RLS_RECURSION') }
@@ -385,6 +399,16 @@ export async function submitEventResponse(eventId: string, data: { respondent_na
 
 export async function submitResponseAnswers(responseId: string, answers: { question_id: string; value: string }[]) {
   if (answers.length === 0) return { data: [] as ResponseAnswer[], error: null }
+  // Route through a SECURITY DEFINER RPC (anon-safe). Fall back to direct insert.
+  try {
+    const { error: rpcError } = await supabase.rpc('submit_response_answers', {
+      p_response_id: responseId,
+      p_answers: answers,
+    })
+    if (!rpcError) {
+      return { data: answers.map((a, i) => ({ id: `${responseId}-${i}`, ...a })) as ResponseAnswer[], error: null }
+    }
+  } catch { /* fall through to direct insert */ }
   const inserts = answers.map(a => ({ response_id: responseId, question_id: a.question_id, value: a.value }))
   const { data, error } = await supabase.from('response_answers').insert(inserts).select()
   if (isRlsRecursionError(error)) {
