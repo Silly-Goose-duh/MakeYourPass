@@ -57,6 +57,18 @@ Supabase project: `isvylfovcwtlemjpkdqp` (anon key in Vercel env)
     → Supabase dashboard → SQL Editor → paste `supabase/event-setup-fix.sql` → Run.
     (Idempotent; safe to re-run.)
 
+1c. **Run `supabase/phase1-ticketing.sql`** (ticketing schema): adds `events.id_prefix` +
+    `registration_counter`, `event_responses` ticketing columns + race-safe code-assign
+    trigger, `event_seat_status` view, and the `tickets` storage bucket + RLS.
+    → Supabase dashboard → SQL Editor → paste `supabase/phase1-ticketing.sql` → Run.
+
+2. **Set server-side env vars** (Vercel dashboard → Project → Settings → Environment):
+    - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase → Project Settings → API → service_role key.
+      Needed by `/api/generate-ticket`, `/api/on-registration`, `/api/resend-ticket`.
+    - `RESEND_API_KEY` — from resend.com (free tier). Needed by the email webhook.
+    - `RESEND_FROM` — the verified sender, e.g. `tickets@makeyourpass.app` (or your domain).
+    These are server-only; never exposed to the browser.
+
 2. **Delete the test accounts** I created (clutter; can't be deleted via the anon key, so
    this needs the dashboard or service role):
    - `qa-test@campuspass.app`
