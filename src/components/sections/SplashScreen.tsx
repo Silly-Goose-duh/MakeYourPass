@@ -9,30 +9,31 @@ interface SplashScreenProps {
 /**
  * SplashScreen
  *
- * 1. Shows full-viewport branding for 2 seconds
+ * 1. Shows full-viewport branding (~1.1s)
  * 2. Content fades out (0.3s)
- * 3. Container wobbles off-screen right with a liquid slosh:
+ * 3. Container wobbles off-screen right with a liquid slosh (0.6s):
  *    - y oscillates (wave bounce)
  *    - scaleX pulses (liquid stretch/squeeze)
  *    - rotate tilts (wobble)
  *    - x slides right (the sweep)
  * 4. A gradient mask overlay creates a soft trailing edge
  * 5. Component removed from DOM → onComplete fires
+ * Total ≈ 2s.
  */
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [phase, setPhase] = useState<'visible' | 'fading' | 'sweeping' | 'gone'>('visible')
 
-  // After 1.7s → start content fade (1.7s + 0.3s fade = 2s total)
+  // After 1.1s → start content fade (1.1s + 0.3s fade + 0.6s sweep ≈ 2s total)
   useEffect(() => {
     if (phase !== 'visible') return
-    const timer = setTimeout(() => setPhase('fading'), 1700)
+    const timer = setTimeout(() => setPhase('fading'), 1100)
     return () => clearTimeout(timer)
   }, [phase])
 
-  // 0.3s after fade starts → remove splash (total visible time ≈ 2s)
+  // 0.3s after fade starts → begin the sweep (0.6s)
   useEffect(() => {
     if (phase !== 'fading') return
-    const timer = setTimeout(() => setPhase('gone'), 300)
+    const timer = setTimeout(() => setPhase('sweeping'), 300)
     return () => clearTimeout(timer)
   }, [phase])
 
@@ -55,7 +56,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
               : { x: '0%', y: 0, scaleX: 1, rotate: 0 }
           }
           transition={{
-            duration: 1.6,
+            duration: 0.6,
             ease: [0.32, 0.72, 0, 1],
           }}
           onAnimationComplete={() => {
