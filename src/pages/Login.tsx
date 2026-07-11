@@ -31,13 +31,10 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#F4EFE1' }}>
       <div className="relative w-full max-w-md">
-        <Link to="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-primary-hover transition-colors mb-8 text-sm">
-          <ArrowLeft className="h-4 w-4" />
+        <Link to="/" className="inline-flex items-center gap-2 mb-6 text-sm font-bold transition-colors hover:opacity-70" style={{ color: '#14110E' }}>
+          <ArrowLeft className="h-4 w-4" strokeWidth={2.5} />
           Back to home
         </Link>
 
@@ -45,23 +42,23 @@ export function LoginPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="glass-strong rounded-2xl p-8 sm:p-10"
+          className="p-8 sm:p-10"
+          style={{ background: '#fff', border: '2.5px solid #14110E', boxShadow: '7px 7px 0 #14110E' }}
         >
           <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center gap-2.5 mb-4">
-              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-white" />
+            <Link to="/" className="inline-flex items-center gap-2.5 mb-5">
+              <div className="h-11 w-11 flex items-center justify-center" style={{ background: '#FF4D2E', border: '2.5px solid #14110E' }}>
+                <Sparkles className="h-5 w-5 text-white" strokeWidth={2.5} />
               </div>
-                  <span className="text-xl font-bold">
-                    <span className="text-white">Campus</span>
-                    <span className="text-primary">Pass</span>
-                  </span>
+              <span className="text-2xl font-extrabold" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
+                Campus<span style={{ color: '#FF4D2E' }}>Pass</span>
+              </span>
             </Link>
-            <h1 className="text-2xl font-bold text-white mb-2">Welcome back</h1>
-            <p className="text-text-secondary text-sm">Sign in to manage your events</p>
+            <h1 className="text-3xl font-extrabold mb-2" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>Welcome back</h1>
+            <p className="text-sm font-semibold" style={{ color: '#4A4640' }}>Sign in to manage your events</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <Input
               label="Email"
               type="email"
@@ -85,7 +82,8 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-[42px] text-text-muted hover:text-text-secondary transition-colors"
+                className="absolute right-4 top-[42px] transition-colors hover:opacity-70"
+                style={{ color: '#4A4640' }}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -96,7 +94,8 @@ export function LoginPage() {
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm"
+                className="p-3 text-sm font-bold"
+                style={{ background: '#FFE9E3', border: '2px solid #FF4D2E', color: '#FF4D2E' }}
               >
                 {error}
               </motion.div>
@@ -107,9 +106,9 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="text-center mt-6 text-sm text-text-muted">
+          <p className="text-center mt-6 text-sm font-semibold" style={{ color: '#4A4640' }}>
             Don&apos;t have an account?{' '}
-            <Link to="/signup" className="text-primary hover:text-primary-hover font-medium transition-colors">
+            <Link to="/signup" className="font-extrabold transition-colors hover:opacity-70" style={{ color: '#FF4D2E' }}>
               Sign up free
             </Link>
           </p>

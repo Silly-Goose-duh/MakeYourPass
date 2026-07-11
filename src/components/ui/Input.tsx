@@ -14,7 +14,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-white mb-1.5">
+          <label htmlFor={inputId} className="block text-sm font-bold mb-1.5" style={{ color: '#14110E' }}>
             {label}
           </label>
         )}
@@ -22,25 +22,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full px-3 py-2 bg-darker border rounded-md text-white placeholder:text-text-muted text-sm',
-            'transition-all duration-200',
-            'hover:border-brand/50',
-            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand/80 focus-visible:border-brand/80',
+            'w-full px-3 py-2.5 border-2 text-sm',
+            'transition-all duration-200 outline-none',
+            'focus-visible:ring-2 focus-visible:ring-[#FF4D2E] focus-visible:border-[#FF4D2E]',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            error ? 'border-error/60 focus-visible:ring-error/60 focus-visible:border-error' : 'border-brand/20',
+            error ? 'border-[#FF4D2E]' : 'border-[#14110E]',
             className,
           )}
+          style={{ background: '#fff', color: '#14110E', fontFamily: 'Space Grotesk, sans-serif' }}
           aria-invalid={error ? 'true' : 'false'}
           aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
           {...props}
         />
         {error && (
-          <p id={`${inputId}-error`} className="mt-1 text-xs text-error" role="alert">
+          <p id={`${inputId}-error`} className="mt-1 text-xs font-bold" style={{ color: '#FF4D2E' }} role="alert">
             {error}
           </p>
         )}
         {hint && !error && (
-          <p id={`${inputId}-hint`} className="mt-1 text-xs text-text-muted">
+          <p id={`${inputId}-hint`} className="mt-1 text-xs" style={{ color: '#4A4640' }}>
             {hint}
           </p>
         )}
@@ -64,7 +64,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={textareaId} className="block text-sm font-medium text-white mb-1.5">
+          <label htmlFor={textareaId} className="block text-sm font-bold mb-1.5" style={{ color: '#14110E' }}>
             {label}
           </label>
         )}
@@ -72,25 +72,25 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={textareaId}
           className={cn(
-            'w-full px-3 py-2 bg-darker border rounded-md text-white placeholder:text-text-muted text-sm resize-y min-h-[80px]',
-            'transition-all duration-200',
-            'hover:border-brand/50',
-            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand/80 focus-visible:border-brand/80',
+            'w-full px-3 py-2.5 border-2 text-sm resize-y min-h-[80px]',
+            'transition-all duration-200 outline-none',
+            'focus-visible:ring-2 focus-visible:ring-[#FF4D2E] focus-visible:border-[#FF4D2E]',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            error ? 'border-error/60 focus-visible:ring-error/60 focus-visible:border-error' : 'border-brand/20',
+            error ? 'border-[#FF4D2E]' : 'border-[#14110E]',
             className,
           )}
+          style={{ background: '#fff', color: '#14110E', fontFamily: 'Space Grotesk, sans-serif' }}
           aria-invalid={error ? 'true' : 'false'}
           aria-describedby={error ? `${textareaId}-error` : hint ? `${textareaId}-hint` : undefined}
           {...props}
         />
         {error && (
-          <p id={`${textareaId}-error`} className="mt-1 text-xs text-error" role="alert">
+          <p id={`${textareaId}-error`} className="mt-1 text-xs font-bold" style={{ color: '#FF4D2E' }} role="alert">
             {error}
           </p>
         )}
         {hint && !error && (
-          <p id={`${textareaId}-hint`} className="mt-1 text-xs text-text-muted">
+          <p id={`${textareaId}-hint`} className="mt-1 text-xs" style={{ color: '#4A4640' }}>
             {hint}
           </p>
         )}
@@ -103,7 +103,7 @@ Textarea.displayName = 'Textarea'
 
 export const Label = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLabelElement>>(
   ({ className, children, ...props }, ref) => (
-    <label ref={ref} className={cn('block text-sm font-medium text-white mb-1.5', className)} {...props}>
+    <label ref={ref} className={cn('block text-sm font-bold mb-1.5', className)} style={{ color: '#14110E' }} {...props}>
       {children}
     </label>
   ),
