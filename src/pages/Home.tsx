@@ -132,24 +132,24 @@ export default function HomePage() {
       <div style={{ background: 'var(--color-cp-bg-base)', minHeight: '100vh' }}>
         {/* ─── HERO BAND ─── */}
         <section className="relative overflow-hidden" style={{ borderBottom: '2.5px solid #14110E', background: '#FFD23F' }}>
-          <div className="px-4 sm:px-6 py-10 sm:py-14 relative">
+          <div className="px-4 sm:px-6 py-6 sm:py-10 relative">
             <span className="zine-sticker" style={{ background: '#FF4D2E', color: '#fff', transform: 'rotate(-3deg)' }}>
               ★ Discover campus life
             </span>
             <h1
-              className="mt-4 font-extrabold tracking-tighter"
-              style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(2.25rem, 8.5vw, 6rem)', lineHeight: 0.9, color: '#14110E' }}
+              className="mt-3 font-extrabold tracking-tighter"
+              style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(1.9rem, 6vw, 4.25rem)', lineHeight: 0.95, color: '#14110E' }}
             >
               GET YOUR <span className="text-outline">PASS.</span><br />
               SHOW UP. <span style={{ color: '#FF4D2E' }}>DONE.</span>
             </h1>
-            <p className="mt-4 max-w-xl text-base sm:text-lg font-semibold" style={{ color: '#14110E' }}>
+            <p className="mt-3 max-w-xl text-sm sm:text-base font-semibold" style={{ color: '#14110E' }}>
               Every workshop, hackathon, talk & competition at Marian Engineering College — in one loud little place.
             </p>
           </div>
           {/* Marquee ticker */}
           <div className="overflow-hidden" style={{ borderTop: '2.5px solid #14110E', background: '#14110E' }}>
-            <div className="zine-marquee py-2">
+            <div className="zine-marquee py-1.5">
               {Array.from({ length: 2 }).map((_, r) => (
                 <span key={r} className="flex shrink-0">
                   {['WORKSHOPS', 'HACKATHONS', 'TALKS', 'COMPETITIONS', 'FESTS', 'CLUBS'].map((w) => (
@@ -163,7 +163,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="events-section" className="px-4 sm:px-6 pb-20 pt-8">
+        <section id="events-section" className="px-4 sm:px-6 pb-16 pt-6">
           <div className="flex gap-0 sm:gap-6">
             {/* ─── SIDEBAR ─── */}
             <motion.aside
@@ -273,20 +273,20 @@ export default function HomePage() {
               </div>
 
               {/* Search */}
-              <div className="relative mb-5">
+              <div className="relative mb-4">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2" strokeWidth={2.5} style={{ color: '#14110E' }} />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="SEARCH EVENTS..."
-                  className="w-full py-3.5 pl-12 pr-4 text-sm font-bold outline-none"
+                  className="w-full py-3 pl-12 pr-4 text-sm font-bold outline-none"
                   style={{ background: '#fff', border: '2.5px solid #14110E', boxShadow: '3px 3px 0 #14110E', color: '#14110E', fontFamily: 'Syne, sans-serif' }}
                 />
               </div>
 
               {/* Filter chips */}
-              <div className="mb-6 flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none">
+              <div className="mb-4 flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none">
                 {FILTER_CATEGORIES.map((cat) => (
                   <button key={cat} onClick={() => setActiveFilter(cat)} className={`filter-chip ${activeFilter === cat ? 'active' : ''}`}>{cat}</button>
                 ))}
