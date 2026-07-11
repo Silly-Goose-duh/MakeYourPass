@@ -14,11 +14,11 @@ export function EventCard({ event }: { event: EventWithOrg }) {
   const daysAway = event.date ? getDaysAway(event.date) : ''
   const soldOut = isSoldOut(event)
   const past = isPast(event)
-  // Sold-out = strongest dim+grayscale; past = lighter grayscale to differentiate.
+  // Sold-out = strongest dim+grayscale; past = clearly grayed to differentiate from vibrant upcoming.
   const cardStyle = soldOut
     ? { opacity: 0.6, filter: 'grayscale(0.9)' }
     : past
-      ? { opacity: 0.85, filter: 'grayscale(0.55)' }
+      ? { opacity: 0.8, filter: 'grayscale(0.8)' }
       : undefined
   return (
     <motion.div
