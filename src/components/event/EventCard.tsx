@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Calendar, Clock, MapPin, ArrowRight } from 'lucide-react'
-import { zineColorFor, getDaysAway, isSoldOut, type EventWithOrg } from './eventUtils'
+import { zineColorFor, getDaysAway, isSoldOut, isPast, type EventWithOrg } from './eventUtils'
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -13,13 +13,20 @@ export function EventCard({ event }: { event: EventWithOrg }) {
   const c = zineColorFor(orgName || event.title)
   const daysAway = event.date ? getDaysAway(event.date) : ''
   const soldOut = isSoldOut(event)
+  const past = isPast(event)
+  // Sold-out = strongest dim+grayscale; past = lighter grayscale to differentiate.
+  const cardStyle = soldOut
+    ? { opacity: 0.6, filter: 'grayscale(0.9)' }
+    : past
+      ? { opacity: 0.85, filter: 'grayscale(0.55)' }
+      : undefined
   return (
     <motion.div
       layout
       variants={itemVariants}
       transition={{ layout: { duration: 0.3 } }}
       className="zine-card group relative"
-      style={soldOut ? { opacity: 0.6, filter: 'grayscale(0.9)' } : undefined}
+      style={cardStyle}
     >
       <Link to={`/event/${event.slug}`} className="block">
         {/* Poster band */}
@@ -58,9 +65,15 @@ export function EventCard({ event }: { event: EventWithOrg }) {
           </div>
           <div className="flex items-center justify-between pt-2" style={{ borderTop: '2px solid #14110E' }}>
             <span className="pulse-dot" style={{ background: c }} />
-            <span className="inline-flex items-center gap-1 text-xs font-extrabold uppercase" style={{ fontFamily: 'Syne, sans-serif', color: '#FF4D2E' }}>
-              Register <ArrowRight className="h-3.5 w-3.5" strokeWidth={3} />
-            </span>
+            {past ? (
+              <span className="inline-flex items-center gap-1 text-xs font-extrabold uppercase" style={{ fontFamily: 'Syne, sans-serif', color: '#7A756B' }}>
+                View <ArrowRight className="h-3.5 w-3.5" strokeWidth={3} />
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs font-extrabold uppercase" style={{ fontFamily: 'Syne, sans-serif', color: '#FF4D2E' }}>
+                Register <ArrowRight className="h-3.5 w-3.5" strokeWidth={3} />
+              </span>
+            )}
           </div>
         </div>
       </Link>

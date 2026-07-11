@@ -24,3 +24,9 @@ export function getDaysAway(dateStr: string): string {
 export function isSoldOut(e: EventWithOrg): boolean {
   return (e.capacity ?? 0) > 0 && (e.response_count ?? 0) >= e.capacity
 }
+
+export function isPast(e: EventWithOrg): boolean {
+  if (!e.date) return false
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  return new Date(e.date + 'T00:00:00') < today
+}
