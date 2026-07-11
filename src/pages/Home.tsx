@@ -1,9 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Search,
   Calendar,
   AlertTriangle,
+  Ticket,
 } from 'lucide-react'
 import { getPublishedEvents, getApprovedOrganizations } from '@/lib/supabase'
 import type { Organization } from '@/types'
@@ -273,6 +275,16 @@ export default function HomePage() {
           </div>
         </section>
       </div>
+
+      {/* Mobile floating Events button (bottom-right) */}
+      <Link
+        to="/events"
+        className="lg:hidden fixed z-40 flex items-center gap-2 px-5 py-3 font-extrabold uppercase"
+        style={{ right: '1rem', bottom: '1rem', background: '#FF4D2E', color: '#fff', border: '2.5px solid #14110E', boxShadow: '3px 3px 0 #14110E', borderRadius: '999px', fontFamily: 'Syne, sans-serif' }}
+      >
+        <Ticket className="h-4 w-4" strokeWidth={2.5} />
+        Events
+      </Link>
     </>
   )
 }
