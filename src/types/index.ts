@@ -58,6 +58,8 @@ export interface CampusEvent {
   payment_type: 'free' | 'paid'
   price: number
   capacity: number
+  id_prefix: string | null
+  registration_counter: number
   status: 'draft' | 'published' | 'cancelled'
   response_count: number
   created_at: string
@@ -84,6 +86,13 @@ export interface EventResponse {
   respondent_email: string
   respondent_phone: string
   submitted_at: string
+  unique_code: string | null
+  qr_token: string
+  status: 'confirmed' | 'waitlisted' | 'cancelled'
+  admitted_at: string | null
+  admitted_by: string | null
+  ticket_url: string | null
+  email_sent_at: string | null
 }
 
 export interface ResponseAnswer {

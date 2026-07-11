@@ -48,6 +48,7 @@ export function CreateEvent() {
   const [paymentType, setPaymentType] = useState<'free' | 'paid'>('free')
   const [price, setPrice] = useState('')
   const [capacity, setCapacity] = useState('')
+  const [idPrefix, setIdPrefix] = useState('')
 
   const [questions, setQuestions] = useState<FormQuestion[]>([])
 
@@ -158,6 +159,7 @@ export function CreateEvent() {
         payment_type: paymentType,
         price: paymentType === 'paid' ? (parseFloat(price) || 0) : 0,
         capacity: capacity ? (parseInt(capacity, 10) || 0) : 0,
+        id_prefix: idPrefix || null,
         status: 'published',
       }
 
@@ -342,7 +344,16 @@ export function CreateEvent() {
                     label="Event Title *"
                     placeholder="e.g., Tech Fest 2026"
                     value={title}
-                    onChange={e => setTitle(e.target.value)}
+                    onChange={e => {
+                      const v = e.target.value
+                      setTitle(v)
+                      // Auto-suggest a prefix from title + year (editable later).
+                      if (!idPrefix) {
+                        const yr = new Date().getFullYear().toString().slice(-2)
+                        const base = v.replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase()
+                        if (base) setIdPrefix(base + yr)
+                      }
+                    }}
                   />
 
                   <div>
@@ -522,6 +533,14 @@ export function CreateEvent() {
                         placeholder="Unlimited"
                         value={capacity}
                         onChange={e => setCapacity(e.target.value)}
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <label className="block text-xs font-medium text-text-primary mb-1.5">Ticket ID prefix (e.g. TPT26 → TPT26-0007)</label>
+                      <Input
+                        placeholder="Auto (from title + year)"
+                        value={idPrefix}
+                        onChange={e => setIdPrefix(e.target.value.toUpperCase())}
                       />
                     </div>
                   </div>
