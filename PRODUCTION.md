@@ -47,6 +47,16 @@ Supabase project: `isvylfovcwtlemjpkdqp` (anon key in Vercel env)
    uploads to actually persist (see fix #3 below).
    → Supabase dashboard → SQL Editor → paste `supabase/migration.sql` → Run.
 
+1b. **Run `supabase/event-setup-fix.sql`** (also in SQL Editor). This:
+    - (re)creates the **anon INSERT policies** on `event_responses` + `response_answers`
+      so public form submissions no longer fail with *"new row violates row-level
+      security policy for table event_responses"*.
+    - adds an `AFTER INSERT` trigger `trg_event_created` that **auto-seeds a default
+      "Email" question into `event_questions` for every new event** (SECURITY DEFINER,
+      bypasses RLS). This automates per-event setup at creation time — no manual step.
+    → Supabase dashboard → SQL Editor → paste `supabase/event-setup-fix.sql` → Run.
+    (Idempotent; safe to re-run.)
+
 2. **Delete the test accounts** I created (clutter; can't be deleted via the anon key, so
    this needs the dashboard or service role):
    - `qa-test@campuspass.app`
