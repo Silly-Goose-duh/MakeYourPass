@@ -39,7 +39,9 @@ export function PublicEventForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [questionsLoading, setQuestionsLoading] = useState(false)
 
+  // Load the event itself first (fast) so the page renders immediately.
   useEffect(() => {
     let cancelled = false
     let safetyTimer: ReturnType<typeof setTimeout> | undefined
@@ -69,9 +71,6 @@ export function PublicEventForm() {
           return
         }
         setEvent(eventData as unknown as CampusEvent & { organizations: Organization })
-        const { data: questionsData } = await getEventQuestions(eventData.id)
-        if (cancelled) return
-        if (questionsData) setQuestions(questionsData)
       } catch (err) {
         if (cancelled) return
         const message = err instanceof Error ? err.message : 'Failed to load event'
@@ -88,6 +87,19 @@ export function PublicEventForm() {
     loadEvent()
     return () => { cancelled = true; if (safetyTimer) clearTimeout(safetyTimer) }
   }, [eventSlug])
+
+  // Load questions separately so the form header shows instantly.
+  useEffect(() => {
+    if (!event?.id) return
+    let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQuestionsLoading(true)
+    getEventQuestions(event.id)
+      .then(({ data }) => { if (!cancelled && data) setQuestions(data) })
+      .catch(() => { /* keep empty; validation handles required */ })
+      .finally(() => { if (!cancelled) setQuestionsLoading(false) })
+    return () => { cancelled = true }
+  }, [event?.id])
 
   // When the event has a poster, analyze it with Groq to auto-theme the form.
   useEffect(() => {
@@ -469,7 +481,12 @@ export function PublicEventForm() {
               </div>
 
               {/* Questions */}
-              {questions.length > 0 && (
+              {questionsLoading ? (
+                <div className="flex items-center gap-2 text-sm text-[#4A4640]">
+                  <div className="h-4 w-4 border-2 border-[#14110E] border-t-transparent rounded-full animate-spin" />
+                  Loading questions…
+                </div>
+              ) : questions.length > 0 && (
                 <div>
                   <h2 className="text-lg font-semibold text-[#14110E] mb-4">Questions</h2>
                   <div className="space-y-6">
