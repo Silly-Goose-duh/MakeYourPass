@@ -53,7 +53,7 @@ export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
     })
   }, [user])
 
-  const checking = user !== undefined && !(user === null || profileDone)
+  const checking = !!user && !profileDone
 
   if (loading || checking) return <div className="min-h-screen bg-background flex items-center justify-center"><LoadingSpinner /></div>
   if (!user) return <Navigate to="/login" replace />

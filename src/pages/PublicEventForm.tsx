@@ -41,12 +41,25 @@ export function PublicEventForm() {
   const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+    let safetyTimer: ReturnType<typeof setTimeout> | undefined
+
     async function loadEvent() {
       if (!eventSlug) return
       setLoading(true)
       setError('')
+      setNotFound(false)
+      // Safety net: never let the form hang forever on a stalled request.
+      safetyTimer = setTimeout(() => {
+        if (!cancelled) {
+          setLoading(false)
+          setError('The event is taking too long to load. Check your connection and refresh.')
+        }
+      }, 12000)
+
       try {
         const { data: eventData, error: eventError } = await getEventBySlug(eventSlug)
+        if (cancelled) return
         if (eventError || !eventData) {
           if (eventError?.message?.includes('RLS_RECURSION')) {
             setError('Events are unavailable while the database is being configured. Please apply the SQL fix in the Supabase dashboard SQL editor.')
@@ -57,8 +70,10 @@ export function PublicEventForm() {
         }
         setEvent(eventData as unknown as CampusEvent & { organizations: Organization })
         const { data: questionsData } = await getEventQuestions(eventData.id)
+        if (cancelled) return
         if (questionsData) setQuestions(questionsData)
       } catch (err) {
+        if (cancelled) return
         const message = err instanceof Error ? err.message : 'Failed to load event'
         if (message.includes('RLS_RECURSION')) {
           setError('Events are unavailable while the database is being configured. Please apply the SQL fix in the Supabase dashboard SQL editor.')
@@ -66,10 +81,12 @@ export function PublicEventForm() {
           setError(message)
         }
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
+        if (safetyTimer) clearTimeout(safetyTimer)
       }
     }
     loadEvent()
+    return () => { cancelled = true; if (safetyTimer) clearTimeout(safetyTimer) }
   }, [eventSlug])
 
   // When the event has a poster, analyze it with Groq to auto-theme the form.
@@ -114,6 +131,14 @@ export function PublicEventForm() {
   function validate(): boolean {
     const newErrors: Record<string, string> = {}
     if (!respondentName.trim()) newErrors.name = 'Name is required'
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (respondentEmail.trim() && !emailRe.test(respondentEmail.trim())) {
+      newErrors.email = 'Enter a valid email address'
+    }
+    const digits = respondentPhone.replace(/[^\d]/g, '')
+    if (respondentPhone.trim() && (digits.length < 10 || digits.length > 15)) {
+      newErrors.phone = 'Enter a valid phone number'
+    }
     for (const q of questions) {
       if (!q.required) continue
       const val = getAnswer(q.id)
@@ -417,20 +442,28 @@ export function PublicEventForm() {
                     <input
                       type="email"
                       value={respondentEmail}
-                      onChange={e => setRespondentEmail(e.target.value)}
+                      onChange={e => { setRespondentEmail(e.target.value); if (errors.email) setErrors(prev => { const n = { ...prev }; delete n.email; return n }) }}
                       placeholder="you@example.com"
-                      className="w-full px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary placeholder:text-text-muted transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary"
+                      className={cn(
+                        'w-full px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary placeholder:text-text-muted transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary',
+                        errors.email && 'border-red-500 focus-visible:ring-red-500'
+                      )}
                     />
+                    {errors.email && <p className="mt-1.5 text-sm text-red-400">{errors.email}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text-primary mb-2">Phone</label>
                     <input
                       type="tel"
                       value={respondentPhone}
-                      onChange={e => setRespondentPhone(e.target.value)}
+                      onChange={e => { setRespondentPhone(e.target.value); if (errors.phone) setErrors(prev => { const n = { ...prev }; delete n.phone; return n }) }}
                       placeholder="+91 98765 43210"
-                      className="w-full px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary placeholder:text-text-muted transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary"
+                      className={cn(
+                        'w-full px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary placeholder:text-text-muted transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary',
+                        errors.phone && 'border-red-500 focus-visible:ring-red-500'
+                      )}
                     />
+                    {errors.phone && <p className="mt-1.5 text-sm text-red-400">{errors.phone}</p>}
                   </div>
                 </div>
               </div>
