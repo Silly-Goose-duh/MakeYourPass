@@ -204,6 +204,13 @@ export function PublicEventForm() {
         }
         return
       }
+      // Fire-and-forget: generate ticket + send confirmation email.
+      // (Replaces the Supabase DB webhook so it works without dashboard setup.)
+      fetch(`${import.meta.env.VITE_API_BASE || ''}/api/on-registration`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ registration_id: responseData.id }),
+      }).catch(() => { /* email is best-effort; registration already saved */ })
       setSubmitted(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'

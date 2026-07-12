@@ -8,8 +8,11 @@
  *
  * Body (webhook): { type, table, record: {...event_responses row...} }
  * Body (direct):  { registration_id: string }
+ *
+ * NOTE: @supabase/supabase-js is dynamically imported inside the handler —
+ * a static import crashes the Vercel Node function at init
+ * (FUNCTION_INVOCATION_FAILED).
  */
-import { getSupabaseAdmin } from './_lib/supabaseAdmin'
 
 export const config = { runtime: 'nodejs' }
 
@@ -27,7 +30,12 @@ export default async function handler(req: any, res: any) {
       body?.registration_id || body?.record?.id
     if (!registrationId) return res.status(400).json({ error: 'registration_id required' })
 
-    const sb = getSupabaseAdmin()
+    const supabaseMod = await import('@supabase/supabase-js')
+    const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url || !key) return res.status(500).json({ error: 'Supabase service role not configured' })
+    const sb = supabaseMod.createClient(url, key, { auth: { persistSession: false } })
+
     const { data: reg, error: regErr } = await sb
       .from('event_responses')
       .select('id, respondent_name, respondent_email, status, email_sent_at, unique_code, ticket_url, events(title, date, time, venue)')
@@ -59,7 +67,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const RESEND_API_KEY = process.env.RESEND_API_KEY
-    const RESEND_FROM = process.env.RESEND_FROM || 'MakeYourPass <tickets@makeyourpass.app>'
+    const RESEND_FROM = process.env.RESEND_FROM || 'MakeYourPass <onboarding@resend.dev>'
     if (!RESEND_API_KEY) return res.status(500).json({ error: 'Resend not configured' })
 
     const { Resend } = await import('resend')

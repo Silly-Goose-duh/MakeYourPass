@@ -4,5 +4,9 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "functions": {
+    "api/generate-ticket.ts": { "maxDuration": 30 },
+    "api/on-registration.ts": { "maxDuration": 30 }
+  }
 }
