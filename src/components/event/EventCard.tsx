@@ -1,7 +1,38 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Calendar, Clock, MapPin, ArrowRight } from 'lucide-react'
+import { Calendar, Clock, MapPin, ArrowRight, Ticket } from 'lucide-react'
 import { zineColorFor, getDaysAway, isSoldOut, isPast, type EventWithOrg } from './eventUtils'
+import { useEffect, useState } from 'react'
+import { getSeatStatus, subscribeToResponses, type SeatStatus } from '@/lib/supabase'
+
+// Live seats-left pill (Phase 6): reflects event_seat_status in realtime.
+function SeatPill({ eventId }: { eventId: string }) {
+  const [seat, setSeat] = useState<SeatStatus | null>(null)
+  useEffect(() => {
+    let alive = true
+    getSeatStatus(eventId).then(({ data }) => { if (alive && data) setSeat(data) })
+    const unsub = subscribeToResponses(eventId, () => {
+      getSeatStatus(eventId).then(({ data }) => { if (alive && data) setSeat(data) })
+    })
+    return () => { alive = false; unsub() }
+  }, [eventId])
+
+  if (!seat) return null
+  if (seat.seats_left !== null && seat.seats_left <= 0) {
+    return (
+      <span className="zine-sticker absolute top-2 right-2" style={{ background: '#E11D1D', color: '#fff', transform: 'rotate(4deg)' }}>
+        Sold out
+      </span>
+    )
+  }
+  const left = seat.seats_left
+  return (
+    <span className="zine-sticker absolute top-2 right-2 flex items-center gap-1" style={{ background: '#14B87A', color: '#fff', transform: 'rotate(4deg)' }}>
+      <Ticket className="h-3 w-3" strokeWidth={3} />
+      {left === null ? `${seat.confirmed_count}/${seat.capacity}` : `${left} left`}
+    </span>
+  )
+}
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -14,7 +45,6 @@ export function EventCard({ event }: { event: EventWithOrg }) {
   const daysAway = event.date ? getDaysAway(event.date) : ''
   const soldOut = isSoldOut(event)
   const past = isPast(event)
-  // Sold-out = strongest dim+grayscale; past = clearly grayed to differentiate from vibrant upcoming.
   const cardStyle = soldOut
     ? { opacity: 0.6, filter: 'grayscale(0.9)' }
     : past
@@ -36,6 +66,7 @@ export function EventCard({ event }: { event: EventWithOrg }) {
           </span>
           <span className="zine-sticker absolute bottom-2 left-2" style={{ background: '#fff' }}>{orgName || 'Event'}</span>
           <span className="absolute top-0 right-0 px-2 py-1 text-[10px] font-extrabold uppercase text-white" style={{ background: '#14110E', fontFamily: 'Syne, sans-serif' }}>{daysAway}</span>
+          {!past && <SeatPill eventId={event.id} />}
           {soldOut && (
             <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-white" style={{ background: '#E11D1D', border: '2.5px solid #14110E', transform: 'rotate(-6deg)', fontFamily: 'Syne, sans-serif', boxShadow: '2px 2px 0 #14110E' }}>
               Sold out
@@ -80,4 +111,5 @@ export function EventCard({ event }: { event: EventWithOrg }) {
     </motion.div>
   )
 }
+
 

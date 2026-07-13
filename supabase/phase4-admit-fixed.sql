@@ -1,10 +1,4 @@
--- ============================================================================
--- Phase4 — Scan-to-admit RPC (adapted to event_responses)
--- Run in Supabase → SQL Editor. Idempotent.
--- Columns in the SELECT are qualified with the table alias to avoid the
--- "column reference unique_code is ambiguous" error.
--- ============================================================================
-
+-- Phase 4 — Scan-to-admit RPC (FIXED: qualify columns to avoid ambiguous unique_code)
 create or replace function admit_registration(p_qr_token uuid)
 returns table(name text, unique_code text, already_admitted boolean, status text)
 language plpgsql

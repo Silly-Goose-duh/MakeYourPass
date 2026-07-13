@@ -1,7 +1,7 @@
 /**
  * POST /api/generate-ticket
  *
- * Generates an SVG ticket for a registration and uploads it to the
+ * Generates a PNG ticket for a registration and uploads it to the
  * `tickets` storage bucket, then saves the public URL to
  * event_responses.ticket_url.
  *
@@ -13,58 +13,62 @@
  *
  * Dependency notes (learned the hard way on Vercel's Node runtime):
  *  - @supabase/supabase-js + qrcode-generator MUST be dynamically imported
- *    inside the handler; several other libs (qrcode, satori, @resvg/resvg-js,
- *    @vercel/og) crash the function at init (FUNCTION_INVOCATION_FAILED).
- *  - The ticket is a PURE SVG string (no rasterizer) — 100% reliable.
- *  - buildTicketSvg is inlined (a separate api/_lib .ts import also crashed
+ *    inside the handler. satori / @resvg/resvg-js / @vercel/og ALL crash the
+ *    Vercel function at init (FUNCTION_INVOCATION_FAILED).
+ *  - pureimage is a PURE-JS PNG encoder (no native binary) — the only
+ *    rasterizer that loads reliably here. Email clients can't preview SVG
+ *    attachments, so we ship PNG (opens everywhere).
+ *  - pureimage's TTF loader is broken here, so text is drawn with a
+ *    self-contained 5x7 bitmap font — zero font-file dependency.
+ *  - The renderer is inlined (a separate api/_lib .ts import also crashed
  *    the Vercel function bundler).
  */
 
 export const config = { runtime: 'nodejs' }
 
-interface TicketData {
-  uniqueCode: string
-  eventTitle: string
-  eventDate: string
-  eventVenue: string
-  respondentName: string
-  qrSvg: string
+// --- 5x7 bitmap font (MSB = left pixel). A-Z, 0-9, space, a few symbols. ---
+const FONT: Record<string, number[]> = {
+  A: [0x1f,0x11,0x1f,0x11,0x11,0x11,0x11], B: [0x1e,0x12,0x1e,0x12,0x12,0x12,0x1e],
+  C: [0x1f,0x10,0x10,0x10,0x10,0x10,0x1f], D: [0x1e,0x12,0x12,0x12,0x12,0x12,0x1e],
+  E: [0x1f,0x10,0x1e,0x10,0x10,0x10,0x1f], F: [0x1f,0x10,0x1e,0x10,0x10,0x10,0x10],
+  G: [0x1f,0x10,0x10,0x17,0x12,0x12,0x1f], H: [0x11,0x11,0x1f,0x11,0x11,0x11,0x11],
+  I: [0x0e,0x04,0x04,0x04,0x04,0x04,0x0e], J: [0x07,0x02,0x02,0x02,0x12,0x12,0x1c],
+  K: [0x12,0x14,0x18,0x10,0x14,0x12,0x12], L: [0x10,0x10,0x10,0x10,0x10,0x10,0x1f],
+  M: [0x11,0x1b,0x15,0x15,0x11,0x11,0x11], N: [0x11,0x19,0x15,0x15,0x13,0x11,0x11],
+  O: [0x1f,0x11,0x11,0x11,0x11,0x11,0x1f], P: [0x1e,0x12,0x12,0x1e,0x10,0x10,0x10],
+  Q: [0x1f,0x11,0x11,0x11,0x15,0x13,0x1d], R: [0x1e,0x12,0x12,0x1e,0x14,0x12,0x12],
+  S: [0x1f,0x10,0x1f,0x01,0x01,0x10,0x1f], T: [0x1f,0x04,0x04,0x04,0x04,0x04,0x04],
+  U: [0x11,0x11,0x11,0x11,0x11,0x11,0x1f], V: [0x11,0x11,0x11,0x11,0x11,0x0a,0x04],
+  W: [0x11,0x11,0x11,0x15,0x15,0x1b,0x11], X: [0x11,0x11,0x0a,0x04,0x0a,0x11,0x11],
+  Y: [0x11,0x11,0x0a,0x04,0x04,0x04,0x04], Z: [0x1f,0x02,0x04,0x08,0x10,0x10,0x1f],
+  '0':[0x1f,0x11,0x15,0x15,0x15,0x11,0x1f], '1':[0x04,0x0c,0x04,0x04,0x04,0x04,0x0e],
+  '2':[0x1e,0x01,0x1f,0x10,0x10,0x10,0x1f], '3':[0x1f,0x01,0x1f,0x01,0x01,0x01,0x1f],
+  '4':[0x11,0x11,0x11,0x1f,0x01,0x01,0x01], '5':[0x1f,0x10,0x1f,0x01,0x01,0x10,0x1f],
+  '6':[0x1f,0x10,0x1f,0x11,0x11,0x11,0x1f], '7':[0x1f,0x01,0x02,0x04,0x08,0x08,0x08],
+  '8':[0x1f,0x11,0x1f,0x11,0x11,0x11,0x1f], '9':[0x1f,0x11,0x11,0x1f,0x01,0x01,0x1f],
+  ' ':[0,0,0,0,0,0,0], '.':[0,0,0,0,0,0,0x0e], ',':[0,0,0,0,0,0x0e,0x04],
+  ':':[0,0x0e,0,0,0x0e,0,0], '-':[0,0,0,0x1f,0,0,0], '@':[0x1f,0x11,0x17,0x15,0x17,0x10,0x1f],
+  '/':[0x01,0x02,0x04,0x04,0x08,0x08,0x10], '#':[0x0a,0x0a,0x1f,0x0a,0x1f,0x0a,0x0a],
 }
-
-function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function drawText(ctx: any, text: string, x: number, y: number, scale: number, color: string) {
+  let cx = x
+  for (const ch of text.toUpperCase()) {
+    const g = FONT[ch] || FONT[' ']
+    for (let row = 0; row < 7; row++) {
+      const bits = g[row]
+      for (let col = 0; col < 5; col++) {
+        if (bits & (1 << (4 - col))) {
+          ctx.fillStyle = color
+          ctx.fillRect(cx + col * scale, y + row * scale, scale, scale)
+        }
+      }
+    }
+    cx += 6 * scale
+  }
 }
-
-function perfEdge(y: number, color: string): string {
-  let dots = ''
-  for (let x = 8; x < 600; x += 20) dots += `<circle cx="${x}" cy="${y}" r="5" fill="${color}"/>`
-  return dots
-}
-
-function buildTicketSvg(data: TicketData): string {
-  const primary = '#14110E'
-  const accent = '#FF4D2E'
-  const text = '#FFFFFF'
-  const title = esc(data.eventTitle).slice(0, 38)
-  const date = esc(data.eventDate)
-  const venue = esc(data.eventVenue)
-  const name = esc(data.respondentName)
-  const code = esc(data.uniqueCode)
-  const qr = data.qrSvg.replace(/<\?xml[^>]*\?>/, '')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300" font-family="Arial, Helvetica, sans-serif">
-  <rect width="600" height="300" fill="${primary}"/>
-  ${perfEdge(7, primary)}
-  ${perfEdge(293, primary)}
-  <text x="26" y="40" fill="${accent}" font-size="13" letter-spacing="2" font-weight="bold">MAKEYOURPASS</text>
-  <text x="26" y="78" fill="${text}" font-size="26" font-weight="bold">${title}</text>
-  <text x="26" y="112" fill="${text}" font-size="14" opacity="0.9">${date}</text>
-  <text x="26" y="134" fill="${text}" font-size="14" opacity="0.9">${venue}</text>
-  <text x="26" y="176" fill="${text}" font-size="13" opacity="0.8">${name}</text>
-  <line x1="400" y1="20" x2="400" y2="280" stroke="${accent}" stroke-width="2" stroke-dasharray="4 4"/>
-  <rect x="412" y="24" width="162" height="200" fill="#FFFFFF"/>
-  <g transform="translate(437,34) scale(0.62)">${qr}</g>
-  <text x="493" y="252" fill="#14110E" font-size="16" font-weight="bold" font-family="monospace" text-anchor="middle" letter-spacing="1">${code}</text>
-</svg>`
+function textWidth(text: string, scale: number): number {
+  return text.toUpperCase().length * 6 * scale
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,6 +82,9 @@ export default async function handler(req: any, res: any) {
   try {
     const supabaseMod = await import('@supabase/supabase-js')
     const qrg = (await import('qrcode-generator')).default
+    const pure = await import('pureimage')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const PImage = ((pure as any).default || pure)
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
     const { registration_id, regenerate } = body as { registration_id?: string; regenerate?: boolean }
@@ -99,25 +106,66 @@ export default async function handler(req: any, res: any) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ev = (reg as any).events || {}
+
+    // QR as module grid
     const qr = qrg(0, 'M')
     qr.addData(reg.qr_token)
     qr.make()
-    const qrSvg = qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true })
-    const dateStr = [ev.date, ev.time].filter(Boolean).join(' · ')
+    const count = qr.getModuleCount()
+    const modules: boolean[][] = []
+    for (let r = 0; r < count; r++) {
+      modules[r] = []
+      for (let c = 0; c < count; c++) modules[r][c] = qr.isDark(r, c)
+    }
 
-    const svg = buildTicketSvg({
-      uniqueCode: reg.unique_code || 'PENDING',
-      eventTitle: ev.title || 'Event',
-      eventDate: dateStr || '',
-      eventVenue: ev.venue || '',
-      respondentName: reg.respondent_name || '',
-      qrSvg,
-    })
+    const dateStr = [ev.date, ev.time].filter(Boolean).join(' . ')
+    const title = (ev.title || 'EVENT').toString().toUpperCase()
+    const name = ('NAME: ' + (reg.respondent_name || '')).toUpperCase()
+    const venue = (ev.venue || '').toString().toUpperCase()
 
-    const filePath = `tickets/${reg.event_id}/${reg.id}.svg`
+    const W = 600, H = 300
+    const canvas = PImage.make(W, H)
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#14110E'; ctx.fillRect(0, 0, W, H)
+
+    drawText(ctx, 'MAKEYOURPASS', 26, 26, 3, '#FF4D2E')
+    // title (wrap if very long)
+    const tScale = title.length > 22 ? 2 : 3
+    drawText(ctx, title.slice(0, 34), 26, 60, tScale, '#FFFFFF')
+    drawText(ctx, dateStr.slice(0, 40), 26, 100, 2, '#FFFFFF')
+    drawText(ctx, venue.slice(0, 40), 26, 122, 2, '#FFFFFF')
+    drawText(ctx, name.slice(0, 40), 26, 150, 2, '#FFFFFF')
+
+    // dashed divider (segments; pureimage has no setLineDash)
+    ctx.fillStyle = '#FF4D2E'
+    for (let y = 16; y < 284; y += 10) ctx.fillRect(394, y, 2, 5)
+
+    // white stub + QR
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(410, 22, 164, 204)
+    const qrSize = 132, qrPad = 14, cell = qrSize / count
+    const ox = 410 + qrPad, oy = 22 + qrPad
+    ctx.fillStyle = '#000000'
+    for (let r = 0; r < count; r++)
+      for (let c = 0; c < count; c++)
+        if (modules[r][c]) ctx.fillRect(ox + c * cell, oy + r * cell, Math.ceil(cell), Math.ceil(cell))
+    // code (centered under QR, inside white stub)
+    const code = (reg.unique_code || 'PENDING').toUpperCase()
+    const cScale = code.length > 10 ? 2 : 3
+    const cw = textWidth(code, cScale)
+    drawText(ctx, code, 410 + (164 - cw) / 2, 196, cScale, '#14110E')
+
+    const chunks: Uint8Array[] = []
+    const { Writable } = await import('stream')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sink = new Writable({ write(chunk: any, _enc: any, next: any) { chunks.push(chunk); next() } })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await PImage.encodePNGToStream(canvas, sink as any)
+    const png = Buffer.concat(chunks)
+
+    const filePath = `tickets/${reg.event_id}/${reg.id}.png`
     const { error: upErr } = await sb.storage
       .from('tickets')
-      .upload(filePath, svg, { contentType: 'image/svg+xml', upsert: true })
+      .upload(filePath, png, { contentType: 'image/png', upsert: true })
     if (upErr) return res.status(500).json({ error: 'Upload failed: ' + upErr.message })
 
     const { data: urlData } = sb.storage.from('tickets').getPublicUrl(filePath)

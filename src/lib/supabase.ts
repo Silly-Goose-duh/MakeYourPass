@@ -491,3 +491,64 @@ export async function getAllProfiles() {
   const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
   return { data: data as Profile[] | null, error }
 }
+
+// ==================== Ticketing (Phases 4-6) ====================
+
+export interface SeatStatus {
+  id: string
+  capacity: number
+  confirmed_count: number
+  seats_left: number | null
+}
+
+/** Live seat/capacity rollup from the event_seat_status view. */
+export async function getSeatStatus(eventId: string): Promise<{ data: SeatStatus | null; error: unknown }> {
+  const { data, error } = await supabase
+    .from('event_seat_status')
+    .select('id, capacity, confirmed_count, seats_left')
+    .eq('id', eventId)
+    .maybeSingle()
+  if (isRlsRecursionError(error)) return { data: null, error: new Error('RLS_RECURSION') }
+  return { data: data as SeatStatus | null, error }
+}
+
+export interface AdmitResult {
+  name: string | null
+  unique_code: string | null
+  already_admitted: boolean
+  status: 'admitted' | 'already_admitted' | 'waitlisted' | 'not_found'
+}
+
+/** Call the admit_registration SECURITY DEFINER RPC (scans a qr_token). */
+export async function admitByQrToken(qrToken: string): Promise<{ data: AdmitResult | null; error: unknown }> {
+  const { data, error } = await supabase.rpc('admit_registration', { p_qr_token: qrToken })
+  if (error) return { data: null, error }
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row) return { data: null, error: new Error('No result from admit RPC') }
+  const status = (row.status as AdmitResult['status']) || 'not_found'
+  return {
+    data: {
+      name: row.name ?? null,
+      unique_code: row.unique_code ?? null,
+      already_admitted: !!row.already_admitted,
+      status,
+    },
+    error: null,
+  }
+}
+
+/** Realtime subscription on event_responses for one event. */
+export function subscribeToResponses(
+  eventId: string,
+  onChange: (payload: unknown) => void
+) {
+  const channel = supabase
+    .channel(`event_responses:${eventId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'event_responses', filter: `event_id=eq.${eventId}` },
+      (payload) => onChange(payload)
+    )
+    .subscribe()
+  return () => { supabase.removeChannel(channel) }
+}

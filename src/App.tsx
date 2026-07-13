@@ -13,9 +13,11 @@ const OrgDashboard = lazy(() => import('@/pages/OrgDashboard').then(m => ({ defa
 const CreateEvent = lazy(() => import('@/pages/CreateEvent').then(m => ({ default: m.CreateEvent })))
 const EditEvent = lazy(() => import('@/pages/EditEvent').then(m => ({ default: m.EditEvent })))
 const EventAnalytics = lazy(() => import('@/pages/EventAnalytics').then(m => ({ default: m.EventAnalytics })))
-const MCPanel = lazy(() => import('@/pages/MCPanel').then(m => ({ default: m.MCPanel })))
+const MCPanel = lazy(() => import('@/pages/MCPanel').then(m => ({ default: m.MCPanel })) )
 const NotFoundPage = lazy(() => import('@/pages/NotFound'))
 const EventsPage = lazy(() => import('@/pages/EventsPage').then(m => ({ default: m.default })))
+const ScanPage = lazy(() => import('@/pages/ScanPage').then(m => ({ default: m.ScanPage })))
+const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -52,6 +54,8 @@ function AppRoutes() {
         <Route path="/dashboard/events/new" element={<OrgAdminRoute><PageSuspense><CreateEvent /></PageSuspense></OrgAdminRoute>} />
         <Route path="/dashboard/events/:id/edit" element={<OrgAdminRoute><PageSuspense><EditEvent /></PageSuspense></OrgAdminRoute>} />
         <Route path="/dashboard/events/:id/analytics" element={<OrgAdminRoute><PageSuspense><EventAnalytics /></PageSuspense></OrgAdminRoute>} />
+        <Route path="/host/:eventId/scan" element={<PageSuspense><ScanPage /></PageSuspense>} />
+        <Route path="/host/:eventId/dashboard" element={<PageSuspense><DashboardPage /></PageSuspense>} />
 
         {/* Superadmin Master Control */}
         <Route path="/mc" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
