@@ -22,8 +22,10 @@ export default async function handler(req: any, res: any) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {})
-    const expected = process.env.SETUP_SECRET || 'makeyourpass-setup-2026'
-    if (!body?.secret || body.secret !== expected) {
+    // Require SETUP_SECRET server env — never fall back to a hardcoded default
+    // (repo is public). Set once in Vercel, call endpoint, then remove the var.
+    const expected = process.env.SETUP_SECRET
+    if (!expected || !body?.secret || body.secret !== expected) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
