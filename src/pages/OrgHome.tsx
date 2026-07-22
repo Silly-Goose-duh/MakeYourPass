@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import {
   Plus, Settings, Calendar, MapPin, IndianRupee,
-  Trash2, Upload, Users, Globe,
+  Trash2, Upload, Users, Globe, ArrowLeft, Ticket,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { cn, formatDate } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import {
   getOrganizationBySlug,
@@ -22,13 +21,19 @@ import {
   getOrgAssetPublicUrl,
   getEventsByOrganization,
 } from '@/lib/supabase'
+import { zineColorFor, getDaysAway } from '@/components/event/eventUtils'
 import type { Organization, CampusEvent, OrgExecomMember } from '@/types'
 
 const RESERVED = new Set([
   'events', 'event', 'login', 'signup', 'dashboard', 'mc', 'host', 'api', 'assets', 'org', 'admin',
 ])
 
-/** Discord-style members list grouped by role */
+const INK = '#14110E'
+const PAPER = '#F4EFE1'
+const YELLOW = '#FFD23F'
+const RED = '#FF4D2E'
+
+/** Right rail: Discord-style grouping by role, Zine visual language */
 function ExecomSidebar({
   members,
   canManage,
@@ -45,7 +50,6 @@ function ExecomSidebar({
   const [role, setRole] = useState('Member')
   const [photo, setPhoto] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
-  // photo file is passed via onAdd wrapper from parent through closure on Save
 
   const byRole = useMemo(() => {
     const map = new Map<string, OrgExecomMember[]>()
@@ -75,28 +79,62 @@ function ExecomSidebar({
   }
 
   return (
-    <aside className="w-full lg:w-72 shrink-0 border-l border-border bg-[#1e1f22] text-[#dbdee1] flex flex-col min-h-[50vh] lg:min-h-screen lg:sticky lg:top-0">
-      <div className="px-3 py-3 border-b border-white/5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#949ba4]">
-          Execom — {members.length}
+    <aside
+      className="w-full lg:w-[280px] shrink-0 flex flex-col min-h-[40vh] lg:min-h-screen lg:sticky lg:top-0"
+      style={{ background: '#FBF8F0', borderLeft: `2.5px solid ${INK}` }}
+    >
+      <div
+        className="px-3 py-3 flex items-center justify-between"
+        style={{ borderBottom: `2.5px solid ${INK}`, background: YELLOW }}
+      >
+        <p
+          className="text-[11px] font-extrabold uppercase tracking-wider"
+          style={{ fontFamily: 'Syne, sans-serif', color: INK }}
+        >
+          Execom · {members.length}
         </p>
+        <Users className="h-4 w-4" style={{ color: INK }} strokeWidth={2.5} />
       </div>
-      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-4">
+
+      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
         {byRole.length === 0 && (
-          <p className="text-xs text-[#949ba4] px-2 py-4">No members listed yet.</p>
+          <p className="text-xs font-semibold px-2 py-6 text-center" style={{ color: '#4A4640' }}>
+            No members yet.
+            {canManage && ' Add your team below.'}
+          </p>
         )}
         {byRole.map(([roleTitle, list]) => (
           <div key={roleTitle}>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#949ba4] px-2 mb-1">
+            <p
+              className="text-[10px] font-extrabold uppercase tracking-widest px-2 mb-1.5"
+              style={{ fontFamily: 'Syne, sans-serif', color: '#4A4640' }}
+            >
               {roleTitle} — {list.length}
             </p>
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {list.map((m) => (
                 <li
                   key={m.id}
-                  className="group flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5"
+                  className="group flex items-center gap-2 px-2 py-1.5"
+                  style={{ border: `2px solid transparent` }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#fff'
+                    e.currentTarget.style.borderColor = INK
+                    e.currentTarget.style.boxShadow = '2px 2px 0 #14110E'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.borderColor = 'transparent'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
-                  <div className="h-8 w-8 rounded-full overflow-hidden bg-[#313338] shrink-0 flex items-center justify-center text-xs font-bold text-white">
+                  <div
+                    className="h-8 w-8 shrink-0 flex items-center justify-center text-xs font-extrabold text-white overflow-hidden"
+                    style={{
+                      background: zineColorFor(m.full_name),
+                      border: `2px solid ${INK}`,
+                    }}
+                  >
                     {m.photo_url ? (
                       <img src={m.photo_url} alt="" className="h-full w-full object-cover" />
                     ) : (
@@ -104,16 +142,22 @@ function ExecomSidebar({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-[#f2f3f5] truncate">{m.full_name}</p>
+                    <p
+                      className="text-sm font-extrabold truncate"
+                      style={{ fontFamily: 'Syne, sans-serif', color: INK }}
+                    >
+                      {m.full_name}
+                    </p>
                   </div>
                   {canManage && (
                     <button
                       type="button"
                       onClick={() => void onDelete(m.id)}
-                      className="opacity-0 group-hover:opacity-100 text-[#949ba4] hover:text-red-400 p-1"
+                      className="opacity-0 group-hover:opacity-100 p-1"
                       title="Remove"
+                      style={{ color: RED }}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={2.5} />
                     </button>
                   )}
                 </li>
@@ -122,17 +166,26 @@ function ExecomSidebar({
           </div>
         ))}
       </div>
+
       {canManage && (
-        <div className="p-3 border-t border-white/5">
+        <div className="p-3" style={{ borderTop: `2.5px solid ${INK}`, background: PAPER }}>
           {!open ? (
-            <Button variant="secondary" size="sm" fullWidth onClick={() => setOpen(true)}>
-              <Users className="h-3.5 w-3.5" /> Add member
-            </Button>
+            <button
+              type="button"
+              className="zine-btn w-full text-sm"
+              onClick={() => setOpen(true)}
+            >
+              <Plus className="h-4 w-4" strokeWidth={3} /> Add member
+            </button>
           ) : (
             <div className="space-y-2">
               <Input placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
-              <Input placeholder="Role (e.g. Chairperson)" value={role} onChange={(e) => setRole(e.target.value)} />
-              <label className="flex items-center gap-2 text-xs text-[#949ba4] cursor-pointer">
+              <Input
+                placeholder="Role (Chairperson, Tech Lead…)"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              />
+              <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: '#4A4640' }}>
                 <Upload className="h-3.5 w-3.5" />
                 <span>{photo ? photo.name : 'Photo (optional)'}</span>
                 <input
@@ -143,10 +196,22 @@ function ExecomSidebar({
                 />
               </label>
               <div className="flex gap-2">
-                <Button size="sm" variant="primary" onClick={() => void handleAdd()} disabled={saving || !name.trim()}>
+                <button
+                  type="button"
+                  className="zine-btn zine-btn-accent text-xs flex-1"
+                  onClick={() => void handleAdd()}
+                  disabled={saving || !name.trim()}
+                >
                   Save
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                </button>
+                <button
+                  type="button"
+                  className="zine-btn text-xs"
+                  style={{ background: '#fff' }}
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           )}
@@ -156,83 +221,123 @@ function ExecomSidebar({
   )
 }
 
-/** BookMyShow-style horizontal event rail */
+/** BookMyShow-style horizontal rail, zine cards */
 function EventRail({
   title,
   events,
   past,
   canManage,
+  accent,
 }: {
   title: string
   events: CampusEvent[]
   past?: boolean
   canManage?: boolean
+  accent?: string
 }) {
-  const scroller = useRef<HTMLDivElement>(null)
   if (events.length === 0) return null
   return (
     <section className="mb-10">
-      <div className="flex items-center justify-between mb-3 px-1">
-        <h2 className="text-lg sm:text-xl font-bold text-text-primary">{title}</h2>
-        <span className="text-xs text-text-muted">{events.length}</span>
+      <div className="flex items-center justify-between mb-3">
+        <h2
+          className="text-xl sm:text-2xl font-extrabold"
+          style={{ fontFamily: 'Syne, sans-serif', color: INK }}
+        >
+          {title}
+        </h2>
+        <span className="zine-sticker" style={{ background: accent || YELLOW }}>
+          {events.length}
+        </span>
       </div>
       <div
-        ref={scroller}
-        className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-thin"
+        className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        {events.map((ev) => (
-          <article
-            key={ev.id}
-            className={cn(
-              'snap-start shrink-0 w-[160px] sm:w-[200px] rounded-xl overflow-hidden border border-border bg-surface shadow-sm',
-              past && 'opacity-75 grayscale-[0.4]'
-            )}
-          >
-            <Link to={`/event/${ev.slug}`} className="block">
-              <div className="aspect-[2/3] bg-surface-elevated relative">
-                {ev.poster_url ? (
-                  <img src={ev.poster_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent-rose/10 p-3 text-center">
-                    <span className="text-xs font-semibold text-text-primary line-clamp-4">{ev.title}</span>
-                  </div>
-                )}
-                {ev.payment_type === 'paid' && (
-                  <span className="absolute top-2 left-2 text-[10px] font-bold bg-black/70 text-white px-1.5 py-0.5 rounded">
-                    ₹{ev.price}
+        {events.map((ev) => {
+          const c = zineColorFor(ev.title)
+          const days = ev.date ? getDaysAway(ev.date) : 'TBA'
+          return (
+            <article
+              key={ev.id}
+              className="zine-card snap-start shrink-0 w-[168px] sm:w-[200px] overflow-hidden"
+              style={past ? { opacity: 0.78, filter: 'grayscale(0.75)' } : undefined}
+            >
+              <Link to={`/event/${ev.slug}`} className="block">
+                <div
+                  className="relative h-[140px] sm:h-[160px] flex items-center justify-center overflow-hidden"
+                  style={{ background: c, borderBottom: `2.5px solid ${INK}` }}
+                >
+                  {ev.poster_url ? (
+                    <img src={ev.poster_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                  ) : (
+                    <span
+                      className="font-extrabold opacity-30 px-2 text-center line-clamp-3"
+                      style={{
+                        fontFamily: 'Syne, sans-serif',
+                        fontSize: '1.1rem',
+                        color: INK,
+                        WebkitTextStroke: '1px #14110E',
+                      }}
+                    >
+                      {ev.title}
+                    </span>
+                  )}
+                  <span
+                    className="absolute top-0 right-0 px-2 py-1 text-[10px] font-extrabold uppercase text-white"
+                    style={{ background: INK, fontFamily: 'Syne, sans-serif' }}
+                  >
+                    {days}
                   </span>
-                )}
-              </div>
-              <div className="p-2.5">
-                <h3 className="text-sm font-semibold text-text-primary line-clamp-2 leading-snug">{ev.title}</h3>
-                <p className="text-[11px] text-text-muted mt-1 flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {ev.date ? formatDate(ev.date) : 'TBA'}
-                </p>
-                {ev.venue && (
-                  <p className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1 truncate">
-                    <MapPin className="h-3 w-3 shrink-0" />
-                    {ev.venue}
+                  {ev.payment_type === 'paid' && (
+                    <span className="zine-sticker absolute bottom-2 left-2" style={{ background: RED, color: '#fff' }}>
+                      ₹{ev.price}
+                    </span>
+                  )}
+                </div>
+                <div className="p-3 space-y-1.5" style={{ background: '#fff' }}>
+                  <h3
+                    className="text-sm font-extrabold leading-tight line-clamp-2"
+                    style={{ fontFamily: 'Syne, sans-serif', color: INK }}
+                  >
+                    {ev.title}
+                  </h3>
+                  <p className="text-[11px] font-semibold flex items-center gap-1" style={{ color: '#4A4640' }}>
+                    <Calendar className="h-3 w-3" strokeWidth={2.5} />
+                    {ev.date ? formatDate(ev.date) : 'TBA'}
                   </p>
-                )}
-              </div>
-            </Link>
-            {canManage && (
-              <div className="flex border-t border-border">
-                <Link to={`/host/${ev.id}/dashboard`} className="flex-1 text-center py-1.5 text-[10px] font-semibold text-primary hover:bg-primary/5">
-                  Live
-                </Link>
-                <Link to={`/host/${ev.id}/scan`} className="flex-1 text-center py-1.5 text-[10px] font-semibold text-text-secondary hover:bg-surface-elevated border-l border-border">
-                  Scan
-                </Link>
-                <Link to={`/dashboard/events/${ev.id}/edit`} className="flex-1 text-center py-1.5 text-[10px] font-semibold text-text-secondary hover:bg-surface-elevated border-l border-border">
-                  Edit
-                </Link>
-              </div>
-            )}
-          </article>
-        ))}
+                  {ev.venue && (
+                    <p className="text-[11px] font-semibold flex items-center gap-1 truncate" style={{ color: '#4A4640' }}>
+                      <MapPin className="h-3 w-3 shrink-0" strokeWidth={2.5} />
+                      {ev.venue}
+                    </p>
+                  )}
+                </div>
+              </Link>
+              {canManage && (
+                <div className="flex" style={{ borderTop: `2.5px solid ${INK}` }}>
+                  {[
+                    { to: `/host/${ev.id}/dashboard`, label: 'Live' },
+                    { to: `/host/${ev.id}/scan`, label: 'Scan' },
+                    { to: `/dashboard/events/${ev.id}/edit`, label: 'Edit' },
+                  ].map((a, i) => (
+                    <Link
+                      key={a.label}
+                      to={a.to}
+                      className="flex-1 text-center py-2 text-[10px] font-extrabold uppercase tracking-wide hover:bg-[#FFD23F]/40"
+                      style={{
+                        fontFamily: 'Syne, sans-serif',
+                        color: INK,
+                        borderLeft: i > 0 ? `2px solid ${INK}` : undefined,
+                      }}
+                    >
+                      {a.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </article>
+          )
+        })}
       </div>
     </section>
   )
@@ -243,11 +348,11 @@ export function OrgHome() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  const slugInvalid = !orgSlug || RESERVED.has((orgSlug || '').toLowerCase())
   const [org, setOrg] = useState<Organization | null>(null)
   const [events, setEvents] = useState<CampusEvent[]>([])
   const [execom, setExecom] = useState<OrgExecomMember[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
-  const slugInvalid = !orgSlug || RESERVED.has((orgSlug || '').toLowerCase())
   const [loading, setLoading] = useState(!slugInvalid)
   const [notFound, setNotFound] = useState(slugInvalid)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -260,7 +365,6 @@ export function OrgHome() {
     if (slugInvalid) return
     let alive = true
     ;(async () => {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(true)
       const { data: o } = await getOrganizationBySlug(orgSlug!)
       if (!alive) return
@@ -315,7 +419,10 @@ export function OrgHome() {
     return { upcoming: up, past: pa, drafts: dr }
   }, [events])
 
-  const handleAddExecomWithPhoto = async (m: { full_name: string; role_title: string; photo_url: string }, file?: File | null) => {
+  const handleAddExecomWithPhoto = async (
+    m: { full_name: string; role_title: string; photo_url: string },
+    file?: File | null
+  ) => {
     if (!org) return
     let photo_url = m.photo_url || ''
     if (file) {
@@ -367,126 +474,246 @@ export function OrgHome() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: PAPER }}>
+        <div className="h-8 w-8 border-[3px] border-[#14110E] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   if (notFound || !org) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold text-text-primary mb-2">Organization not found</h1>
-          <p className="text-text-secondary mb-6">
-            This portal is not live yet — it may be pending superadmin approval, or the link is wrong.
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: PAPER }}>
+        <div
+          className="text-center max-w-md p-8"
+          style={{ background: '#fff', border: `2.5px solid ${INK}`, boxShadow: '6px 6px 0 #14110E' }}
+        >
+          <span className="zine-sticker" style={{ background: RED, color: '#fff' }}>404</span>
+          <h1
+            className="text-2xl font-extrabold mt-4 mb-2"
+            style={{ fontFamily: 'Syne, sans-serif', color: INK }}
+          >
+            Portal not live
+          </h1>
+          <p className="text-sm font-semibold mb-6" style={{ color: '#4A4640' }}>
+            This org isn&apos;t approved yet, or the link is wrong. Request an org via signup — superadmin unlocks the portal.
           </p>
-          <Link to="/"><Button variant="primary">Back home</Button></Link>
+          <Link to="/">
+            <button type="button" className="zine-btn zine-btn-accent">
+              <ArrowLeft className="h-4 w-4" strokeWidth={3} /> Back home
+            </button>
+          </Link>
         </div>
       </div>
     )
   }
 
+  const brandColor = zineColorFor(org.name)
+
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+    <div className="min-h-screen flex flex-col lg:flex-row" style={{ background: PAPER }}>
       {/* Main column */}
       <div className="flex-1 min-w-0">
-        {/* Cover / header */}
-        <div className="relative">
-          <div
-            className="h-36 sm:h-48 bg-gradient-to-br from-primary/30 via-surface to-accent-rose/20"
-            style={org.cover_url ? { backgroundImage: `url(${org.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-          />
-          <div className="px-4 sm:px-8 -mt-10 sm:-mt-12 pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-4 border-background bg-surface shadow-lg overflow-hidden flex items-center justify-center text-2xl font-bold text-primary">
+        {/* Mini nav strip (matches site chrome) */}
+        <div
+          className="flex items-center justify-between px-4 sm:px-6 h-14"
+          style={{ background: PAPER, borderBottom: `2.5px solid ${INK}` }}
+        >
+          <Link to="/" className="flex items-center gap-2 group">
+            <div
+              className="h-9 w-9 flex items-center justify-center"
+              style={{ background: RED, border: `2.5px solid ${INK}`, boxShadow: '2px 2px 0 #14110E' }}
+            >
+              <Ticket className="h-4 w-4 text-white" strokeWidth={2.5} />
+            </div>
+            <span className="font-extrabold text-sm" style={{ fontFamily: 'Syne, sans-serif', color: INK }}>
+              MakeYourPass
+            </span>
+          </Link>
+          <Link to="/events" className="text-xs font-extrabold uppercase tracking-wide" style={{ fontFamily: 'Syne, sans-serif', color: INK }}>
+            All events →
+          </Link>
+        </div>
+
+        {/* Yellow hero band — same energy as home */}
+        <section style={{ borderBottom: `2.5px solid ${INK}`, background: YELLOW }}>
+          <div className="px-4 sm:px-6 py-6 sm:py-8 relative">
+            <span className="zine-sticker" style={{ background: RED, color: '#fff', transform: 'rotate(-2deg)' }}>
+              ★ Club portal
+            </span>
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-4">
+              <div
+                className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 flex items-center justify-center text-2xl font-extrabold text-white overflow-hidden"
+                style={{
+                  background: brandColor,
+                  border: `2.5px solid ${INK}`,
+                  boxShadow: '4px 4px 0 #14110E',
+                  fontFamily: 'Syne, sans-serif',
+                }}
+              >
                 {org.logo_url ? (
                   <img src={org.logo_url} alt="" className="h-full w-full object-cover" />
                 ) : (
                   org.name.slice(0, 2).toUpperCase()
                 )}
               </div>
-              <div className="flex-1 min-w-0 pb-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">{org.name}</h1>
-                <p className="text-sm text-text-secondary mt-1 line-clamp-2">{org.description || 'Campus organization on MakeYourPass'}</p>
-                <div className="flex flex-wrap gap-3 mt-2 text-xs text-text-muted">
-                  {org.instagram && (
-                    <a href={org.instagram} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-primary">
-                      Instagram
-                    </a>
-                  )}
-                  {org.website && (
-                    <a href={org.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-primary">
-                      <Globe className="h-3.5 w-3.5" /> Website
-                    </a>
-                  )}
-                  <span className="text-text-muted">makeyourpass.vercel.app/{org.slug}</span>
-                </div>
+              <div className="flex-1 min-w-0">
+                <h1
+                  className="font-extrabold tracking-tighter"
+                  style={{
+                    fontFamily: 'Syne, sans-serif',
+                    fontSize: 'clamp(1.75rem, 5vw, 3rem)',
+                    lineHeight: 0.95,
+                    color: INK,
+                  }}
+                >
+                  {org.name.toUpperCase()}
+                </h1>
+                <p className="mt-2 max-w-xl text-sm font-semibold" style={{ color: INK }}>
+                  {org.description || 'Campus club on MakeYourPass — events, tickets, check-in.'}
+                </p>
+                <p className="mt-1 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: '#4A4640' }}>
+                  makeyourpass.vercel.app/{org.slug}
+                </p>
               </div>
               {isAdmin && (
-                <div className="flex flex-wrap gap-2 pb-1">
-                  <Button variant="primary" size="sm" onClick={() => navigate('/dashboard/events/new')}>
-                    <Plus className="h-4 w-4" /> Create event
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setSettingsOpen((v) => !v)}>
-                    <Settings className="h-4 w-4" /> UPI & settings
-                  </Button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="zine-btn zine-btn-accent text-sm"
+                    onClick={() => navigate('/dashboard/events/new')}
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={3} /> Create event
+                  </button>
+                  <button
+                    type="button"
+                    className="zine-btn text-sm"
+                    style={{ background: '#fff' }}
+                    onClick={() => setSettingsOpen((v) => !v)}
+                  >
+                    <Settings className="h-4 w-4" strokeWidth={2.5} /> UPI
+                  </button>
                 </div>
               )}
             </div>
           </div>
-        </div>
+          {/* Marquee strip like home */}
+          <div className="overflow-hidden" style={{ borderTop: `2.5px solid ${INK}`, background: INK }}>
+            <div className="zine-marquee py-1.5">
+              {Array.from({ length: 2 }).map((_, r) => (
+                <span key={r} className="flex shrink-0" aria-hidden={r === 1}>
+                  {['EVENTS', 'EXECOM', 'TICKETS', 'CHECK-IN', org.name.toUpperCase()].map((w, i) => (
+                    <span
+                      key={w + r + i}
+                      className="mx-5 text-xs font-extrabold uppercase tracking-widest"
+                      style={{ fontFamily: 'Syne, sans-serif', color: YELLOW }}
+                    >
+                      {w} <span style={{ color: RED }}>✦</span>
+                    </span>
+                  ))}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {isAdmin && settingsOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mx-4 sm:mx-8 mb-6 p-4 rounded-2xl border border-border bg-surface space-y-3"
+          <div
+            className="mx-4 sm:mx-6 mt-6 p-4 space-y-3"
+            style={{ background: '#fff', border: `2.5px solid ${INK}`, boxShadow: '4px 4px 0 #14110E' }}
           >
-            <h3 className="font-semibold text-text-primary flex items-center gap-2">
-              <IndianRupee className="h-4 w-4" /> UPI for paid events
+            <h3 className="font-extrabold flex items-center gap-2" style={{ fontFamily: 'Syne, sans-serif', color: INK }}>
+              <IndianRupee className="h-4 w-4" strokeWidth={2.5} /> UPI for paid events
             </h3>
-            <p className="text-xs text-text-muted">
-              Registrants scan this QR / pay to this UPI ID, then upload a payment screenshot. You review and hit Send ticket.
+            <p className="text-xs font-semibold" style={{ color: '#4A4640' }}>
+              Registrants scan this QR / pay this UPI ID, upload a screenshot. You review and hit Send ticket on Live.
             </p>
             <div className="grid sm:grid-cols-2 gap-3">
               <Input label="UPI ID (VPA)" placeholder="club@oksbi" value={upiId} onChange={(e) => setUpiId(e.target.value)} />
               <Input label="Phone (optional)" placeholder="9xxxxxxxxx" value={upiPhone} onChange={(e) => setUpiPhone(e.target.value)} />
             </div>
-            <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer" style={{ color: '#4A4640' }}>
               <Upload className="h-4 w-4" />
-              {upiQrFile ? upiQrFile.name : org.upi_qr_url ? 'Replace UPI QR image' : 'Upload UPI QR image'}
+              {upiQrFile ? upiQrFile.name : org.upi_qr_url ? 'Replace UPI QR' : 'Upload UPI QR'}
               <input type="file" accept="image/*" className="hidden" onChange={(e) => setUpiQrFile(e.target.files?.[0] || null)} />
             </label>
             {org.upi_qr_url && !upiQrFile && (
-              <img src={org.upi_qr_url} alt="UPI QR" className="h-32 w-32 object-contain rounded-lg border border-border" />
+              <img
+                src={org.upi_qr_url}
+                alt="UPI QR"
+                className="h-32 w-32 object-contain"
+                style={{ border: `2.5px solid ${INK}`, background: '#fff' }}
+              />
             )}
-            <Button variant="primary" size="sm" onClick={() => void saveUpiSettings()} disabled={savingSettings}>
+            <button
+              type="button"
+              className="zine-btn zine-btn-accent text-sm"
+              onClick={() => void saveUpiSettings()}
+              disabled={savingSettings}
+            >
               {savingSettings ? 'Saving…' : 'Save UPI settings'}
-            </Button>
-          </motion.div>
+            </button>
+          </div>
         )}
 
-        <div className="px-4 sm:px-8 pb-16">
-          <EventRail title="Upcoming events" events={upcoming} canManage={isAdmin} />
-          <EventRail title="Past events" events={past} past canManage={isAdmin} />
-          {isAdmin && drafts.length > 0 && (
-            <EventRail title="Drafts" events={drafts} canManage={isAdmin} />
+        <div className="px-4 sm:px-6 py-8 pb-20">
+          {(org.website || org.instagram) && (
+            <div className="flex flex-wrap gap-3 mb-8 text-xs font-extrabold uppercase">
+              {org.website && (
+                <a
+                  href={org.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="zine-sticker inline-flex items-center gap-1"
+                  style={{ background: '#2D5BFF', color: '#fff' }}
+                >
+                  <Globe className="h-3 w-3" /> Web
+                </a>
+              )}
+              {org.instagram && (
+                <a
+                  href={org.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="zine-sticker"
+                  style={{ background: '#E84AC4', color: '#fff' }}
+                >
+                  Instagram
+                </a>
+              )}
+            </div>
           )}
+
+          <EventRail title="Upcoming" events={upcoming} canManage={isAdmin} accent={YELLOW} />
+          <EventRail title="Past" events={past} past canManage={isAdmin} accent="#fff" />
+          {isAdmin && drafts.length > 0 && (
+            <EventRail title="Drafts" events={drafts} canManage={isAdmin} accent="#2D5BFF" />
+          )}
+
           {upcoming.length === 0 && past.length === 0 && (
-            <div className="text-center py-16 text-text-muted">
-              <p className="mb-4">No published events yet.</p>
+            <div
+              className="text-center py-14 px-6"
+              style={{ background: '#fff', border: `2.5px solid ${INK}`, boxShadow: '4px 4px 0 #14110E' }}
+            >
+              <p className="font-extrabold mb-2" style={{ fontFamily: 'Syne, sans-serif', color: INK }}>
+                No events yet
+              </p>
+              <p className="text-sm font-semibold mb-6" style={{ color: '#4A4640' }}>
+                {isAdmin ? 'Drop your first workshop, talk, or fest.' : 'Check back soon.'}
+              </p>
               {isAdmin && (
-                <Button variant="primary" onClick={() => navigate('/dashboard/events/new')}>
-                  <Plus className="h-4 w-4" /> Create your first event
-                </Button>
+                <button
+                  type="button"
+                  className="zine-btn zine-btn-accent"
+                  onClick={() => navigate('/dashboard/events/new')}
+                >
+                  <Plus className="h-4 w-4" strokeWidth={3} /> Create event
+                </button>
               )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Discord-style execom sidebar */}
       <ExecomSidebar
         members={execom}
         canManage={isAdmin}
