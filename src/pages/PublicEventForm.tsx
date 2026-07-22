@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Send, CheckCircle, Calendar, MapPin, Clock, Building2, AlertCircle, Palette } from 'lucide-react'
+import { ArrowLeft, Send, CheckCircle, Calendar, MapPin, Clock, Building2, AlertCircle, Palette, Download, IndianRupee, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { formatTime, cn } from '@/lib/utils'
-import { getEventBySlug, getEventQuestions, submitEventResponse, submitResponseAnswers } from '@/lib/supabase'
+import {
+  getEventBySlug,
+  getEventQuestions,
+  submitEventResponse,
+  submitResponseAnswers,
+  uploadPaymentProof,
+  getPaymentProofPublicUrl,
+} from '@/lib/supabase'
 import type { CampusEvent, Organization, EventQuestion } from '@/types'
 
 interface PosterTheme {
@@ -39,7 +46,10 @@ export function PublicEventForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submittedPaid, setSubmittedPaid] = useState(false)
   const [questionsLoading, setQuestionsLoading] = useState(false)
+  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null)
+  const [paymentPreview, setPaymentPreview] = useState<string | null>(null)
 
   // Load the event itself first (fast) so the page renders immediately.
   useEffect(() => {
@@ -140,16 +150,28 @@ export function PublicEventForm() {
     setAnswer(questionId, next)
   }
 
+  const isPaid = event?.payment_type === 'paid'
+  const org = event?.organizations
+  const upiId = org?.upi_id || ''
+  const upiPhone = org?.upi_phone || ''
+  const upiQr = org?.upi_qr_url || ''
+  const price = event?.price || 0
+  const upiDeepLink = upiId
+    ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(org?.name || 'MakeYourPass')}&am=${encodeURIComponent(String(price))}&cu=INR`
+    : ''
+
   function validate(): boolean {
     const newErrors: Record<string, string> = {}
     if (!respondentName.trim()) newErrors.name = 'Name is required'
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (respondentEmail.trim() && !emailRe.test(respondentEmail.trim())) {
-      newErrors.email = 'Enter a valid email address'
-    }
+    if (!respondentEmail.trim()) newErrors.email = 'Email is required'
+    else if (!emailRe.test(respondentEmail.trim())) newErrors.email = 'Enter a valid email address'
     const digits = respondentPhone.replace(/[^\d]/g, '')
     if (respondentPhone.trim() && (digits.length < 10 || digits.length > 15)) {
       newErrors.phone = 'Enter a valid phone number'
+    }
+    if (event?.payment_type === 'paid' && !paymentScreenshot) {
+      newErrors.payment = 'Payment screenshot is required'
     }
     for (const q of questions) {
       if (!q.required) continue
@@ -170,18 +192,28 @@ export function PublicEventForm() {
     setSubmitting(true)
     setError('')
     try {
+      let payment_proof_url = ''
+      if (event.payment_type === 'paid' && paymentScreenshot) {
+        const path = `payments/${event.id}/${Date.now()}-${paymentScreenshot.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+        const { error: upErr } = await uploadPaymentProof(paymentScreenshot, path)
+        if (upErr) {
+          setError('Failed to upload payment screenshot: ' + upErr.message)
+          return
+        }
+        payment_proof_url = getPaymentProofPublicUrl(path)
+      }
+
       const { data: responseData, error: responseError } = await submitEventResponse(event.id, {
         respondent_name: respondentName.trim(),
         respondent_email: respondentEmail.trim(),
         respondent_phone: respondentPhone.trim() || undefined,
+        payment_proof_url,
       })
       if (responseError || !responseData) {
         const msg = responseError?.message || 'Failed to submit response'
-        if (msg.includes('RLS_RECURSION')) {
-          setError('Registration is temporarily unavailable while the database is being configured. Please try again later.')
-        } else {
-          setError(msg)
-        }
+        setError(msg.includes('RLS_RECURSION')
+          ? 'Registration is temporarily unavailable while the database is being configured. Please try again later.'
+          : msg)
         return
       }
       const formattedAnswers = questions
@@ -196,29 +228,21 @@ export function PublicEventForm() {
         }))
       const { error: answersError } = await submitResponseAnswers(responseData.id, formattedAnswers)
       if (answersError) {
-        const msg = answersError.message || 'Failed to save answers'
-        if (msg.includes('RLS_RECURSION')) {
-          setError('Registration is temporarily unavailable while the database is being configured. Please try again later.')
-        } else {
-          setError(msg)
-        }
+        setError(answersError.message || 'Failed to save answers')
         return
       }
-      // Fire-and-forget: generate ticket + send confirmation email.
-      // (Replaces the Supabase DB webhook so it works without dashboard setup.)
-      fetch(`${import.meta.env.VITE_API_BASE || ''}/api/on-registration`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ registration_id: responseData.id }),
-      }).catch(() => { /* email is best-effort; registration already saved */ })
+      // Free: email ticket now. Paid: host reviews screenshot then Send ticket.
+      if (event.payment_type !== 'paid') {
+        fetch(`${import.meta.env.VITE_API_BASE || ''}/api/on-registration`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registration_id: responseData.id }),
+        }).catch(() => {})
+      }
+      setSubmittedPaid(event.payment_type === 'paid')
       setSubmitted(true)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
-      if (message.includes('RLS_RECURSION')) {
-        setError('Registration is temporarily unavailable while the database is being configured. Please try again later.')
-      } else {
-        setError(message)
-      }
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -284,7 +308,7 @@ export function PublicEventForm() {
             transition={{ delay: 0.4 }}
             className="text-2xl font-bold text-[#14110E] mb-3"
           >
-            Response Submitted!
+            {submittedPaid ? 'Payment under review' : 'Response Submitted!'}
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
@@ -300,7 +324,9 @@ export function PublicEventForm() {
             transition={{ delay: 0.6 }}
             className="text-text-muted text-sm mb-8"
           >
-            You'll receive a confirmation at {respondentEmail || 'your email'}.
+            {submittedPaid
+              ? 'Host will verify your payment screenshot and send your ticket + UID to your email.'
+              : `You'll receive your ticket at ${respondentEmail || 'your email'}.`}
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -486,6 +512,92 @@ export function PublicEventForm() {
                   </div>
                 </div>
               </div>
+
+              {/* UPI payment */}
+              {isPaid && (
+                <div className="rounded-2xl border border-border bg-surface/80 p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <IndianRupee className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-semibold text-[#14110E]">Pay ₹{price} via UPI</h2>
+                  </div>
+                  <p className="text-sm text-text-secondary">
+                    Pay using the QR or UPI ID below, then upload a screenshot of the payment. Ticket is sent only after the host verifies.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 items-start">
+                    {upiQr ? (
+                      <a
+                        href={upiDeepLink || upiQr}
+                        className="block shrink-0 rounded-xl border border-border overflow-hidden bg-white p-2 hover:ring-2 hover:ring-primary transition"
+                        title="Open in UPI app"
+                      >
+                        <img src={upiQr} alt="UPI QR" className="h-40 w-40 object-contain" />
+                      </a>
+                    ) : (
+                      <div className="h-40 w-40 rounded-xl border border-dashed border-border flex items-center justify-center text-xs text-text-muted p-3 text-center">
+                        Host has not uploaded a UPI QR yet
+                      </div>
+                    )}
+                    <div className="space-y-2 text-sm flex-1">
+                      {upiId && (
+                        <p>
+                          <span className="text-text-muted">UPI ID: </span>
+                          <strong className="text-text-primary select-all">{upiId}</strong>
+                        </p>
+                      )}
+                      {upiPhone && (
+                        <p>
+                          <span className="text-text-muted">Phone: </span>
+                          <strong className="text-text-primary">{upiPhone}</strong>
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {upiDeepLink && (
+                          <a href={upiDeepLink}>
+                            <Button type="button" variant="primary" size="sm">Open UPI app</Button>
+                          </a>
+                        )}
+                        {upiQr && (
+                          <a href={upiQr} download="upi-qr.png">
+                            <Button type="button" variant="secondary" size="sm">
+                              <Download className="h-3.5 w-3.5" /> Download QR
+                            </Button>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Payment screenshot <span className="text-red-500">*</span>
+                    </label>
+                    <label className={cn(
+                      'flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed cursor-pointer transition',
+                      errors.payment ? 'border-red-500 bg-red-500/5' : 'border-border hover:border-primary/40 bg-surface'
+                    )}>
+                      <Upload className="h-6 w-6 text-text-muted" />
+                      <span className="text-sm text-text-secondary">
+                        {paymentScreenshot ? paymentScreenshot.name : 'Tap to upload screenshot (required)'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] || null
+                          setPaymentScreenshot(f)
+                          if (paymentPreview) URL.revokeObjectURL(paymentPreview)
+                          setPaymentPreview(f ? URL.createObjectURL(f) : null)
+                          if (errors.payment) setErrors((prev) => { const n = { ...prev }; delete n.payment; return n })
+                        }}
+                      />
+                    </label>
+                    {paymentPreview && (
+                      <img src={paymentPreview} alt="Payment proof" className="mt-3 max-h-48 rounded-lg border border-border" />
+                    )}
+                    {errors.payment && <p className="mt-1.5 text-sm text-red-400">{errors.payment}</p>}
+                  </div>
+                </div>
+              )}
 
               {/* Questions */}
               {questionsLoading ? (

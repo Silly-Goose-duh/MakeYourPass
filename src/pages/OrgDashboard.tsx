@@ -140,12 +140,17 @@ export function OrgDashboard() {
           <p className="text-text-secondary max-w-md mb-8">
             Create or request to join an organization to start managing events and registrations.
           </p>
-          <Link to="/signup">
-            <Button variant="primary" size="lg">
-              <Plus className="h-5 w-5" />
-              Create Organization
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link to="/signup">
+              <Button variant="primary" size="lg">
+                <Plus className="h-5 w-5" />
+                Request organization
+              </Button>
+            </Link>
+          </div>
+          <p className="text-xs text-text-muted mt-4 max-w-md">
+            After superadmin approves, your portal goes live at makeyourpass.vercel.app/your-org-slug
+          </p>
         </div>
       </motion.div>
     )

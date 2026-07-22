@@ -8,6 +8,9 @@
   "functions": {
     "api/generate-ticket.ts": { "maxDuration": 30 },
     "api/on-registration.ts": { "maxDuration": 30 },
-    "api/setup-storage.ts": { "maxDuration": 30 }
+    "api/setup-storage.ts": { "maxDuration": 30 },
+    "api/generate-certificate.ts": { "maxDuration": 30 },
+    "api/reachout.ts": { "maxDuration": 60 },
+    "api/end-event.ts": { "maxDuration": 60 }
   }
 }

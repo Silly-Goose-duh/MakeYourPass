@@ -18,6 +18,7 @@ const NotFoundPage = lazy(() => import('@/pages/NotFound'))
 const EventsPage = lazy(() => import('@/pages/EventsPage').then(m => ({ default: m.default })))
 const ScanPage = lazy(() => import('@/pages/ScanPage').then(m => ({ default: m.ScanPage })))
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const OrgHome = lazy(() => import('@/pages/OrgHome').then(m => ({ default: m.OrgHome })))
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -46,10 +47,9 @@ function AppRoutes() {
           <Route path="event/:eventSlug" element={<PageSuspense><PublicEventForm /></PageSuspense>} />
           <Route path="login" element={<LoginPage />} />
           <Route path="signup" element={<SignupPage />} />
-          <Route path="*" element={<PageSuspense><NotFoundPage /></PageSuspense>} />
         </Route>
 
-        {/* Organization Dashboard */}
+        {/* Organization Dashboard (legacy + create/edit tools) */}
         <Route path="/dashboard" element={<ProtectedRoute><PageSuspense><OrgDashboard /></PageSuspense></ProtectedRoute>} />
         <Route path="/dashboard/events/new" element={<OrgAdminRoute><PageSuspense><CreateEvent /></PageSuspense></OrgAdminRoute>} />
         <Route path="/dashboard/events/:id/edit" element={<OrgAdminRoute><PageSuspense><EditEvent /></PageSuspense></OrgAdminRoute>} />
@@ -60,6 +60,11 @@ function AppRoutes() {
         {/* Superadmin Master Control */}
         <Route path="/mc" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
         <Route path="/mc/*" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
+
+        {/* Unified org portal: /:orgSlug (BookMyShow rails + Discord execom sidebar) */}
+        <Route path="/:orgSlug" element={<PageSuspense><OrgHome /></PageSuspense>} />
+
+        <Route path="*" element={<PageSuspense><NotFoundPage /></PageSuspense>} />
       </Routes>
     </AnimatePresence>
   )

@@ -49,6 +49,8 @@ export function CreateEvent() {
   const [price, setPrice] = useState('')
   const [capacity, setCapacity] = useState('')
   const [idPrefix, setIdPrefix] = useState('')
+  const [ticketTemplateFile, setTicketTemplateFile] = useState<File | null>(null)
+  const [certTemplateFile, setCertTemplateFile] = useState<File | null>(null)
 
   const [questions, setQuestions] = useState<FormQuestion[]>([])
 
@@ -144,6 +146,35 @@ export function CreateEvent() {
         brochureUrl = getBrochurePublicUrl(brochurePath)
       }
 
+      let ticketTemplateUrl = ''
+      let certTemplateUrl = ''
+      if (ticketTemplateFile) {
+        const path = `${selectedOrgId}/templates/ticket-${Date.now()}.png`
+        const { error: upErr } = await uploadPoster(ticketTemplateFile, path)
+        if (upErr) { setError('Ticket template upload failed: ' + upErr.message); setSaving(false); return }
+        ticketTemplateUrl = getPosterPublicUrl(path)
+      }
+      if (certTemplateFile) {
+        const path = `${selectedOrgId}/templates/cert-${Date.now()}.png`
+        const { error: upErr } = await uploadPoster(certTemplateFile, path)
+        if (upErr) { setError('Certificate template upload failed: ' + upErr.message); setSaving(false); return }
+        certTemplateUrl = getPosterPublicUrl(path)
+      }
+
+      if (paymentType === 'paid') {
+        const org = organizations.find((o) => o.id === selectedOrgId)
+        if (!org?.upi_id && !org?.upi_qr_url) {
+          setError('Set your org UPI ID / QR on the organization page before publishing a paid event.')
+          setSaving(false)
+          return
+        }
+        if (!price || parseFloat(price) <= 0) {
+          setError('Enter a valid price for UPI paid events')
+          setSaving(false)
+          return
+        }
+      }
+
       const slug = generateSlug(title)
       const eventPayload: Partial<CampusEvent> = {
         organization_id: selectedOrgId,
@@ -156,11 +187,12 @@ export function CreateEvent() {
         time: time || null,
         venue,
         form_type: formType,
-        // Paid (Razorpay) not live yet — always free until checkout is wired.
-        payment_type: 'free',
-        price: 0,
+        payment_type: paymentType,
+        price: paymentType === 'paid' ? (parseFloat(price) || 0) : 0,
         capacity: capacity ? (parseInt(capacity, 10) || 0) : 0,
         id_prefix: idPrefix || null,
+        ticket_template_url: ticketTemplateUrl,
+        certificate_template_url: certTemplateUrl,
         status: 'published',
       }
 
@@ -502,17 +534,34 @@ export function CreateEvent() {
                       </button>
                       <button
                         type="button"
-                        disabled
-                        title="Paid tickets (Razorpay) coming soon"
-                        className="flex items-center justify-center gap-2 p-4 rounded-xl border border-border bg-surface/30 text-text-muted cursor-not-allowed opacity-70"
+                        onClick={() => setPaymentType('paid')}
+                        className={cn(
+                          'flex items-center justify-center gap-2 p-4 rounded-xl border transition-all',
+                          paymentType === 'paid'
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border bg-surface/50 text-text-secondary hover:border-primary/30'
+                        )}
                       >
                         <IndianRupee className="h-4 w-4" />
-                        <span className="text-sm font-medium">Paid · soon</span>
+                        <span className="text-sm font-medium">UPI paid</span>
                       </button>
                     </div>
-                    <p className="mt-2 text-xs text-text-muted">
-                      Free registration with QR tickets is live. Paid events via Razorpay will ship next.
-                    </p>
+                    {paymentType === 'paid' && (
+                      <div className="mt-3 relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                        <Input
+                          type="number"
+                          placeholder="Amount in ₹"
+                          value={price}
+                          onChange={e => setPrice(e.target.value)}
+                          className="pl-9"
+                        />
+                        <p className="mt-2 text-xs text-text-muted">
+                          Registrants pay via your org UPI QR and must upload a screenshot. You review and Send ticket from Live panel.
+                          Set UPI on your org page first.
+                        </p>
+                      </div>
+                    )}
                     <div className="mt-3">
                       <label className="block text-xs font-medium text-text-primary mb-1.5">Capacity (leave empty for unlimited)</label>
                       <Input
@@ -530,6 +579,13 @@ export function CreateEvent() {
                         value={idPrefix}
                         onChange={e => setIdPrefix(e.target.value.toUpperCase())}
                       />
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <label className="block text-xs font-medium text-text-primary">Ticket template (PNG, optional)</label>
+                      <input type="file" accept="image/png,image/jpeg" onChange={(e) => setTicketTemplateFile(e.target.files?.[0] || null)} className="text-xs text-text-secondary" />
+                      <label className="block text-xs font-medium text-text-primary mt-2">Certificate template (PNG, optional)</label>
+                      <input type="file" accept="image/png,image/jpeg" onChange={(e) => setCertTemplateFile(e.target.files?.[0] || null)} className="text-xs text-text-secondary" />
+                      <p className="text-[11px] text-text-muted">Leave clear space for the attendee name (center). Used when sending tickets / ending the event.</p>
                     </div>
                   </div>
                 </div>

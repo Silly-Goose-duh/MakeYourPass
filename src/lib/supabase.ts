@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Profile, Organization, OrganizationMember, OrgRegistrationRequest, CampusEvent, EventQuestion, EventResponse, ResponseAnswer } from '@/types'
+import type { Profile, Organization, OrganizationMember, OrgRegistrationRequest, CampusEvent, EventQuestion, EventResponse, ResponseAnswer, OrgExecomMember } from '@/types'
 
 // Helper to detect RLS recursion errors
 function isRlsRecursionError(error: unknown): boolean {
@@ -117,6 +117,53 @@ export async function getOrganizationsWithCounts() {
 export async function getOrganizationBySlug(slug: string) {
   const { data, error } = await supabase.from('organizations').select('*').eq('slug', slug).single()
   return { data: data as Organization | null, error }
+}
+
+export async function updateOrganization(id: string, updates: Partial<Organization>) {
+  const { data, error } = await supabase.from('organizations').update(updates).eq('id', id).select().single()
+  return { data: data as Organization | null, error }
+}
+
+export async function getExecomMembers(orgId: string) {
+  const { data, error } = await supabase
+    .from('org_execom_members')
+    .select('*')
+    .eq('organization_id', orgId)
+    .order('role_title')
+    .order('sort_order')
+  return { data: data as OrgExecomMember[] | null, error }
+}
+
+export async function addExecomMember(member: {
+  organization_id: string
+  full_name: string
+  role_title: string
+  photo_url?: string
+  sort_order?: number
+}) {
+  const { data, error } = await supabase.from('org_execom_members').insert(member).select().single()
+  return { data: data as OrgExecomMember | null, error }
+}
+
+export async function updateExecomMember(id: string, updates: Partial<OrgExecomMember>) {
+  const { data, error } = await supabase.from('org_execom_members').update(updates).eq('id', id).select().single()
+  return { data: data as OrgExecomMember | null, error }
+}
+
+export async function deleteExecomMember(id: string) {
+  const { error } = await supabase.from('org_execom_members').delete().eq('id', id)
+  return { error }
+}
+
+export async function getPublishedEventsByOrg(orgId: string) {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('organization_id', orgId)
+    .eq('status', 'published')
+    .order('date', { ascending: true })
+  if (isRlsRecursionError(error)) return { data: [], error: new Error('RLS_RECURSION') }
+  return { data: data as CampusEvent[] | null, error }
 }
 
 // ==================== Org Registration Requests ====================
@@ -274,8 +321,8 @@ export async function getEventById(id: string) {
 }
 
 export async function createEvent(event: Partial<CampusEvent>) {
-  // Try RPC first (SECURITY DEFINER - bypasses RLS)
-  const rpcResult = await tryRpc<{ id: string }>('create_event', {
+  // Try RPC first (SECURITY DEFINER - auth-gated)
+  const rpcResult = await tryRpc<string>('create_event', {
     org_id: event.organization_id,
     event_title: event.title,
     event_slug: event.slug,
@@ -287,10 +334,19 @@ export async function createEvent(event: Partial<CampusEvent>) {
     event_payment_type: event.payment_type || 'free',
     event_price: event.price || 0,
     event_status: event.status || 'draft',
+    event_capacity: event.capacity || 0,
+    event_id_prefix: event.id_prefix || null,
+    event_poster_url: event.poster_url || '',
+    event_brochure_url: event.brochure_url || '',
+    event_ticket_template_url: event.ticket_template_url || '',
+    event_certificate_template_url: event.certificate_template_url || '',
   })
   if (rpcResult.found && rpcResult.data) {
-    // Fetch the full event
-    return getEventById(rpcResult.data.id as string)
+    const id = typeof rpcResult.data === 'string' ? rpcResult.data : (rpcResult.data as { id?: string }).id
+    if (id) return getEventById(id)
+  }
+  if (rpcResult.found && rpcResult.error) {
+    return { data: null, error: rpcResult.error }
   }
 
   // Fallback: direct insert
@@ -375,26 +431,61 @@ export async function saveEventQuestions(eventId: string, questions: { title: st
 
 // ==================== Event Responses ====================
 
-export async function submitEventResponse(eventId: string, data: { respondent_name: string; respondent_email: string; respondent_phone?: string }) {
+export async function submitEventResponse(
+  eventId: string,
+  data: {
+    respondent_name: string
+    respondent_email: string
+    respondent_phone?: string
+    payment_proof_url?: string
+  }
+) {
   // Route through a SECURITY DEFINER RPC so anonymous form submissions
-  // always succeed (bypasses event_responses RLS). Falls back to direct
-  // insert if the RPC is unavailable.
+  // always succeed (bypasses event_responses RLS).
   try {
     const { data: rpcId, error: rpcError } = await supabase.rpc('submit_event_response', {
       p_event_id: eventId,
       p_name: data.respondent_name,
       p_email: data.respondent_email,
       p_phone: data.respondent_phone ?? '',
+      p_payment_proof_url: data.payment_proof_url ?? '',
     })
     if (!rpcError && rpcId) {
       return { data: { id: rpcId } as EventResponse, error: null }
     }
-  } catch { /* fall through to direct insert */ }
-  const { data: result, error } = await supabase.from('event_responses').insert({ event_id: eventId, ...data }).select().single()
+    if (rpcError) return { data: null, error: rpcError }
+  } catch { /* fall through */ }
+  const { data: result, error } = await supabase
+    .from('event_responses')
+    .insert({
+      event_id: eventId,
+      respondent_name: data.respondent_name,
+      respondent_email: data.respondent_email,
+      respondent_phone: data.respondent_phone ?? '',
+      payment_proof_url: data.payment_proof_url ?? '',
+      payment_status: data.payment_proof_url ? 'pending' : 'na',
+    })
+    .select()
+    .single()
   if (isRlsRecursionError(error)) {
     return { data: null, error: new Error('RLS_RECURSION') }
   }
   return { data: result as EventResponse | null, error }
+}
+
+export async function verifyPayment(responseId: string) {
+  const { data, error } = await supabase.rpc('verify_payment', { p_response_id: responseId })
+  return { data, error }
+}
+
+export async function rejectPayment(responseId: string) {
+  const { data, error } = await supabase.rpc('reject_payment', { p_response_id: responseId })
+  return { data, error }
+}
+
+export async function markEventEnded(eventId: string) {
+  const { data, error } = await supabase.rpc('mark_event_ended', { p_event_id: eventId })
+  return { data, error }
 }
 
 export async function submitResponseAnswers(responseId: string, answers: { question_id: string; value: string }[]) {
@@ -459,6 +550,30 @@ export async function uploadBrochure(file: File, path: string) {
 export function getBrochurePublicUrl(path: string) {
   const { data } = supabase.storage.from('event-posters').getPublicUrl(path)
   return data.publicUrl
+}
+
+export async function uploadOrgAsset(file: File, path: string) {
+  return supabase.storage.from('event-posters').upload(path, file, { upsert: true })
+}
+
+export function getOrgAssetPublicUrl(path: string) {
+  const { data } = supabase.storage.from('event-posters').getPublicUrl(path)
+  return data.publicUrl
+}
+
+export async function uploadPaymentProof(file: File, path: string) {
+  return supabase.storage.from('payment-proofs').upload(path, file, { upsert: true })
+}
+
+export function getPaymentProofPublicUrl(path: string) {
+  const { data } = supabase.storage.from('payment-proofs').getPublicUrl(path)
+  return data.publicUrl
+}
+
+/** Current session access token for host APIs */
+export async function getAccessToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
 }
 
 // ==================== RLS Status ====================

@@ -28,6 +28,7 @@ export default async function handler(req: any, res: any) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
     const registrationId: string | undefined =
       body?.registration_id || body?.record?.id
+    const force = !!body?.force
     if (!registrationId) return res.status(400).json({ error: 'registration_id required' })
 
     const supabaseMod = await import('@supabase/supabase-js')
@@ -42,7 +43,7 @@ export default async function handler(req: any, res: any) {
       .eq('id', registrationId)
       .single()
     if (regErr || !reg) return res.status(404).json({ error: 'Registration not found' })
-    if (reg.email_sent_at) return res.status(200).json({ skipped: 'already_sent' })
+    if (reg.email_sent_at && !force) return res.status(200).json({ skipped: 'already_sent' })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ev = (reg as any).events || {}

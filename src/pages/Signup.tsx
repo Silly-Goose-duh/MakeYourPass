@@ -200,7 +200,7 @@ export function SignupPage() {
                         />
                       ) : (
                         <p className="text-sm font-mono truncate" style={{ color: '#4A4640' }}>
-                          campuspass.com/<span style={{ color: '#14110E', fontWeight: 700 }}>{orgSlug || 'your-org'}</span>
+                          makeyourpass.vercel.app/<span style={{ color: '#14110E', fontWeight: 700 }}>{orgSlug || 'your-org'}</span>
                         </p>
                       )}
                     </div>

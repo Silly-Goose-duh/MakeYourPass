@@ -1,5 +1,5 @@
 // ============================================================
-// CAMPUSPASS — Type Definitions
+// MakeYourPass — Type Definitions
 // ============================================================
 
 export interface Profile {
@@ -18,10 +18,26 @@ export interface Organization {
   description: string
   logo_url: string
   is_approved: boolean
+  upi_id?: string
+  upi_phone?: string
+  upi_qr_url?: string
+  cover_url?: string
+  website?: string
+  instagram?: string
   created_at: string
   updated_at: string
   member_count?: number
   event_count?: number
+}
+
+export interface OrgExecomMember {
+  id: string
+  organization_id: string
+  full_name: string
+  role_title: string
+  photo_url: string
+  sort_order: number
+  created_at: string
 }
 
 export interface OrganizationMember {
@@ -62,6 +78,9 @@ export interface CampusEvent {
   registration_counter: number
   status: 'draft' | 'published' | 'cancelled'
   response_count: number
+  ticket_template_url?: string
+  certificate_template_url?: string
+  ended_at?: string | null
   created_at: string
   updated_at: string
   organization?: Organization
@@ -79,6 +98,8 @@ export interface EventQuestion {
   created_at: string
 }
 
+export type PaymentStatus = 'na' | 'pending' | 'verified' | 'rejected'
+
 export interface EventResponse {
   id: string
   event_id: string
@@ -93,6 +114,11 @@ export interface EventResponse {
   admitted_by: string | null
   ticket_url: string | null
   email_sent_at: string | null
+  payment_proof_url?: string
+  payment_status?: PaymentStatus
+  payment_verified_at?: string | null
+  certificate_url?: string | null
+  certificate_sent_at?: string | null
 }
 
 export interface ResponseAnswer {
