@@ -7,6 +7,7 @@
   ],
   "functions": {
     "api/generate-ticket.ts": { "maxDuration": 30 },
-    "api/on-registration.ts": { "maxDuration": 30 }
+    "api/on-registration.ts": { "maxDuration": 30 },
+    "api/setup-storage.ts": { "maxDuration": 30 }
   }
 }

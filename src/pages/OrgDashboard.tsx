@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Calendar, Eye, BarChart3, Edit, ExternalLink, Sparkles, Building2, Clock, CheckCircle, Users } from 'lucide-react'
+import { Plus, Calendar, Eye, BarChart3, Edit, ExternalLink, Sparkles, Building2, Clock, CheckCircle, Users, QrCode, LayoutDashboard } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -473,11 +473,11 @@ export function OrgDashboard() {
                               </div>
 
                               {/* Actions */}
-                              <div className="flex items-center gap-1.5 pt-3 border-t border-border">
+                              <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-border">
                                 <Link
                                   to={`/event/${event.slug}`}
                                   target="_blank"
-                                  className="flex-1"
+                                  className="flex-1 min-w-[4.5rem]"
                                 >
                                   <Button variant="ghost" size="sm" fullWidth className="text-xs">
                                     <Eye className="h-3.5 w-3.5" />
@@ -486,16 +486,34 @@ export function OrgDashboard() {
                                 </Link>
                                 <Link
                                   to={`/dashboard/events/${event.id}/analytics`}
-                                  className="flex-1"
+                                  className="flex-1 min-w-[4.5rem]"
                                 >
                                   <Button variant="ghost" size="sm" fullWidth className="text-xs">
                                     <BarChart3 className="h-3.5 w-3.5" />
-                                    Analytics
+                                    Stats
+                                  </Button>
+                                </Link>
+                                <Link
+                                  to={`/host/${event.id}/dashboard`}
+                                  className="flex-1 min-w-[4.5rem]"
+                                >
+                                  <Button variant="ghost" size="sm" fullWidth className="text-xs">
+                                    <LayoutDashboard className="h-3.5 w-3.5" />
+                                    Live
+                                  </Button>
+                                </Link>
+                                <Link
+                                  to={`/host/${event.id}/scan`}
+                                  className="flex-1 min-w-[4.5rem]"
+                                >
+                                  <Button variant="ghost" size="sm" fullWidth className="text-xs">
+                                    <QrCode className="h-3.5 w-3.5" />
+                                    Scan
                                   </Button>
                                 </Link>
                                 <Link
                                   to={`/dashboard/events/${event.id}/edit`}
-                                  className="flex-1"
+                                  className="flex-1 min-w-[4.5rem]"
                                 >
                                   <Button variant="ghost" size="sm" fullWidth className="text-xs">
                                     <Edit className="h-3.5 w-3.5" />
@@ -505,14 +523,14 @@ export function OrgDashboard() {
                                 <button
                                   onClick={() => copyFormLink(event.slug)}
                                   className={cn(
-                                    'flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border',
+                                    'flex-1 min-w-[4.5rem] inline-flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 border',
                                     copiedSlug === event.slug
                                       ? 'bg-success/20 text-success border-success/30'
                                       : 'bg-surface text-text-secondary border-border hover:text-text-primary hover:border-primary/30'
                                   )}
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
-                                  {copiedSlug === event.slug ? 'Copied!' : 'Copy Link'}
+                                  {copiedSlug === event.slug ? 'Copied!' : 'Link'}
                                 </button>
                               </div>
                             </CardContent>

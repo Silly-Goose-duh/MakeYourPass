@@ -28,7 +28,7 @@ const features = [
   {
     icon: CreditCard,
     title: 'Payment Processing',
-    description: 'Accept payments via Razorpay, Slice, and more. No setup fees, no monthly charges — just seamless transactions.',
+    description: 'Free events with QR tickets ship today. Paid checkout (Razorpay) is next — same smooth check-in flow.',
     badge: 'Free',
   },
   {

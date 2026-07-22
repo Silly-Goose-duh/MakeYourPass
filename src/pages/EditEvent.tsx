@@ -100,8 +100,9 @@ export function EditEvent() {
       venue,
       poster_url: posterUrl,
       brochure_url: brochureUrl,
-      payment_type: paymentType,
-      price: paymentType === 'paid' ? (parseFloat(price) || 0) : 0,
+      // Paid (Razorpay) not live yet — keep free until checkout is wired.
+      payment_type: 'free',
+      price: 0,
       status,
     })
 
@@ -266,7 +267,7 @@ export function EditEvent() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setPaymentType('free')}
+                      onClick={() => { setPaymentType('free'); setPrice('') }}
                       className={`flex items-center justify-center gap-2 p-4 rounded-xl border transition-all ${
                         paymentType === 'free'
                           ? 'border-primary bg-primary/10 text-primary'
@@ -278,29 +279,17 @@ export function EditEvent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPaymentType('paid')}
-                      className={`flex items-center justify-center gap-2 p-4 rounded-xl border transition-all ${
-                        paymentType === 'paid'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border bg-surface/50 text-text-secondary hover:border-primary/30'
-                      }`}
+                      disabled
+                      title="Paid tickets (Razorpay) coming soon"
+                      className="flex items-center justify-center gap-2 p-4 rounded-xl border border-border bg-surface/30 text-text-muted cursor-not-allowed opacity-70"
                     >
                       <IndianRupee className="h-4 w-4" />
-                      <span className="text-sm font-medium">Paid</span>
+                      <span className="text-sm font-medium">Paid · soon</span>
                     </button>
                   </div>
-                  {paymentType === 'paid' && (
-                    <div className="mt-3 relative">
-                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={price}
-                        onChange={e => setPrice(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
-                  )}
+                  <p className="mt-2 text-xs text-text-muted">
+                    Free registration with QR tickets is live. Paid events via Razorpay will ship next.
+                  </p>
                 </div>
 
                 <div>

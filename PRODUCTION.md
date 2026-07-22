@@ -1,12 +1,13 @@
 # MakeYourPass — Production Readiness Handoff
 
 Zero-context handoff for whoever picks this up next (human or agent).
-Status as of **2026-07-11**. ✅ = verified done & live. 🔴/🟠/🟡 = needs a human action
+Status as of **2026-07-22**. ✅ = verified done & live. 🔴/🟠/🟡 = needs a human action
 (secrets, Supabase dashboard, or a product decision an autonomous agent shouldn't make blindly).
 
 Live site: **https://makeyourpass.vercel.app**
 Repo: **https://github.com/Silly-Goose-duh/MakeYourPass** (branch `master`)
 Supabase project: `isvylfovcwtlemjpkdqp` (anon key in Vercel env)
+GitHub owner: **Silly-Goose-duh** · Default browser: **Chrome**
 
 ---
 

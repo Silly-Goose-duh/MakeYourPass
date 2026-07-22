@@ -14,23 +14,17 @@ backend, secrets, or product decisions and are handed off.
 - Cleared all 3 eslint unused-var errors. `npm run lint` and `npm run build` both pass clean.
 
 ## 🔴 Critical (blockers)
-- **RLS infinite-recursion dependency.** Whole app depends on RPCs + `supabase/rls-fix-v2.sql`
-  being applied in Supabase, else every read fails with `RLS_RECURSION`. A fresh clone with
-  no Supabase project loads no data. Document required migrations + provide `.env.local` template.
-- **No `.env.local` / env validation / `vercel.json`.** Supabase URL/key, Razorpay, EmailJS,
-  Groq keys all required but only in `.env.example`. Add runtime env validation + Vercel routing config.
+- ~~RLS recursion~~ — fixed in prod (`rls-fix-v2` + RPCs live).
+- ~~vercel.json / SPA routing~~ — fixed; assets load on Vercel.
+- ~~VITE env on Vercel~~ — re-synced from `.env.local` (2026-07-22).
 
-## 🟠 Dead / unwired features (shipped but non-functional)
-- **Razorpay payments never fire.** `api/razorpay.ts` exists but the client never calls it or
-  loads Razorpay Checkout. Paid events display "Tickets processed securely via Razorpay"
-  (`EventBuilder.tsx:1366`) as a false promise. Wire the checkout flow or hide paid events.
-- **EmailJS confirmations never sent.** `sendConfirmationEmail` (`src/lib/email.ts`) is never
-  imported, yet `PublicEventForm.tsx:224` promises "You'll receive a confirmation at {email}".
-- **QR check-in absent.** `html5-qrcode` + `qrcode.react` are deps but unused; no pass/scan model.
-- **`EventBuilder.tsx` + `useColorExtractor.ts` are orphaned** (not imported by App.tsx; app uses
-  CreateEvent/EditEvent). Dead code using old tokens — delete or re-integrate.
-- **`/dashboard/orgs/new` route missing** — "Create Organization" link (`OrgDashboard.tsx:143`)
-  and signup org-request flow point to a non-existent route → 404.
+## 🟠 Remaining product work
+- **Razorpay payments** — UI now shows "Paid · soon" (disabled). Wire checkout when keys ready.
+- **Email** — Resend + `/api/on-registration` (not EmailJS) handles ticket email. Confirm Resend domain.
+- **QR check-in** — **DONE** (`/host/:eventId/scan` + `admit_registration` RPC).
+- **Live host dashboard** — **DONE** (`/host/:eventId/dashboard`); linked from org dashboard.
+- **Storage buckets** — create `event-posters` + `tickets` via `/api/setup-storage` if missing.
+- **`EventBuilder.tsx` + `useColorExtractor.ts`** still orphaned — safe to delete later.
 
 ## 🟡 Security / config
 - **Groq API key exposed client-side** (`VITE_GROQ_API_KEY` shipped to browser in `groq.ts`).
