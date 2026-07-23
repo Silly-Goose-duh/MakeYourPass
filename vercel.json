@@ -13,6 +13,8 @@
     "api/reachout.ts": { "maxDuration": 60 },
     "api/end-event.ts": { "maxDuration": 60 },
     "api/notify-org-decision.ts": { "maxDuration": 30 },
-    "api/mc-pending-requests.ts": { "maxDuration": 15 }
+    "api/mc-pending-requests.ts": { "maxDuration": 15 },
+    "api/complete-signup.ts": { "maxDuration": 30 },
+    "api/resend-verification.ts": { "maxDuration": 30 }
   }
 }
