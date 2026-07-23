@@ -103,14 +103,27 @@ export function MCPanel() {
 
   async function loadPendingRequests() {
     setRequestsLoading(true)
-    const { data, error } = await getPendingRequests()
-    if (error) {
-      showToast(error.message || 'Failed to load requests', 'error')
+    try {
+      const { data, error } = await getPendingRequests()
+      if (error) {
+        console.error('loadPendingRequests error', error)
+        showToast(error.message || 'Failed to load requests', 'error')
+        setPendingRequests([])
+      } else {
+        const list = Array.isArray(data) ? data : []
+        setPendingRequests(list as PendingRequest[])
+        if (list.length === 0) {
+          // Help diagnose empty vs error
+          console.info('loadPendingRequests: 0 pending rows returned')
+        }
+      }
+    } catch (e) {
+      console.error('loadPendingRequests threw', e)
+      showToast(e instanceof Error ? e.message : 'Failed to load requests', 'error')
       setPendingRequests([])
-    } else {
-      setPendingRequests((data || []) as PendingRequest[])
+    } finally {
+      setRequestsLoading(false)
     }
-    setRequestsLoading(false)
   }
 
   async function loadOrganizations() {

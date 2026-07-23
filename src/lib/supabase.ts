@@ -231,19 +231,47 @@ export type PendingOrgRequest = {
 }
 
 export async function getPendingRequests() {
-  // Prefer SECURITY DEFINER RPC (works even when PostgREST embed fails)
-  const rpc = await tryRpc<PendingOrgRequest[]>('list_pending_org_requests')
-  if (rpc.found) {
-    if (rpc.error) return { data: null, error: rpc.error }
-    return { data: (rpc.data || []) as PendingOrgRequest[], error: null }
+  // 1) Preferred: server API with service role (bypasses RLS quirks)
+  try {
+    const token = await getAccessToken()
+    if (token) {
+      const res = await fetch('/api/mc-pending-requests', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const j = await res.json().catch(() => ({}))
+      if (res.ok && Array.isArray(j.requests)) {
+        return { data: j.requests as PendingOrgRequest[], error: null }
+      }
+      // If 403/401, fall through — caller may not be superadmin or API not deployed yet
+      if (res.status >= 500) {
+        return { data: null, error: new Error(j.error || 'Failed to load pending requests') }
+      }
+    }
+  } catch {
+    /* fall through to RPC / table */
   }
 
-  // Fallback: plain select (no profiles embed — no FK to profiles)
+  // 2) SECURITY DEFINER RPC (no empty-params object — zero-arg function)
+  try {
+    const { data, error } = await supabase.rpc('list_pending_org_requests')
+    if (!error && Array.isArray(data)) {
+      return { data: data as PendingOrgRequest[], error: null }
+    }
+    if (error && !String(error.message || '').includes('Only superadmin')) {
+      // keep going to table fallback
+      console.warn('list_pending_org_requests:', error.message)
+    }
+  } catch {
+    /* continue */
+  }
+
+  // 3) Plain table select + profile enrich (superadmin RLS)
   const { data, error } = await supabase
     .from('organization_registration_requests')
     .select('*')
     .eq('status', 'pending')
-    .order('created_at')
+    .order('created_at', { ascending: true })
   if (error) return { data: null, error }
 
   const rows = (data || []) as Array<Record<string, unknown>>
