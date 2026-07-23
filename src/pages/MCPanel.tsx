@@ -16,18 +16,12 @@ import { useAuth } from '@/hooks/useAuth'
 import {
   getProfile, getPendingRequests, approveRequest, rejectRequest,
   getAllEvents, getOrganizationsWithCounts,
-  getAllProfiles, signOut
+  getAllProfiles, signOut, notifyOrgDecision,
+  type PendingOrgRequest,
 } from '@/lib/supabase'
 import type { Profile, Organization, CampusEvent } from '@/types'
 
-interface PendingRequest {
-  id: string
-  organization_name: string
-  organization_slug: string
-  description: string | null
-  profiles: { full_name: string; email: string } | null
-  created_at: string
-}
+type PendingRequest = PendingOrgRequest
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -79,8 +73,10 @@ export function MCPanel() {
   const [selectedEvent, setSelectedEvent] = useState<(CampusEvent & { organizations: Pick<Organization, 'name'> }) | null>(null)
   const [eventModalOpen, setEventModalOpen] = useState(false)
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_profiles, setProfiles] = useState<Profile[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [profilesLoading, setProfilesLoading] = useState(true)
+  const [userSearch, setUserSearch] = useState('')
+  const [activeTab, setActiveTab] = useState('requests')
 
   useEffect(() => {
     if (!user) return
@@ -92,19 +88,27 @@ export function MCPanel() {
   }, [user])
 
   useEffect(() => {
-    loadPendingRequests()
-    loadOrganizations()
-    loadEvents()
-    loadProfiles()
+    void refreshAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function refreshAll() {
+    await Promise.all([
+      loadPendingRequests(),
+      loadOrganizations(),
+      loadEvents(),
+      loadProfiles(),
+    ])
+  }
 
   async function loadPendingRequests() {
     setRequestsLoading(true)
     const { data, error } = await getPendingRequests()
-    if (error?.message?.includes('RLS_RECURSION')) {
-      setToast({ message: 'Database configuration needed. Please apply the SQL fix in the Supabase dashboard.', type: 'error' })
-    } else if (data) {
-      setPendingRequests(data as unknown as PendingRequest[])
+    if (error) {
+      showToast(error.message || 'Failed to load requests', 'error')
+      setPendingRequests([])
+    } else {
+      setPendingRequests((data || []) as PendingRequest[])
     }
     setRequestsLoading(false)
   }
@@ -112,8 +116,9 @@ export function MCPanel() {
   async function loadOrganizations() {
     setOrgsLoading(true)
     const { data, error } = await getOrganizationsWithCounts()
-    if (error?.message?.includes('RLS_RECURSION')) {
-      setToast({ message: 'Database configuration needed. Please apply the SQL fix in the Supabase dashboard.', type: 'error' })
+    if (error) {
+      showToast(error.message || 'Failed to load organizations', 'error')
+      setOrganizations([])
     } else if (data) {
       setOrganizations(data)
     }
@@ -123,8 +128,9 @@ export function MCPanel() {
   async function loadEvents() {
     setEventsLoading(true)
     const { data, error } = await getAllEvents()
-    if (error?.message?.includes('RLS_RECURSION')) {
-      setToast({ message: 'Database configuration needed. Please apply the SQL fix in the Supabase dashboard.', type: 'error' })
+    if (error) {
+      showToast(error.message || 'Failed to load events', 'error')
+      setEvents([])
     } else if (data) {
       setEvents(data)
     }
@@ -132,43 +138,86 @@ export function MCPanel() {
   }
 
   async function loadProfiles() {
+    setProfilesLoading(true)
     const { data, error } = await getAllProfiles()
-    if (error?.message?.includes('RLS_RECURSION')) {
-      setToast({ message: 'Database configuration needed. Please apply the SQL fix in the Supabase dashboard.', type: 'error' })
+    if (error) {
+      showToast(error.message || 'Failed to load users', 'error')
+      setProfiles([])
     } else if (data) {
       setProfiles(data)
     }
+    setProfilesLoading(false)
   }
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
     setToast({ message, type })
-    setTimeout(() => setToast(null), 4000)
+    setTimeout(() => setToast(null), 4500)
+  }
+
+  function requesterLabel(r: PendingRequest) {
+    return r.requester_name || r.profiles?.full_name || 'Unknown'
+  }
+  function requesterEmail(r: PendingRequest) {
+    return r.requester_email || r.profiles?.email || ''
   }
 
   async function handleConfirmAction() {
     if (!confirmId || !confirmAction) return
     setActionLoading(confirmId)
-    if (confirmAction === 'approve') {
-      const { error } = await approveRequest(confirmId)
-      if (error) {
-        showToast('Failed to approve request', 'error')
+    try {
+      if (confirmAction === 'approve') {
+        const { data, error } = await approveRequest(confirmId)
+        if (error) {
+          showToast(error.message || 'Failed to approve request', 'error')
+        } else if (data?.error) {
+          showToast(data.error, 'error')
+        } else {
+          const email = data?.requester_email || ''
+          if (email) {
+            const { error: nErr } = await notifyOrgDecision({
+              type: 'approved',
+              email,
+              name: data?.requester_name,
+              organization_name: data?.organization_name || 'your organization',
+              slug: data?.slug,
+            })
+            if (nErr) {
+              showToast(
+                `Org approved · portal live at /${data?.slug} — email notify failed (${nErr.message})`,
+                'error'
+              )
+            } else {
+              showToast(`Approved! Portal live at /${data?.slug} — email sent to ${email}`)
+            }
+          } else {
+            showToast(`Approved! Portal live at /${data?.slug || '…'} (no email on file)`)
+          }
+          await refreshAll()
+        }
       } else {
-        showToast('Organization approved successfully!')
-        loadPendingRequests()
-        loadOrganizations()
+        const { data, error } = await rejectRequest(confirmId)
+        if (error) {
+          showToast(error.message || 'Failed to reject request', 'error')
+        } else if (data?.error) {
+          showToast(data.error, 'error')
+        } else {
+          if (data?.requester_email) {
+            await notifyOrgDecision({
+              type: 'rejected',
+              email: data.requester_email,
+              name: data.requester_name,
+              organization_name: data.organization_name || 'your organization',
+            })
+          }
+          showToast('Request rejected')
+          await loadPendingRequests()
+        }
       }
-    } else {
-      const { error } = await rejectRequest(confirmId)
-      if (error) {
-        showToast('Failed to reject request', 'error')
-      } else {
-        showToast('Request rejected')
-        loadPendingRequests()
-      }
+    } finally {
+      setActionLoading(null)
+      setConfirmId(null)
+      setConfirmAction(null)
     }
-    setActionLoading(null)
-    setConfirmId(null)
-    setConfirmAction(null)
   }
 
   async function handleSignOut() {
@@ -328,11 +377,16 @@ export function MCPanel() {
                 <p className="text-text-secondary text-sm">{selectedEvent.description}</p>
               </div>
             )}
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link to={`/event/${selectedEvent.slug}`} target="_blank">
                 <Button variant="outline" size="sm">
                   <Eye className="h-4 w-4" />
-                  View Public Page
+                  Public form
+                </Button>
+              </Link>
+              <Link to={`/host/${selectedEvent.id}/dashboard`} target="_blank">
+                <Button variant="outline" size="sm">
+                  Host live panel
                 </Button>
               </Link>
               <p className="text-xs text-text-muted">
@@ -349,11 +403,11 @@ export function MCPanel() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <Link
-                to="/dashboard"
+                to="/"
                 className="flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="text-sm hidden sm:inline">Back to MakeYourPass</span>
+                <span className="text-sm hidden sm:inline">Back to home</span>
               </Link>
               <div className="h-6 w-px bg-border" />
               <div className="flex items-center gap-2.5">
@@ -407,9 +461,9 @@ export function MCPanel() {
             </p>
           </motion.div>
 
-          <Tabs defaultValue="requests" variant="pills">
-            <motion.div variants={itemVariants}>
-              <TabsList className="mb-8">
+          <Tabs value={activeTab} onChange={setActiveTab} defaultValue="requests" variant="pills">
+            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+              <TabsList className="mb-0">
                 <TabsTrigger value="requests" icon={<Clock className="h-4 w-4" />}>
                   Requests
                   {pendingRequests.length > 0 && (
@@ -424,10 +478,16 @@ export function MCPanel() {
                 <TabsTrigger value="events" icon={<Calendar className="h-4 w-4" />}>
                   Events
                 </TabsTrigger>
+                <TabsTrigger value="users" icon={<Users className="h-4 w-4" />}>
+                  Users
+                </TabsTrigger>
                 <TabsTrigger value="overview" icon={<BarChart3 className="h-4 w-4" />}>
                   Overview
                 </TabsTrigger>
               </TabsList>
+              <Button variant="ghost" size="sm" onClick={() => void refreshAll()}>
+                <RefreshCw className="h-4 w-4" /> Refresh all
+              </Button>
             </motion.div>
 
             {/* ============= TAB 1: REQUESTS ============= */}
@@ -496,16 +556,20 @@ export function MCPanel() {
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
                                 <span className="flex items-center gap-1.5">
                                   <Users className="h-3.5 w-3.5" />
-                                  {request.profiles?.full_name || 'Unknown'}
+                                  {requesterLabel(request)}
                                 </span>
-                                {request.profiles?.email && (
-                                  <span>{request.profiles.email}</span>
+                                {requesterEmail(request) && (
+                                  <span>{requesterEmail(request)}</span>
                                 )}
                                 <span className="flex items-center gap-1.5">
                                   <Clock className="h-3.5 w-3.5" />
                                   {formatDateTime(request.created_at)}
                                 </span>
                               </div>
+                              <p className="text-xs text-text-muted mt-2">
+                                Portal will open at{' '}
+                                <strong className="text-text-primary">/{request.organization_slug}</strong>
+                              </p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <Button
@@ -628,10 +692,10 @@ export function MCPanel() {
                                 <span className="text-sm text-text-muted">{formatDate(org.created_at)}</span>
                               </td>
                               <td className="px-6 py-4 text-right">
-                                <Link to="/dashboard" className="inline-flex">
+                                <Link to={`/${org.slug}`} className="inline-flex" target="_blank">
                                   <Button variant="ghost" size="sm" className="text-xs">
                                     <Eye className="h-3.5 w-3.5" />
-                                    <span className="hidden lg:inline">View Events</span>
+                                    <span className="hidden lg:inline">Open portal</span>
                                   </Button>
                                 </Link>
                               </td>
@@ -677,10 +741,10 @@ export function MCPanel() {
                           <span>{org.event_count ?? '-'} events</span>
                           <span>{formatDate(org.created_at)}</span>
                         </div>
-                        <Link to="/dashboard">
+                        <Link to={`/${org.slug}`}>
                           <Button variant="ghost" size="sm" fullWidth className="text-xs">
                             <Eye className="h-3.5 w-3.5" />
-                            View Events
+                            Open portal
                           </Button>
                         </Link>
                       </motion.div>
@@ -852,6 +916,70 @@ export function MCPanel() {
               </motion.div>
             </TabsContent>
 
+            {/* ============= TAB: USERS ============= */}
+            <TabsContent value="users">
+              <motion.div variants={containerVariants} initial="hidden" animate="visible">
+                <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-text-primary">All Users</h2>
+                    <p className="text-text-secondary text-sm">{profiles.length} profiles</p>
+                  </div>
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                    <input
+                      type="text"
+                      placeholder="Search name or email..."
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className="w-full bg-surface border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-secondary/50 transition-colors"
+                    />
+                  </div>
+                </motion.div>
+
+                {profilesLoading ? (
+                  <div className="flex items-center justify-center py-24">
+                    <Loader2 className="h-8 w-8 text-secondary animate-spin" />
+                  </div>
+                ) : (
+                  <motion.div variants={itemVariants} className="bg-surface border border-border rounded-2xl overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Name</th>
+                          <th className="text-left px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Email</th>
+                          <th className="text-center px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Role</th>
+                          <th className="text-right px-6 py-4 text-xs font-semibold text-text-muted uppercase tracking-wider">Joined</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {profiles
+                          .filter((p) => {
+                            const q = userSearch.trim().toLowerCase()
+                            if (!q) return true
+                            return (
+                              (p.full_name || '').toLowerCase().includes(q) ||
+                              (p.email || '').toLowerCase().includes(q)
+                            )
+                          })
+                          .map((p) => (
+                            <tr key={p.id} className="hover:bg-white/[0.02]">
+                              <td className="px-6 py-3 text-sm font-semibold text-text-primary">{p.full_name || '—'}</td>
+                              <td className="px-6 py-3 text-sm text-text-secondary">{p.email}</td>
+                              <td className="px-6 py-3 text-center">
+                                <Badge variant={p.is_superadmin ? 'success' : 'default'} size="sm">
+                                  {p.is_superadmin ? 'Superadmin' : 'User'}
+                                </Badge>
+                              </td>
+                              <td className="px-6 py-3 text-right text-sm text-text-muted">{formatDate(p.created_at)}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </motion.div>
+                )}
+              </motion.div>
+            </TabsContent>
+
             {/* ============= TAB 4: OVERVIEW ============= */}
             <TabsContent value="overview">
               <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
@@ -932,27 +1060,45 @@ export function MCPanel() {
                         <CardDescription>Common superadmin tasks</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        <Link to="/dashboard">
-                          <Button variant="outline" size="md" fullWidth className="justify-start">
-                            <Building2 className="h-4 w-4" />
-                            Browse Organizations
-                          </Button>
-                        </Link>
-                        <Link to="/dashboard/events/new">
-                          <Button variant="outline" size="md" fullWidth className="justify-start">
-                            <Calendar className="h-4 w-4" />
-                            Create Event (as any org)
-                          </Button>
-                        </Link>
                         <Button
                           variant="outline"
                           size="md"
                           fullWidth
                           className="justify-start"
-                          onClick={loadPendingRequests}
+                          onClick={() => setActiveTab('organizations')}
+                        >
+                          <Building2 className="h-4 w-4" />
+                          Browse Organizations
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="md"
+                          fullWidth
+                          className="justify-start"
+                          onClick={() => setActiveTab('requests')}
                         >
                           <Clock className="h-4 w-4" />
-                          Refresh Pending Requests
+                          Review pending requests
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="md"
+                          fullWidth
+                          className="justify-start"
+                          onClick={() => setActiveTab('users')}
+                        >
+                          <Users className="h-4 w-4" />
+                          View all users
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="md"
+                          fullWidth
+                          className="justify-start"
+                          onClick={() => void refreshAll()}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Refresh all platform data
                           {pendingCount > 0 && (
                             <span className="ml-auto px-2 py-0.5 text-[10px] font-bold bg-secondary text-white rounded-full">
                               {pendingCount}

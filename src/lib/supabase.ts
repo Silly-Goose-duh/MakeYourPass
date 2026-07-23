@@ -195,8 +195,17 @@ export async function getPublishedEventsByOrg(orgId: string) {
 // ==================== Org Registration Requests ====================
 
 export async function createOrganizationRequest(name: string, slug: string, description: string) {
-  const { data, error } = await supabase.rpc('create_organization_request', { org_name: name, org_slug: slug, org_description: description })
-  return { data: data as { id?: string; status?: string; error?: string } | null, error }
+  const { data, error } = await supabase.rpc('create_organization_request', {
+    org_name: name,
+    org_slug: slug,
+    org_description: description,
+  })
+  const payload = data as { id?: string; status?: string; error?: string } | null
+  // RPC returns business errors as JSONB { error }, not PostgREST errors
+  if (!error && payload?.error) {
+    return { data: payload, error: new Error(payload.error) }
+  }
+  return { data: payload, error }
 }
 
 export async function getUserRequests() {
@@ -206,19 +215,121 @@ export async function getUserRequests() {
   return { data: data as OrgRegistrationRequest[] | null, error }
 }
 
+export type PendingOrgRequest = {
+  id: string
+  user_id: string
+  organization_name: string
+  organization_slug: string
+  description: string | null
+  status: string
+  created_at: string
+  updated_at?: string
+  requester_name: string
+  requester_email: string
+  /** legacy embed shape if present */
+  profiles?: { full_name: string; email: string } | null
+}
+
 export async function getPendingRequests() {
-  const { data, error } = await supabase.from('organization_registration_requests').select('*, profiles:user_id(full_name, email)').eq('status', 'pending').order('created_at')
-  return { data: data as Record<string, unknown>[] | null, error }
+  // Prefer SECURITY DEFINER RPC (works even when PostgREST embed fails)
+  const rpc = await tryRpc<PendingOrgRequest[]>('list_pending_org_requests')
+  if (rpc.found) {
+    if (rpc.error) return { data: null, error: rpc.error }
+    return { data: (rpc.data || []) as PendingOrgRequest[], error: null }
+  }
+
+  // Fallback: plain select (no profiles embed — no FK to profiles)
+  const { data, error } = await supabase
+    .from('organization_registration_requests')
+    .select('*')
+    .eq('status', 'pending')
+    .order('created_at')
+  if (error) return { data: null, error }
+
+  const rows = (data || []) as Array<Record<string, unknown>>
+  const userIds = [...new Set(rows.map((r) => r.user_id as string).filter(Boolean))]
+  let profileMap = new Map<string, { full_name: string; email: string }>()
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', userIds)
+    profileMap = new Map(
+      (profiles || []).map((p: { id: string; full_name: string; email: string }) => [
+        p.id,
+        { full_name: p.full_name, email: p.email },
+      ])
+    )
+  }
+
+  const enriched: PendingOrgRequest[] = rows.map((r) => {
+    const p = profileMap.get(r.user_id as string)
+    return {
+      id: r.id as string,
+      user_id: r.user_id as string,
+      organization_name: r.organization_name as string,
+      organization_slug: r.organization_slug as string,
+      description: (r.description as string) || null,
+      status: r.status as string,
+      created_at: r.created_at as string,
+      updated_at: r.updated_at as string | undefined,
+      requester_name: p?.full_name || '',
+      requester_email: p?.email || '',
+      profiles: p || null,
+    }
+  })
+  return { data: enriched, error: null }
+}
+
+export type ApproveOrgResult = {
+  organization_id?: string
+  status?: string
+  slug?: string
+  organization_name?: string
+  portal_url?: string
+  requester_email?: string
+  requester_name?: string
+  error?: string
 }
 
 export async function approveRequest(requestId: string) {
   const { data, error } = await supabase.rpc('approve_organization_request', { request_id: requestId })
-  return { data: data as { organization_id?: string; status?: string; error?: string } | null, error }
+  return { data: data as ApproveOrgResult | null, error }
 }
 
 export async function rejectRequest(requestId: string) {
   const { data, error } = await supabase.rpc('reject_organization_request', { request_id: requestId })
-  return { data: data as { status?: string; error?: string } | null, error }
+  return {
+    data: data as {
+      status?: string
+      organization_name?: string
+      requester_email?: string
+      requester_name?: string
+      error?: string
+    } | null,
+    error,
+  }
+}
+
+export async function notifyOrgDecision(payload: {
+  type: 'approved' | 'rejected'
+  email: string
+  name?: string
+  organization_name: string
+  slug?: string
+}) {
+  try {
+    const res = await fetch('/api/notify-org-decision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) return { error: new Error(j.error || 'Notify failed') }
+    return { error: null }
+  } catch (e) {
+    return { error: e instanceof Error ? e : new Error('Notify failed') }
+  }
 }
 
 // ==================== Org Members ====================
