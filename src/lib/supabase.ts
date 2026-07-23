@@ -63,11 +63,37 @@ export const supabase = createSupabaseClient()
 // ==================== Auth ====================
 
 export async function signUp(email: string, password: string, fullName: string) {
-  return supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://makeyourpass.vercel.app'
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: fullName },
+      emailRedirectTo: `${origin}/auth/callback`,
+    },
+  })
 }
 
 export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password })
+}
+
+export async function resendSignupEmail(email: string) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://makeyourpass.vercel.app'
+  return supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo: `${origin}/auth/callback` },
+  })
+}
+
+/** True if the current session user has confirmed their email. */
+export async function isEmailConfirmed(): Promise<boolean> {
+  const { data } = await supabase.auth.getUser()
+  const u = data.user
+  if (!u) return false
+  // email_confirmed_at is set when verification succeeds
+  return !!u.email_confirmed_at
 }
 
 export async function signOut() {

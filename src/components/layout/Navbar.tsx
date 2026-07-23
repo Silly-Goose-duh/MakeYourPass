@@ -19,10 +19,15 @@ export function Navbar() {
     if (user) {
       getProfile(user.id).then(({ data }) => setProfile(data))
       getUserOrganizations().then(({ data }) => {
-        if (data) setOrgs(data.map(m => m.organizations))
+        if (data) setOrgs(data.map(m => m.organizations).filter(Boolean) as Organization[])
       })
+    } else {
+      setProfile(null)
+      setOrgs([])
     }
   }, [user])
+
+  const dashboardHref = orgs[0]?.slug ? `/${orgs[0].slug}` : '/dashboard'
 
   useEffect(() => {
     if (!profileMenuOpen) return
@@ -95,11 +100,9 @@ export function Navbar() {
                     <Shield className="h-3 w-3" strokeWidth={2.5} /> MC
                   </Link>
                 )}
-                {orgs.length > 0 && (
-                  <Link to="/dashboard" className="zine-sticker" style={{ background: '#2D5BFF', color: '#fff', borderColor: '#14110E' }}>
-                    <LayoutDashboard className="h-3 w-3" strokeWidth={2.5} /> Dashboard
-                  </Link>
-                )}
+                <Link to={dashboardHref} className="zine-sticker" style={{ background: '#2D5BFF', color: '#fff', borderColor: '#14110E' }}>
+                  <LayoutDashboard className="h-3 w-3" strokeWidth={2.5} /> Dashboard
+                </Link>
                 <div className="relative profile-dropdown-area">
                   <button
                     onClick={() => setProfileMenuOpen(!profileMenuOpen)}
@@ -134,7 +137,7 @@ export function Navbar() {
                             <p className="text-sm font-extrabold truncate" style={{ color: '#14110E' }}>{profile?.full_name || 'User'}</p>
                             <p className="text-[11px] truncate font-medium" style={{ color: '#7A756B' }}>{user.email}</p>
                           </div>
-                          <Link to="/dashboard" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 px-2 py-2 text-sm font-bold" style={{ color: '#14110E' }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FFD23F'} onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                          <Link to={dashboardHref} onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 px-2 py-2 text-sm font-bold" style={{ color: '#14110E' }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FFD23F'} onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                             <LayoutDashboard className="h-4 w-4" strokeWidth={2.5} /> Dashboard
                           </Link>
                           {profile?.is_superadmin && (
@@ -197,11 +200,9 @@ export function Navbar() {
                       <Shield className="h-4 w-4" strokeWidth={2.5} /> MC Panel
                     </Link>
                   )}
-                  {orgs.length > 0 && (
-                    <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 text-sm font-bold" style={{ color: '#14110E' }}>
-                      <LayoutDashboard className="h-4 w-4" strokeWidth={2.5} /> Dashboard
-                    </Link>
-                  )}
+                  <Link to={dashboardHref} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 text-sm font-bold" style={{ color: '#14110E' }}>
+                    <LayoutDashboard className="h-4 w-4" strokeWidth={2.5} /> Dashboard
+                  </Link>
                   <button onClick={handleSignOut} className="flex items-center gap-2 text-sm font-bold" style={{ color: '#FF4D2E' }}>
                     <LogOut className="h-4 w-4" strokeWidth={2.5} /> Sign Out
                   </button>
