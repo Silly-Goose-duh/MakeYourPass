@@ -63,13 +63,37 @@ export default async function handler(req: any, res: any) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
 
     // ── Owner product report email (server-side Resend; fixed recipient) ──
-    if (body?.action === 'product-report') {
+    if (body?.action === 'product-report' || body?.action === 'next-steps') {
       const RESEND_API_KEY = process.env.RESEND_API_KEY
       const RESEND_FROM = process.env.RESEND_FROM || 'MakeYourPass <onboarding@resend.dev>'
       if (!RESEND_API_KEY) return res.status(500).json({ error: 'Resend not configured' })
       const { Resend } = await import('resend')
       const resend = new Resend(RESEND_API_KEY)
-      const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#14110E;color:#fff;padding:24px">
+      const html = body?.action === 'next-steps'
+        ? `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#F4EFE1;color:#14110E;padding:24px">
+<div style="max-width:560px;margin:auto;background:#fff;border:2.5px solid #14110E;border-radius:16px;padding:24px;box-shadow:6px 6px 0 #14110E">
+  <div style="background:#FF4D2E;color:#fff;font-weight:800;padding:12px 16px;border-radius:10px;display:inline-block;margin-bottom:16px">MAKEYOURPASS</div>
+  <h1 style="margin:0 0 12px;font-size:24px">What to do next</h1>
+  <p style="color:#4A4640;line-height:1.5">The app is basically ready. Only a few things left on your side:</p>
+  <ol style="line-height:1.7;padding-left:20px">
+    <li><b>Turn on real emails.</b> In Resend, verify your domain <code>makeyourpass.app</code>. Until you do this, tickets only go to your own Gmail.</li>
+    <li><b>After the domain is verified,</b> set Vercel env <code>RESEND_FROM</code> to something like:<br/>
+      <code>MakeYourPass &lt;tickets@makeyourpass.app&gt;</code></li>
+    <li><b>Quick phone test:</b>
+      <ul>
+        <li>Register for an event</li>
+        <li>Check the ticket email + PNG</li>
+        <li>Try “Resend my ticket” on the form</li>
+        <li>Open Scan on your phone and admit someone</li>
+        <li>Check the host dashboard list</li>
+      </ul>
+    </li>
+    <li><b>Optional:</b> add <code>CRON_SECRET</code> on Vercel if you want to manually trigger the “day before” reminder emails.</li>
+  </ol>
+  <p style="margin-top:18px;color:#4A4640"><b>Already done for you:</b> the database SQL is applied (unique-code scan + reminder stamp). Code is live at makeyourpass.vercel.app.</p>
+  <p style="color:#8A8478;font-size:12px;margin-top:20px">Live: https://makeyourpass.vercel.app</p>
+</div></body></html>`
+        : `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#14110E;color:#fff;padding:24px">
 <div style="max-width:640px;margin:auto;background:#1d1a16;border:2px solid #FF4D2E;border-radius:12px;padding:24px">
 <h1 style="color:#FF4D2E">MakeYourPass — Product Status Report</h1>
 <p style="color:#bbb">Generated after finishing remaining polish (post your UPI/org/cert work).</p>
@@ -96,10 +120,13 @@ export default async function handler(req: any, res: any) {
 </ul>
 <p style="color:#888;font-size:12px">Live https://makeyourpass.vercel.app</p>
 </div></body></html>`
+      const subject = body?.action === 'next-steps'
+        ? 'MakeYourPass — what to do next (simple steps)'
+        : 'MakeYourPass — Product Status Report (finish polish)'
       const { error } = await resend.emails.send({
         from: RESEND_FROM,
         to: ['gooseisback4u@gmail.com'],
-        subject: 'MakeYourPass — Product Status Report (finish polish)',
+        subject,
         html,
       })
       if (error) return res.status(502).json({ error: error.message })
