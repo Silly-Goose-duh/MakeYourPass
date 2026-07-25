@@ -59,7 +59,6 @@ export default async function handler(req: any, res: any) {
           // pureimage can decode PNG/JPEG from stream
           const { Readable } = await import('stream')
           const stream = Readable.from(buf)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const img = await (PImage.decodePNGFromStream
             ? PImage.decodePNGFromStream(stream).catch(async () => {
                 const stream2 = Readable.from(buf)
