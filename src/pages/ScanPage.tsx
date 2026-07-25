@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { HostRoute } from '@/components/auth/RouteGuards'
-import { getEventById, admitByQrToken, type AdmitResult } from '@/lib/supabase'
+import { getEventById, admitByCodeOrToken, type AdmitResult } from '@/lib/supabase'
 
 type FlashKind = 'idle' | 'success' | 'warn' | 'error'
 type Flash = { kind: FlashKind; message: string; name?: string; code?: string } | null
@@ -56,7 +56,7 @@ function ScanInner({ eventId }: { eventId: string }) {
     if (lastAdmit.current && lastAdmit.current.token === token && now - lastAdmit.current.t < 1200) return
     lastAdmit.current = { token, t: now }
     try {
-      const { data, error } = await admitByQrToken(token)
+      const { data, error } = await admitByCodeOrToken(token)
       if (error || !data) showFlash({ kind: 'error', message: 'Could not admit — try again' })
       else applyResult(data)
     } catch {

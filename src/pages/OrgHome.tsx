@@ -4,7 +4,6 @@ import {
   Plus, Settings, Calendar, MapPin, IndianRupee,
   Trash2, Upload, Users, Globe, ArrowLeft, Ticket,
 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { formatDate } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'

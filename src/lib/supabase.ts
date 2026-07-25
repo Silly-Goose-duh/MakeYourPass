@@ -817,6 +817,41 @@ export async function admitByQrToken(qrToken: string): Promise<{ data: AdmitResu
   }
 }
 
+/**
+ * Admit by QR token UUID OR human unique_code (e.g. EVT-0001).
+ * Tries flexible RPC first, then falls back to qr_token-only RPC.
+ */
+export async function admitByCodeOrToken(input: string): Promise<{ data: AdmitResult | null; error: unknown }> {
+  const raw = input.trim()
+  if (!raw) return { data: null, error: new Error('Empty code') }
+
+  // Prefer flexible RPC if present
+  try {
+    const { data, error } = await supabase.rpc('admit_by_code_or_token', { p_input: raw })
+    if (!error) {
+      const row = Array.isArray(data) ? data[0] : data
+      if (row) {
+        return {
+          data: {
+            name: row.name ?? null,
+            unique_code: row.unique_code ?? null,
+            already_admitted: !!row.already_admitted,
+            status: (row.status as AdmitResult['status']) || 'not_found',
+          },
+          error: null,
+        }
+      }
+    }
+  } catch { /* fall through */ }
+
+  // UUID-looking → direct token admit
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  if (uuidRe.test(raw)) return admitByQrToken(raw)
+
+  // unique_code path via flexible RPC only — if missing, report not_found
+  return { data: { name: null, unique_code: null, already_admitted: false, status: 'not_found' }, error: null }
+}
+
 /** Realtime subscription on event_responses for one event. */
 export function subscribeToResponses(
   eventId: string,

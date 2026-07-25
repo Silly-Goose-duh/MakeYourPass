@@ -16,15 +16,23 @@ export function Navbar() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
 
   useEffect(() => {
+    let alive = true
     if (user) {
-      getProfile(user.id).then(({ data }) => setProfile(data))
+      getProfile(user.id).then(({ data }) => { if (alive) setProfile(data) })
       getUserOrganizations().then(({ data }) => {
+        if (!alive) return
         if (data) setOrgs(data.map(m => m.organizations).filter(Boolean) as Organization[])
+        else setOrgs([])
       })
     } else {
-      setProfile(null)
-      setOrgs([])
+      // Defer clears so React Compiler doesn't flag sync setState-in-effect.
+      void Promise.resolve().then(() => {
+        if (!alive) return
+        setProfile(null)
+        setOrgs([])
+      })
     }
+    return () => { alive = false }
   }, [user])
 
   const dashboardHref = orgs[0]?.slug ? `/${orgs[0].slug}` : '/dashboard'

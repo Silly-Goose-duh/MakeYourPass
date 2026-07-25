@@ -119,6 +119,7 @@ export interface EventResponse {
   payment_verified_at?: string | null
   certificate_url?: string | null
   certificate_sent_at?: string | null
+  reminder_sent_at?: string | null
 }
 
 export interface ResponseAnswer {

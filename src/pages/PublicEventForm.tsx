@@ -50,6 +50,9 @@ export function PublicEventForm() {
   const [questionsLoading, setQuestionsLoading] = useState(false)
   const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null)
   const [paymentPreview, setPaymentPreview] = useState<string | null>(null)
+  const [resendEmail, setResendEmail] = useState('')
+  const [resendBusy, setResendBusy] = useState(false)
+  const [resendMsg, setResendMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   // Load the event itself first (fast) so the page renders immediately.
   useEffect(() => {
@@ -189,6 +192,17 @@ export function PublicEventForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validate() || !event) return
+
+    // Client rate limit: max 1 successful attempt / 20s per event in this browser
+    try {
+      const rk = `myp_reg_${event.id}`
+      const last = Number(localStorage.getItem(rk) || '0')
+      if (last && Date.now() - last < 20_000) {
+        setError('Please wait a few seconds before trying again.')
+        return
+      }
+    } catch { /* private mode */ }
+
     setSubmitting(true)
     setError('')
     try {
@@ -210,10 +224,19 @@ export function PublicEventForm() {
         payment_proof_url,
       })
       if (responseError || !responseData) {
-        const msg = responseError?.message || 'Failed to submit response'
-        setError(msg.includes('RLS_RECURSION')
-          ? 'Registration is temporarily unavailable while the database is being configured. Please try again later.'
-          : msg)
+        const msg = (responseError?.message || 'Failed to submit response').toLowerCase()
+        if (msg.includes('rls_recursion')) {
+          setError('Registration is temporarily unavailable while the database is being configured. Please try again later.')
+        } else if (
+          msg.includes('duplicate') ||
+          msg.includes('unique') ||
+          msg.includes('already exists') ||
+          msg.includes('uniq_response_event_email')
+        ) {
+          setError("You're already registered for this event. Scroll down and use “Resend my ticket” if you need the email again.")
+        } else {
+          setError(responseError?.message || 'Failed to submit response')
+        }
         return
       }
       const formattedAnswers = questions
@@ -239,6 +262,7 @@ export function PublicEventForm() {
           body: JSON.stringify({ registration_id: responseData.id }),
         }).catch(() => {})
       }
+      try { localStorage.setItem(`myp_reg_${event.id}`, String(Date.now())) } catch { /* ignore */ }
       setSubmittedPaid(event.payment_type === 'paid')
       setSubmitted(true)
     } catch (err) {
@@ -648,6 +672,62 @@ export function PublicEventForm() {
                 Submit Registration
               </Button>
             </motion.form>
+
+            {/* Public resend-my-ticket */}
+            {event && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="glass-strong rounded-2xl p-6 sm:p-8 mt-6"
+              >
+                <h3 className="text-lg font-semibold text-[#14110E] mb-1">Already registered?</h3>
+                <p className="text-sm text-text-secondary mb-4">
+                  Lost the email? Enter the same email you used and we’ll resend your ticket.
+                </p>
+                <form
+                  className="flex flex-col sm:flex-row gap-2"
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    const em = resendEmail.trim().toLowerCase()
+                    if (!em || !event) return
+                    setResendBusy(true)
+                    setResendMsg(null)
+                    try {
+                      const r = await fetch('/api/on-registration', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'resend', event_id: event.id, email: em }),
+                      })
+                      const j = await r.json().catch(() => ({}))
+                      if (!r.ok) throw new Error(j.error || 'Could not resend ticket')
+                      setResendMsg({ ok: true, text: 'Ticket sent — check your inbox (and spam).' })
+                    } catch (err) {
+                      setResendMsg({ ok: false, text: err instanceof Error ? err.message : 'Resend failed' })
+                    } finally {
+                      setResendBusy(false)
+                    }
+                  }}
+                >
+                  <input
+                    type="email"
+                    required
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="flex-1 px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  />
+                  <Button type="submit" variant="primary" loading={resendBusy} disabled={resendBusy}>
+                    Resend my ticket
+                  </Button>
+                </form>
+                {resendMsg && (
+                  <p className={`mt-3 text-sm ${resendMsg.ok ? 'text-green-600' : 'text-red-400'}`}>
+                    {resendMsg.text}
+                  </p>
+                )}
+              </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
