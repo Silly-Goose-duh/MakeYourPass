@@ -78,6 +78,19 @@ export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password })
 }
 
+/** Send password-reset email. Redirect lands on /auth/callback then /reset-password. */
+export async function requestPasswordReset(email: string) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://makeyourpass.vercel.app'
+  return supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${origin}/auth/callback?type=recovery`,
+  })
+}
+
+/** Set a new password while in a recovery session. */
+export async function updatePassword(newPassword: string) {
+  return supabase.auth.updateUser({ password: newPassword })
+}
+
 export async function resendSignupEmail(email: string) {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://makeyourpass.vercel.app'
   return supabase.auth.resend({
@@ -381,6 +394,42 @@ export async function getOrgMembers(orgId: string) {
     return { data: [], error: new Error('RLS_RECURSION') }
   }
   return { data: data as OrganizationMember[] | null, error }
+}
+
+export async function inviteOrgCollaborator(orgId: string, email: string, role: 'admin' | 'host' = 'host') {
+  const { data, error } = await supabase.rpc('invite_org_collaborator', {
+    p_org_id: orgId,
+    p_email: email,
+    p_role: role,
+  })
+  return { data: data as Record<string, unknown> | null, error }
+}
+
+export async function acceptOrgInvite(token: string) {
+  const { data, error } = await supabase.rpc('accept_org_invite', { p_token: token })
+  return { data: data as Record<string, unknown> | null, error }
+}
+
+export async function listOrgCollaborators(orgId: string) {
+  const { data, error } = await supabase.rpc('list_org_collaborators', { p_org_id: orgId })
+  return { data: data as {
+    members?: Array<{ id: string; user_id: string; role: string; email: string; full_name: string; kind: string }>
+    invites?: Array<{ id: string; email: string; role: string; token: string; status: string; kind: string }>
+    error?: string
+  } | null, error }
+}
+
+export async function removeOrgCollaborator(orgId: string, userId: string) {
+  const { data, error } = await supabase.rpc('remove_org_collaborator', {
+    p_org_id: orgId,
+    p_user_id: userId,
+  })
+  return { data: data as Record<string, unknown> | null, error }
+}
+
+export async function revokeOrgInvite(inviteId: string) {
+  const { data, error } = await supabase.rpc('revoke_org_invite', { p_invite_id: inviteId })
+  return { data: data as Record<string, unknown> | null, error }
 }
 
 // ==================== Events (RPC-first with direct fallback) ====================

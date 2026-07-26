@@ -20,6 +20,9 @@ const ScanPage = lazy(() => import('@/pages/ScanPage').then(m => ({ default: m.S
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const OrgHome = lazy(() => import('@/pages/OrgHome').then(m => ({ default: m.OrgHome })))
 const AuthCallbackPage = lazy(() => import('@/pages/AuthCallback').then(m => ({ default: m.AuthCallbackPage })))
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPasswordPage })))
+const AcceptInvitePage = lazy(() => import('@/pages/AcceptInvite').then(m => ({ default: m.AcceptInvitePage })))
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -48,6 +51,9 @@ function AppRoutes() {
           <Route path="event/:eventSlug" element={<PageSuspense><PublicEventForm /></PageSuspense>} />
           <Route path="login" element={<LoginPage />} />
           <Route path="signup" element={<SignupPage />} />
+          <Route path="forgot-password" element={<PageSuspense><ForgotPasswordPage /></PageSuspense>} />
+          <Route path="reset-password" element={<PageSuspense><ResetPasswordPage /></PageSuspense>} />
+          <Route path="invite/:token" element={<PageSuspense><AcceptInvitePage /></PageSuspense>} />
           <Route path="auth/callback" element={<PageSuspense><AuthCallbackPage /></PageSuspense>} />
         </Route>
 

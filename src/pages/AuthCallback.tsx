@@ -3,30 +3,35 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase, getUserOrganizations } from '@/lib/supabase'
 
 /**
- * Handles email-confirmation / magic-link redirects from Supabase.
+ * Handles email-confirmation / magic-link / password-recovery redirects from Supabase.
  * URL may contain hash tokens (#access_token=...) or ?code= for PKCE.
+ * Recovery → /reset-password
  */
 export function AuthCallbackPage() {
   const navigate = useNavigate()
-  const [message, setMessage] = useState('Confirming your email…')
+  const [message, setMessage] = useState('Confirming…')
   const [error, setError] = useState('')
 
   useEffect(() => {
     let alive = true
     ;(async () => {
       try {
-        // Exchange code if present (PKCE)
         const url = new URL(window.location.href)
+        const type = url.searchParams.get('type') || ''
+        // Hash may also include type=recovery
+        const hash = window.location.hash.replace(/^#/, '')
+        const hashParams = new URLSearchParams(hash)
+        const hashType = hashParams.get('type') || ''
+        const isRecovery = type === 'recovery' || hashType === 'recovery'
+
         const code = url.searchParams.get('code')
         if (code) {
           const { error: exErr } = await supabase.auth.exchangeCodeForSession(code)
           if (exErr) throw exErr
         } else {
-          // Hash tokens are auto-parsed by supabase-js on getSession
           const { data, error: sessErr } = await supabase.auth.getSession()
           if (sessErr) throw sessErr
           if (!data.session) {
-            // Give client a beat to pick up hash fragments
             await new Promise((r) => setTimeout(r, 400))
             const again = await supabase.auth.getSession()
             if (!again.data.session) {
@@ -36,9 +41,14 @@ export function AuthCallbackPage() {
         }
 
         if (!alive) return
-        setMessage('Email verified! Redirecting…')
 
-        // After verify: approved org → portal; else pending hub at /dashboard
+        if (isRecovery) {
+          setMessage('Verified — set your new password…')
+          navigate('/reset-password', { replace: true })
+          return
+        }
+
+        setMessage('Email verified! Redirecting…')
         const { data: memberships } = await getUserOrganizations()
         if (memberships && memberships.length > 0 && memberships[0].organizations?.slug) {
           navigate(`/${memberships[0].organizations.slug}`, { replace: true })

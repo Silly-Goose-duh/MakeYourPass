@@ -73,12 +73,13 @@ export function HostRoute({ eventId, children }: { eventId: string; children: Re
       const { data: ev } = await supabase
         .from('events').select('organization_id').eq('id', eventId).single()
       if (!ev) { setAllowed(false); return }
+      // admin OR host can scan / live-admit
       const { data: mem } = await supabase
         .from('organization_members')
-        .select('id')
+        .select('id, role')
         .eq('organization_id', ev.organization_id)
         .eq('user_id', user.id)
-        .eq('role', 'admin')
+        .in('role', ['admin', 'host'])
         .limit(1)
       setAllowed(!!(mem && mem.length > 0))
     })()

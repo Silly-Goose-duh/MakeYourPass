@@ -44,7 +44,7 @@ export interface OrganizationMember {
   id: string
   organization_id: string
   user_id: string
-  role: 'admin' | 'member'
+  role: 'admin' | 'host' | 'member'
   created_at: string
 }
 

@@ -38,6 +38,13 @@ export function LoginPage() {
         return
       }
 
+      const params = new URLSearchParams(window.location.search)
+      const next = params.get('next')
+      if (next && next.startsWith('/')) {
+        navigate(next)
+        return
+      }
+
       const { data: memberships } = await getUserOrganizations()
       if (memberships && memberships.length > 0 && memberships[0].organizations?.slug) {
         navigate(`/${memberships[0].organizations.slug}`)
@@ -114,6 +121,12 @@ export function LoginPage() {
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
+            </div>
+
+            <div className="flex justify-end -mt-2">
+              <Link to="/forgot-password" className="text-xs font-extrabold hover:opacity-70" style={{ color: '#FF4D2E' }}>
+                Forgot password?
+              </Link>
             </div>
 
             {error && (

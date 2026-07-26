@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   Plus, Settings, Calendar, MapPin, IndianRupee,
-  Trash2, Upload, Users, Globe, ArrowLeft, Ticket,
+  Trash2, Upload, Users, Globe, ArrowLeft, Ticket, UserPlus,
 } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { formatDate } from '@/lib/utils'
@@ -21,10 +21,12 @@ import {
   getEventsByOrganization,
 } from '@/lib/supabase'
 import { zineColorFor, getDaysAway } from '@/components/event/eventUtils'
+import { CollaboratorsPanel } from '@/components/org/CollaboratorsPanel'
 import type { Organization, CampusEvent, OrgExecomMember } from '@/types'
 
 const RESERVED = new Set([
   'events', 'event', 'login', 'signup', 'dashboard', 'mc', 'host', 'api', 'assets', 'org', 'admin',
+  'forgot-password', 'reset-password', 'invite', 'auth',
 ])
 
 const INK = '#14110E'
@@ -225,13 +227,15 @@ function EventRail({
   title,
   events,
   past,
-  canManage,
+  canHost,
+  canAdmin,
   accent,
 }: {
   title: string
   events: CampusEvent[]
   past?: boolean
-  canManage?: boolean
+  canHost?: boolean
+  canAdmin?: boolean
   accent?: string
 }) {
   if (events.length === 0) return null
@@ -255,6 +259,15 @@ function EventRail({
         {events.map((ev) => {
           const c = zineColorFor(ev.title)
           const days = ev.date ? getDaysAway(ev.date) : 'TBA'
+          const actions = [
+            ...(canHost
+              ? [
+                  { to: `/host/${ev.id}/dashboard`, label: 'Live' },
+                  { to: `/host/${ev.id}/scan`, label: 'Scan' },
+                ]
+              : []),
+            ...(canAdmin ? [{ to: `/dashboard/events/${ev.id}/edit`, label: 'Edit' }] : []),
+          ]
           return (
             <article
               key={ev.id}
@@ -312,13 +325,9 @@ function EventRail({
                   )}
                 </div>
               </Link>
-              {canManage && (
+              {actions.length > 0 && (
                 <div className="flex" style={{ borderTop: `2.5px solid ${INK}` }}>
-                  {[
-                    { to: `/host/${ev.id}/dashboard`, label: 'Live' },
-                    { to: `/host/${ev.id}/scan`, label: 'Scan' },
-                    { to: `/dashboard/events/${ev.id}/edit`, label: 'Edit' },
-                  ].map((a, i) => (
+                  {actions.map((a, i) => (
                     <Link
                       key={a.label}
                       to={a.to}
@@ -352,9 +361,11 @@ export function OrgHome() {
   const [events, setEvents] = useState<CampusEvent[]>([])
   const [execom, setExecom] = useState<OrgExecomMember[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
+  const [canHost, setCanHost] = useState(false)
   const [loading, setLoading] = useState(!slugInvalid)
   const [notFound, setNotFound] = useState(slugInvalid)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [collabOpen, setCollabOpen] = useState(false)
   const [upiId, setUpiId] = useState('')
   const [upiPhone, setUpiPhone] = useState('')
   const [upiQrFile, setUpiQrFile] = useState<File | null>(null)
@@ -390,9 +401,12 @@ export function OrgHome() {
           getUserOrganizations(),
         ])
         if (!alive) return
-        const member = (memberships || []).some((m) => m.organization_id === o.id)
-        setIsAdmin(!!prof?.is_superadmin || member)
-        if (member || prof?.is_superadmin) {
+        const mine = (memberships || []).find((m) => m.organization_id === o.id)
+        const admin = !!prof?.is_superadmin || mine?.role === 'admin'
+        const host = admin || mine?.role === 'host'
+        setIsAdmin(admin)
+        setCanHost(host)
+        if (mine || prof?.is_superadmin) {
           const { data: all } = await getEventsByOrganization(o.id, 'all')
           if (alive && all) setEvents(all)
         }
@@ -587,7 +601,15 @@ export function OrgHome() {
                     type="button"
                     className="zine-btn text-sm"
                     style={{ background: '#fff' }}
-                    onClick={() => setSettingsOpen((v) => !v)}
+                    onClick={() => { setCollabOpen((v) => !v); setSettingsOpen(false) }}
+                  >
+                    <UserPlus className="h-4 w-4" strokeWidth={2.5} /> Team
+                  </button>
+                  <button
+                    type="button"
+                    className="zine-btn text-sm"
+                    style={{ background: '#fff' }}
+                    onClick={() => { setSettingsOpen((v) => !v); setCollabOpen(false) }}
                   >
                     <Settings className="h-4 w-4" strokeWidth={2.5} /> UPI
                   </button>
@@ -614,6 +636,12 @@ export function OrgHome() {
             </div>
           </div>
         </section>
+
+        {isAdmin && collabOpen && org && (
+          <div className="mx-4 sm:mx-6 mt-6" style={{ boxShadow: '4px 4px 0 #14110E' }}>
+            <CollaboratorsPanel orgId={org.id} canManage={isAdmin} onClose={() => setCollabOpen(false)} />
+          </div>
+        )}
 
         {isAdmin && settingsOpen && (
           <div
@@ -682,10 +710,10 @@ export function OrgHome() {
             </div>
           )}
 
-          <EventRail title="Upcoming" events={upcoming} canManage={isAdmin} accent={YELLOW} />
-          <EventRail title="Past" events={past} past canManage={isAdmin} accent="#fff" />
-          {isAdmin && drafts.length > 0 && (
-            <EventRail title="Drafts" events={drafts} canManage={isAdmin} accent="#2D5BFF" />
+          <EventRail title="Upcoming" events={upcoming} canHost={canHost} canAdmin={isAdmin} accent={YELLOW} />
+          <EventRail title="Past" events={past} past canHost={canHost} canAdmin={isAdmin} accent="#fff" />
+          {isAdmin && (
+            <EventRail title="Drafts" events={drafts} canHost={canHost} canAdmin={isAdmin} accent="#2D5BFF" />
           )}
 
           {upcoming.length === 0 && past.length === 0 && (
