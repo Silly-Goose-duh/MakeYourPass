@@ -63,62 +63,154 @@ export default async function handler(req: any, res: any) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
 
     // ── Owner product report email (server-side Resend; fixed recipient) ──
-    if (body?.action === 'product-report' || body?.action === 'next-steps') {
+    if (
+      body?.action === 'product-report' ||
+      body?.action === 'next-steps' ||
+      body?.action === 'agent-vault-investor-brief'
+    ) {
       const RESEND_API_KEY = process.env.RESEND_API_KEY
       const RESEND_FROM = process.env.RESEND_FROM || 'MakeYourPass <onboarding@resend.dev>'
       if (!RESEND_API_KEY) return res.status(500).json({ error: 'Resend not configured' })
       const { Resend } = await import('resend')
       const resend = new Resend(RESEND_API_KEY)
+
+      if (body?.action === 'agent-vault-investor-brief') {
+        const briefHtml = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0f1115;color:#e8e8e8;font-family:Inter,Segoe UI,Arial,sans-serif">
+<div style="max-width:680px;margin:0 auto;padding:28px 16px">
+  <div style="background:#161a22;border:1px solid #2a3140;border-radius:16px;overflow:hidden">
+    <div style="padding:22px 24px;background:linear-gradient(135deg,#1a2332,#0f1115);border-bottom:1px solid #2a3140">
+      <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#7cb7ff;font-weight:700">Agent Vault · Investor Brief</div>
+      <h1 style="margin:10px 0 6px;font-size:26px;line-height:1.2;color:#fff">Quiet personal memory for coding agents</h1>
+      <p style="margin:0;color:#9aa4b2;font-size:14px">Shipped v0.3.0 · MIT · local-first · multi-agent</p>
+    </div>
+    <div style="padding:22px 24px;line-height:1.55;font-size:14px;color:#d7dbe3">
+      <p><b style="color:#fff">Repo:</b> <a href="https://github.com/Silly-Goose-duh/grok-build-obsidian-plugin" style="color:#7cb7ff">github.com/Silly-Goose-duh/grok-build-obsidian-plugin</a></p>
+
+      <h2 style="color:#7cb7ff;font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em">1. Problem</h2>
+      <p>Coding agents (Grok Build, Hermes, Claude Code, Codex, Cursor) are daily drivers — but they forget who you are every session. Users re-explain prefs and paste API keys into chat: wasted time, security risk, broken personalization.</p>
+      <p>Password managers solve passwords. Agents still lack a portable, local, agent-native memory layer that works while you simply work.</p>
+
+      <h2 style="color:#7cb7ff;font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em">2. Product</h2>
+      <p><b style="color:#fff">Agent Vault</b> = install-once quiet personal memory for coding agents.</p>
+      <ul>
+        <li>No Obsidian required — plain markdown vault on disk</li>
+        <li>User codes/chats normally</li>
+        <li>Local <b>quiet watcher</b> scans every prompt for durable facts + secrets</li>
+        <li>Secrets sealed under <code>me/.private/</code> — never echoed raw</li>
+        <li>Facts, todos, reminders, projects structured and reusable</li>
+        <li><code>/vault</code> creative dashboard of everything non-secret</li>
+        <li>Surfaces: <b>Grok plugin</b> · <b>Hermes plugin</b> · <b>Python CLI</b> for any agent</li>
+      </ul>
+      <p style="color:#9aa4b2"><i>Positioning:</i> memory &amp; seal layer for the agent OS era — not another note app.</p>
+
+      <h2 style="color:#7cb7ff;font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em">3. Design thesis (why we win)</h2>
+      <p>We rejected “spawn an LLM subagent on every prompt” (latency, cost, secrets re-sent to a model).</p>
+      <p>Shipped instead:</p>
+      <ul>
+        <li>Local deterministic watcher — fast, private, fail-open</li>
+        <li>Skill + optional agent persona for judgmental merges</li>
+        <li>Deep local secrets path (not vault root)</li>
+        <li>Dashboard never prints secret values</li>
+        <li>Multi-agent install surface (no single-IDE lock-in)</li>
+      </ul>
+
+      <h2 style="color:#7cb7ff;font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em">4. What we shipped</h2>
+      <p><b style="color:#fff">v0.1</b> scaffold → <b style="color:#fff">v0.2</b> multi-agent core → <b style="color:#fff">v0.3</b> Obsidian-free quiet watcher + creative dashboard</p>
+      <p><b style="color:#fff">Core:</b> quiet_watcher, auto_capture, vault_status (framed dashboard), vault_keys (labels only), vault_cli, preview server (blocks .private)</p>
+      <p><b style="color:#fff">Hooks:</b> Grok SessionStart / UserPromptSubmit / Stop · Hermes on_session_start + pre_llm_call + /vault + /vaultkeys</p>
+      <p><b style="color:#fff">Quality:</b> 16 unit tests green · grok plugin validate OK · ad-hoc E2E verify · live Hermes install enabled</p>
+      <p><b style="color:#fff">Security (honest):</b> local-first MVP; secrets plaintext under hidden path + gitignore; recommend disk encryption; not a password manager replacement; context injects counts/labels only.</p>
+
+      <h2 style="color:#7cb7ff;font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em">5. Market &amp; distribution</h2>
+      <ul>
+        <li>Ride the agent wave (Grok Build, Hermes, Claude Code, Codex, Cursor)</li>
+        <li>One GitHub repo → multi-surface install</li>
+        <li>Privacy-conscious builders want disk-local by default</li>
+        <li>Adjacent to cloud memory startups — we are hook-native + secret-aware + local-first</li>
+      </ul>
+
+      <h2 style="color:#7cb7ff;font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em">6. Business thesis</h2>
+      <p>MIT open core for adoption. Later wedges: optional at-rest encryption, E2E multi-device sync, team/org policy packs, marketplace featured placement.</p>
+      <p style="color:#9aa4b2">This email is a progress + thesis pitch on a <b style="color:#fff">working artifact</b>, not a formal raise memo.</p>
+
+      <h2 style="color:#7cb7ff;font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em">7. Roadmap</h2>
+      <ol>
+        <li>Live UX polish on /vault (user feedback)</li>
+        <li>Richer capture + explicit “remember that” UX</li>
+        <li>Optional at-rest encryption for .private/</li>
+        <li>One-click install docs for Claude Code / Codex</li>
+        <li>Demo video + landing page</li>
+        <li>Later: encrypted sync, team vaults</li>
+      </ol>
+
+      <h2 style="color:#7cb7ff;font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em">8. Ask</h2>
+      <ul>
+        <li>Design partners who live in coding agents daily</li>
+        <li>Intros to agent platform teams (distribution)</li>
+        <li>Feedback: stay fully local vs optional sync</li>
+      </ul>
+
+      <p style="margin-top:24px;padding:14px 16px;background:#0f1115;border-radius:10px;border:1px solid #2a3140;color:#9aa4b2;font-size:13px">
+        The product already runs. Moat starts as: best quiet capture UX + multi-agent surface + trust (secrets never leak into dashboards/logs).
+      </p>
+    </div>
+    <div style="padding:14px 24px;border-top:1px solid #2a3140;color:#6b7280;font-size:11px">
+      Agent Vault v0.3.0 · https://github.com/Silly-Goose-duh/grok-build-obsidian-plugin
+    </div>
+  </div>
+</div>
+</body></html>`
+        const { error } = await resend.emails.send({
+          from: RESEND_FROM,
+          to: ['gooseisback4u@gmail.com'],
+          subject: 'Agent Vault — Investor Brief: Quiet Personal Memory for Coding Agents',
+          html: briefHtml,
+        })
+        if (error) return res.status(502).json({ error: error.message })
+        return res.status(200).json({ ok: true, action: 'agent-vault-investor-brief' })
+      }
+
       const html = body?.action === 'next-steps'
         ? `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#F4EFE1;color:#14110E;padding:24px">
 <div style="max-width:560px;margin:auto;background:#fff;border:2.5px solid #14110E;border-radius:16px;padding:24px;box-shadow:6px 6px 0 #14110E">
   <div style="background:#FF4D2E;color:#fff;font-weight:800;padding:12px 16px;border-radius:10px;display:inline-block;margin-bottom:16px">MAKEYOURPASS</div>
-  <h1 style="margin:0 0 12px;font-size:24px">What to do next</h1>
-  <p style="color:#4A4640;line-height:1.5">The app is basically ready. Only a few things left on your side:</p>
-  <ol style="line-height:1.7;padding-left:20px">
-    <li><b>Turn on real emails.</b> In Resend, verify your domain <code>makeyourpass.app</code>. Until you do this, tickets only go to your own Gmail.</li>
-    <li><b>After the domain is verified,</b> set Vercel env <code>RESEND_FROM</code> to something like:<br/>
-      <code>MakeYourPass &lt;tickets@makeyourpass.app&gt;</code></li>
-    <li><b>Quick phone test:</b>
+  <h1 style="margin:0 0 12px;font-size:24px">What to do next (updated)</h1>
+  <p style="color:#4A4640;line-height:1.5">I tried to finish domain + email setup from your PC. Here’s the honest status:</p>
+
+  <h2 style="font-size:16px;margin:18px 0 8px">Blocked (needs you)</h2>
+  <ol style="line-height:1.75;padding-left:20px">
+    <li><b>Domain <code>makeyourpass.app</code> is NOT registered</b> (DNS = non-existent).  
+      You must either:
       <ul>
-        <li>Register for an event</li>
-        <li>Check the ticket email + PNG</li>
-        <li>Try “Resend my ticket” on the form</li>
-        <li>Open Scan on your phone and admit someone</li>
-        <li>Check the host dashboard list</li>
+        <li>Buy <code>makeyourpass.app</code> (Namecheap / Cloudflare / GoDaddy), <b>or</b></li>
+        <li>Tell me another domain you already own</li>
       </ul>
     </li>
-    <li><b>Optional:</b> add <code>CRON_SECRET</code> on Vercel if you want to manually trigger the “day before” reminder emails.</li>
+    <li>After you own a domain: log into <b>Resend.com in Chrome</b> (Google blocks automated login) → Domains → Add domain → paste DNS records → Verify</li>
+    <li>Then reply <b>“domain verified”</b> and I’ll set <code>RESEND_FROM</code> + redeploy</li>
   </ol>
-  <p style="margin-top:18px;color:#4A4640"><b>Already done for you:</b> the database SQL is applied (unique-code scan + reminder stamp). Code is live at makeyourpass.vercel.app.</p>
+
+  <h2 style="font-size:16px;margin:18px 0 8px">Already done by me</h2>
+  <ul style="line-height:1.7">
+    <li>App features live (tickets, scan, dashboard, resend UI, UPI, certs, etc.)</li>
+    <li>Phase9 SQL applied (unique-code admit + reminder stamp)</li>
+    <li><code>CRON_SECRET</code> added on Vercel + redeployed (day-before reminders)</li>
+    <li>Sandbox email still works to <b>gooseisback4u@gmail.com</b> only</li>
+  </ul>
+
+  <h2 style="font-size:16px;margin:18px 0 8px">Do this now (5 min)</h2>
+  <ol style="line-height:1.75;padding-left:20px">
+    <li>Open Chrome yourself → https://resend.com/login → sign in</li>
+    <li>Buy/register a domain if you don’t have one</li>
+    <li>Phone test the app at https://makeyourpass.vercel.app using your Gmail (works in sandbox)</li>
+  </ol>
+
   <p style="color:#8A8478;font-size:12px;margin-top:20px">Live: https://makeyourpass.vercel.app</p>
 </div></body></html>`
         : `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#14110E;color:#fff;padding:24px">
 <div style="max-width:640px;margin:auto;background:#1d1a16;border:2px solid #FF4D2E;border-radius:12px;padding:24px">
 <h1 style="color:#FF4D2E">MakeYourPass — Product Status Report</h1>
-<p style="color:#bbb">Generated after finishing remaining polish (post your UPI/org/cert work).</p>
-<h2 style="color:#FFD23F">✅ Done now</h2>
-<ul>
-<li><b>Your recent work kept:</b> UPI payments, host Send Ticket, certificates + End Event, org portal Zine UI, email verification signup, MC org requests, reachout blast</li>
-<li><b>Friendly duplicate message</b> on registration form</li>
-<li><b>Resend my ticket</b> (public) on event form → /api/on-registration action=resend</li>
-<li><b>Polished ticket email</b> (branded HTML + code chip + PNG attach)</li>
-<li><b>Rate limit</b> on form (20s client cooldown) + resend (60s server)</li>
-<li><b>T-24h reminder job</b> merged into /api/reachout (cron + action=remind-t24)</li>
-<li><b>Scanner</b> admits by QR token OR unique code (needs SQL below)</li>
-<li><b>Lint/build clean</b> + deployed to makeyourpass.vercel.app</li>
-</ul>
-<h2 style="color:#FFD23F">⚠️ You must run this SQL once</h2>
-<pre style="background:#0E0E0E;padding:12px;border-radius:8px;overflow:auto;font-size:12px;color:#FFD23F">supabase/phase9-finish-polish.sql
-— adds reminder_sent_at
-— creates admit_by_code_or_token RPC</pre>
-<h2 style="color:#FFD23F">⏳ Still on you</h2>
-<ul>
-<li><b>Verify Resend domain</b> makeyourpass.app (else only owner email works)</li>
-<li>Set <b>CRON_SECRET</b> or <b>SETUP_SECRET</b> on Vercel if you want manual T-24 runs (cron uses x-vercel-cron)</li>
-<li>Real-phone camera pass on /host/:eventId/scan</li>
-</ul>
-<p style="color:#888;font-size:12px">Live https://makeyourpass.vercel.app</p>
+<p style="color:#bbb">See next-steps email for current blockers.</p>
 </div></body></html>`
       const subject = body?.action === 'next-steps'
         ? 'MakeYourPass — what to do next (simple steps)'

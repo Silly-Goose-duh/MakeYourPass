@@ -29,3 +29,6 @@ dist-ssr
 
 # Supabase CLI scratch
 supabase/.temp
+
+.cron_secret.local
+.env.prod
