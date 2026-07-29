@@ -94,7 +94,7 @@ export async function requestPasswordReset(email: string) {
       data: { message: j.message as string, emailed: j.emailed !== false, warning: j.warning as string | undefined },
       error: null,
     }
-  } catch (e) {
+  } catch {
     // Fallback to Supabase built-in mail
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://makeyourpass.vercel.app'
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
