@@ -84,7 +84,7 @@ export default async function handler(req: any, res: any) {
       <p style="margin:0;color:#9aa4b2;font-size:14px">Shipped v0.3.0 · MIT · local-first · multi-agent</p>
     </div>
     <div style="padding:22px 24px;line-height:1.55;font-size:14px;color:#d7dbe3">
-      <p><b style="color:#fff">Repo:</b> <a href="https://github.com/Silly-Goose-duh/grok-build-obsidian-plugin" style="color:#7cb7ff">github.com/Silly-Goose-duh/grok-build-obsidian-plugin</a></p>
+      <p><b style="color:#fff">Repo:</b> <a href="https://github.com/Silly-Goose-duh/agent-vault" style="color:#7cb7ff">github.com/Silly-Goose-duh/agent-vault</a></p>
 
       <h2 style="color:#7cb7ff;font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em">1. Problem</h2>
       <p>Coding agents (Grok Build, Hermes, Claude Code, Codex, Cursor) are daily drivers — but they forget who you are every session. Users re-explain prefs and paste API keys into chat: wasted time, security risk, broken personalization.</p>
@@ -155,7 +155,7 @@ export default async function handler(req: any, res: any) {
       </p>
     </div>
     <div style="padding:14px 24px;border-top:1px solid #2a3140;color:#6b7280;font-size:11px">
-      Agent Vault v0.3.0 · https://github.com/Silly-Goose-duh/grok-build-obsidian-plugin
+      Agent Vault v0.3.1 · https://github.com/Silly-Goose-duh/agent-vault
     </div>
   </div>
 </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase, getUserOrganizations } from '@/lib/supabase'
+import { supabase, resolvePostLoginPath } from '@/lib/supabase'
 
 /**
  * Handles email-confirmation / magic-link / password-recovery redirects from Supabase.
@@ -49,12 +49,8 @@ export function AuthCallbackPage() {
         }
 
         setMessage('Email verified! Redirecting…')
-        const { data: memberships } = await getUserOrganizations()
-        if (memberships && memberships.length > 0 && memberships[0].organizations?.slug) {
-          navigate(`/${memberships[0].organizations.slug}`, { replace: true })
-          return
-        }
-        navigate('/dashboard', { replace: true })
+        const path = await resolvePostLoginPath()
+        navigate(path, { replace: true })
       } catch (e) {
         if (!alive) return
         setError(e instanceof Error ? e.message : 'Confirmation failed')

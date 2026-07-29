@@ -52,13 +52,17 @@ export function OrgDashboard() {
   }
 
   // Approved org(s) → real dashboard is /:orgSlug
-  if (orgs.length > 0 && orgs[0]?.slug) {
-    return <Navigate to={`/${orgs[0].slug}`} replace />
+  const approved = orgs.filter((o) => o?.slug && o.is_approved !== false)
+  const dest = approved.find((o) => o.is_approved === true) || approved[0]
+  if (dest?.slug) {
+    return <Navigate to={`/${dest.slug}`} replace />
   }
 
-  // Superadmin with no personal org: still useful to go to MC
+  // Superadmin with no personal org → MC (approvals live there)
   const isSuper = !!profile?.is_superadmin
-
+  if (isSuper && !pending) {
+    return <Navigate to="/mc" replace />
+  }
   return (
     <div className="min-h-screen px-4 sm:px-6 py-16" style={{ background: '#F4EFE1' }}>
       <motion.div

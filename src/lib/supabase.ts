@@ -385,7 +385,63 @@ export async function getUserOrganizations() {
   if (isRlsRecursionError(error)) {
     return { data: [], error: new Error('RLS_RECURSION') }
   }
-  return { data: data as (OrganizationMember & { organizations: Organization })[] | null, error }
+  if (error) return { data: null, error }
+
+  // If join embed is empty (RLS on organizations), hydrate org rows separately.
+  const rows = (data || []) as (OrganizationMember & { organizations: Organization | null })[]
+  const missing = rows.filter((r) => !r.organizations?.slug)
+  if (missing.length > 0) {
+    const ids = [...new Set(missing.map((r) => r.organization_id))]
+    const { data: orgs } = await supabase.from('organizations').select('*').in('id', ids)
+    const map = new Map((orgs || []).map((o) => [o.id, o as Organization]))
+    for (const r of rows) {
+      if (!r.organizations?.slug) {
+        r.organizations = map.get(r.organization_id) || null
+      }
+    }
+  }
+  return { data: rows as (OrganizationMember & { organizations: Organization })[] | null, error: null }
+}
+
+/**
+ * After login / email verify: where should the user land?
+ * - approved club membership → /{club-slug}
+ * - pending org request → /dashboard (wait screen)
+ * - superadmin with no club → /mc
+ * - otherwise → /dashboard (request org CTA) — never force /signup on sign-in
+ */
+export async function resolvePostLoginPath(opts?: { next?: string | null }): Promise<string> {
+  const next = opts?.next
+  if (next && next.startsWith('/') && !next.startsWith('//')) return next
+
+  const user = await getCurrentUser()
+  if (!user) return '/login'
+
+  const [{ data: memberships }, { data: requests }, { data: profile }] = await Promise.all([
+    getUserOrganizations(),
+    getUserRequests(),
+    getProfile(user.id),
+  ])
+
+  const approved = (memberships || []).filter(
+    (m) => m.organizations?.slug && m.organizations?.is_approved !== false
+  )
+  // Prefer fully approved orgs; if is_approved missing, still use slug (legacy rows)
+  const withSlug = approved.find((m) => m.organizations?.is_approved === true)
+    || approved.find((m) => !!m.organizations?.slug)
+    || (memberships || []).find((m) => !!m.organizations?.slug)
+
+  if (withSlug?.organizations?.slug) {
+    // Only send to club portal if approved (or superadmin)
+    if (withSlug.organizations.is_approved || profile?.is_superadmin) {
+      return `/${withSlug.organizations.slug}`
+    }
+  }
+
+  const reqs = requests || []
+  if (reqs.some((r) => r.status === 'pending')) return '/dashboard'
+  if (profile?.is_superadmin) return '/mc'
+  return '/dashboard'
 }
 
 export async function getOrgMembers(orgId: string) {

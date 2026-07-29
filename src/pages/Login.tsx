@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { Sparkles, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { signIn, getUserOrganizations, getUserRequests, isEmailConfirmed } from '@/lib/supabase'
+import { signIn, isEmailConfirmed, resolvePostLoginPath } from '@/lib/supabase'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -22,7 +22,6 @@ export function LoginPage() {
     try {
       const { data, error: signErr } = await signIn(email, password)
       if (signErr) {
-        // Supabase often returns this when email is not confirmed
         if (/confirm|verified|verification/i.test(signErr.message)) {
           setError('Please verify your email first — check your inbox for the confirmation link.')
         } else {
@@ -39,23 +38,8 @@ export function LoginPage() {
       }
 
       const params = new URLSearchParams(window.location.search)
-      const next = params.get('next')
-      if (next && next.startsWith('/')) {
-        navigate(next)
-        return
-      }
-
-      const { data: memberships } = await getUserOrganizations()
-      if (memberships && memberships.length > 0 && memberships[0].organizations?.slug) {
-        navigate(`/${memberships[0].organizations.slug}`)
-        return
-      }
-      const { data: requests } = await getUserRequests()
-      if ((requests || []).some((r) => r.status === 'pending')) {
-        navigate('/dashboard')
-        return
-      }
-      navigate('/signup?step=organization')
+      const path = await resolvePostLoginPath({ next: params.get('next') })
+      navigate(path, { replace: true })
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
