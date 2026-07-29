@@ -853,11 +853,25 @@ export function getBrochurePublicUrl(path: string) {
 }
 
 export async function uploadOrgAsset(file: File, path: string) {
-  return supabase.storage.from('event-posters').upload(path, file, { upsert: true })
+  // Sanitize path segments (spaces / unicode break some storage configs)
+  const safe = path
+    .split('/')
+    .map((seg) => seg.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-'))
+    .join('/')
+  const contentType = file.type || 'image/jpeg'
+  return supabase.storage.from('event-posters').upload(safe, file, {
+    upsert: true,
+    contentType,
+    cacheControl: '3600',
+  })
 }
 
 export function getOrgAssetPublicUrl(path: string) {
-  const { data } = supabase.storage.from('event-posters').getPublicUrl(path)
+  const safe = path
+    .split('/')
+    .map((seg) => seg.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-'))
+    .join('/')
+  const { data } = supabase.storage.from('event-posters').getPublicUrl(safe)
   return data.publicUrl
 }
 

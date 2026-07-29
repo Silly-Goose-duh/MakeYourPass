@@ -50,7 +50,9 @@ function ExecomSidebar({
   const [name, setName] = useState('')
   const [role, setRole] = useState('Member')
   const [photo, setPhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
   const byRole = useMemo(() => {
     const map = new Map<string, OrgExecomMember[]>()
@@ -62,18 +64,28 @@ function ExecomSidebar({
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }, [members])
 
+  const clearForm = () => {
+    setName('')
+    setRole('Member')
+    setPhoto(null)
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
+    setPhotoPreview(null)
+    setFormError('')
+    setOpen(false)
+  }
+
   const handleAdd = async () => {
     if (!name.trim()) return
     setSaving(true)
+    setFormError('')
     try {
       await onAdd(
         { full_name: name.trim(), role_title: role.trim() || 'Member', photo_url: '' },
         photo
       )
-      setName('')
-      setRole('Member')
-      setPhoto(null)
-      setOpen(false)
+      clearForm()
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Could not save member')
     } finally {
       setSaving(false)
     }
@@ -130,14 +142,25 @@ function ExecomSidebar({
                   }}
                 >
                   <div
-                    className="h-8 w-8 shrink-0 flex items-center justify-center text-xs font-extrabold text-white overflow-hidden"
+                    className="h-9 w-9 shrink-0 flex items-center justify-center text-xs font-extrabold text-white overflow-hidden rounded-full"
                     style={{
                       background: zineColorFor(m.full_name),
                       border: `2px solid ${INK}`,
                     }}
                   >
                     {m.photo_url ? (
-                      <img src={m.photo_url} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={m.photo_url}
+                        alt={m.full_name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          const el = e.currentTarget
+                          el.style.display = 'none'
+                          if (el.parentElement) {
+                            el.parentElement.textContent = (m.full_name[0] || '?').toUpperCase()
+                          }
+                        }}
+                      />
                     ) : (
                       (m.full_name[0] || '?').toUpperCase()
                     )}
@@ -186,16 +209,36 @@ function ExecomSidebar({
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
               />
-              <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: '#4A4640' }}>
-                <Upload className="h-3.5 w-3.5" />
-                <span>{photo ? photo.name : 'Photo (optional)'}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-                />
-              </label>
+              <div className="flex items-center gap-2">
+                <div
+                  className="h-10 w-10 shrink-0 overflow-hidden rounded-full flex items-center justify-center text-xs font-extrabold"
+                  style={{ border: `2px solid ${INK}`, background: photoPreview ? '#fff' : YELLOW }}
+                >
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    (name[0] || '?').toUpperCase()
+                  )}
+                </div>
+                <label className="flex-1 flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: '#4A4640' }}>
+                  <Upload className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{photo ? photo.name : 'Photo (shows as icon)'}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null
+                      if (photoPreview) URL.revokeObjectURL(photoPreview)
+                      setPhoto(f)
+                      setPhotoPreview(f ? URL.createObjectURL(f) : null)
+                    }}
+                  />
+                </label>
+              </div>
+              {formError && (
+                <p className="text-[11px] font-bold" style={{ color: RED }}>{formError}</p>
+              )}
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -203,13 +246,13 @@ function ExecomSidebar({
                   onClick={() => void handleAdd()}
                   disabled={saving || !name.trim()}
                 >
-                  Save
+                  {saving ? 'Saving…' : 'Save'}
                 </button>
                 <button
                   type="button"
                   className="zine-btn text-xs"
                   style={{ background: '#fff' }}
-                  onClick={() => setOpen(false)}
+                  onClick={clearForm}
                 >
                   Cancel
                 </button>
@@ -439,9 +482,15 @@ export function OrgHome() {
     if (!org) return
     let photo_url = m.photo_url || ''
     if (file) {
-      const path = `org/${org.id}/execom/${Date.now()}-${file.name}`
-      const { error: upErr } = await uploadOrgAsset(file, path)
-      if (!upErr) photo_url = getOrgAssetPublicUrl(path)
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+      const path = `org/${org.id}/execom/${Date.now()}.${ext}`
+      const { data: upData, error: upErr } = await uploadOrgAsset(file, path)
+      if (upErr) {
+        throw new Error(upErr.message || 'Photo upload failed — try a smaller JPG/PNG')
+      }
+      // Prefer returned path if present
+      const storedPath = upData?.path || path
+      photo_url = getOrgAssetPublicUrl(storedPath)
     }
     const { data, error } = await addExecomMember({
       organization_id: org.id,
@@ -450,7 +499,8 @@ export function OrgHome() {
       photo_url,
       sort_order: execom.length,
     })
-    if (!error && data) setExecom((prev) => [...prev, data])
+    if (error) throw new Error(error.message || 'Could not save member')
+    if (data) setExecom((prev) => [...prev, data])
   }
 
   const handleDeleteExecom = async (id: string) => {
