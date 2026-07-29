@@ -1054,106 +1054,68 @@ export function OrgHome() {
         )}
 
         <div className="px-4 sm:px-6 py-8 pb-20">
-          {/* Contact strip — sits under hero, before events */}
-          {(org.contact_email || org.contact_phone || org.website || org.instagram || isAdmin) && (
-            <div
-              className="mb-8 p-4 sm:p-5"
-              style={{ background: '#fff', border: `2.5px solid ${INK}`, boxShadow: '4px 4px 0 #14110E' }}
-            >
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <p
-                  className="text-[11px] font-extrabold uppercase tracking-wider"
-                  style={{ fontFamily: 'Syne, sans-serif', color: INK }}
+          {/* Contact chips only when set — edit via top Edit profile */}
+          {(org.contact_email || org.contact_phone || org.website || org.instagram) && (
+            <div className="flex flex-wrap gap-2 sm:gap-3 mb-8">
+              {org.contact_email && (
+                <a
+                  href={`mailto:${org.contact_email}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold"
+                  style={{ background: YELLOW, border: `2px solid ${INK}`, color: INK }}
                 >
-                  Contact
-                </p>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    className="text-[10px] font-extrabold uppercase flex items-center gap-1 hover:opacity-70"
-                    style={{ color: '#4A4640' }}
-                    onClick={openProfileEditor}
-                  >
-                    <Pencil className="h-3 w-3" /> Edit
-                  </button>
-                )}
-              </div>
-
-              {!(org.contact_email || org.contact_phone || org.website || org.instagram) && isAdmin ? (
-                <p className="text-sm font-semibold" style={{ color: '#4A4640' }}>
-                  Add email, phone, website or Instagram so students can reach you.
-                  <button
-                    type="button"
-                    className="ml-2 font-extrabold underline"
-                    style={{ color: RED }}
-                    onClick={openProfileEditor}
-                  >
-                    Add contacts
-                  </button>
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2 sm:gap-3">
-                  {org.contact_email && (
-                    <a
-                      href={`mailto:${org.contact_email}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold"
-                      style={{ background: YELLOW, border: `2px solid ${INK}`, color: INK }}
-                    >
-                      <Mail className="h-3.5 w-3.5" strokeWidth={2.5} />
-                      {org.contact_email}
-                    </a>
-                  )}
-                  {org.contact_phone && (
-                    <a
-                      href={`tel:${String(org.contact_phone).replace(/\s/g, '')}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold"
-                      style={{ background: '#fff', border: `2px solid ${INK}`, color: INK }}
-                    >
-                      <Phone className="h-3.5 w-3.5" strokeWidth={2.5} />
-                      {org.contact_phone}
-                    </a>
-                  )}
-                  {org.contact_phone && (
-                    <a
-                      href={`https://wa.me/${(() => {
-                        const d = String(org.contact_phone || '').replace(/\D/g, '')
-                        if (!d) return ''
-                        if (d.length >= 11 && d.startsWith('91')) return d
-                        if (d.startsWith('0')) return `91${d.slice(1)}`
-                        if (d.length === 10) return `91${d}`
-                        return d
-                      })()}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
-                      style={{ background: '#25D366', border: `2px solid ${INK}` }}
-                    >
-                      WhatsApp
-                    </a>
-                  )}
-                  {org.website && (
-                    <a
-                      href={org.website}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
-                      style={{ background: '#2D5BFF', border: `2px solid ${INK}` }}
-                    >
-                      <Globe className="h-3.5 w-3.5" strokeWidth={2.5} /> Website
-                    </a>
-                  )}
-                  {org.instagram && (
-                    <a
-                      href={org.instagram}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
-                      style={{ background: '#E84AC4', border: `2px solid ${INK}` }}
-                    >
-                      <AtSign className="h-3.5 w-3.5" strokeWidth={2.5} /> Instagram
-                    </a>
-                  )}
-                </div>
+                  <Mail className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  {org.contact_email}
+                </a>
+              )}
+              {org.contact_phone && (
+                <a
+                  href={`tel:${String(org.contact_phone).replace(/\s/g, '')}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold"
+                  style={{ background: '#fff', border: `2px solid ${INK}`, color: INK }}
+                >
+                  <Phone className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  {org.contact_phone}
+                </a>
+              )}
+              {org.contact_phone && (
+                <a
+                  href={`https://wa.me/${(() => {
+                    const d = String(org.contact_phone || '').replace(/\D/g, '')
+                    if (!d) return ''
+                    if (d.length >= 11 && d.startsWith('91')) return d
+                    if (d.startsWith('0')) return `91${d.slice(1)}`
+                    if (d.length === 10) return `91${d}`
+                    return d
+                  })()}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
+                  style={{ background: '#25D366', border: `2px solid ${INK}` }}
+                >
+                  WhatsApp
+                </a>
+              )}
+              {org.website && (
+                <a
+                  href={org.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
+                  style={{ background: '#2D5BFF', border: `2px solid ${INK}` }}
+                >
+                  <Globe className="h-3.5 w-3.5" strokeWidth={2.5} /> Website
+                </a>
+              )}
+              {org.instagram && (
+                <a
+                  href={org.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
+                  style={{ background: '#E84AC4', border: `2px solid ${INK}` }}
+                >
+                  <AtSign className="h-3.5 w-3.5" strokeWidth={2.5} /> Instagram
+                </a>
               )}
             </div>
           )}
