@@ -308,19 +308,20 @@ export function MCPanel() {
         )}
       </AnimatePresence>
 
-      {/* Confirm Modal */}
+      {/* Confirm Modal — centered on screen */}
       <Modal
         isOpen={!!confirmId}
         onClose={() => { setConfirmId(null); setConfirmAction(null) }}
         title={confirmAction === 'approve' ? 'Approve Organization' : 'Reject Request'}
         size="sm"
+        centered
       >
-        <p className="text-text-secondary mb-6">
+        <p className="text-text-secondary mb-6 text-center">
           {confirmAction === 'approve'
             ? 'This will create the organization and notify the requester. Are you sure?'
             : 'This will reject the registration request and notify the requester. Are you sure?'}
         </p>
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-center gap-3">
           <Button
             variant="ghost"
             onClick={() => { setConfirmId(null); setConfirmAction(null) }}

@@ -13,6 +13,8 @@ interface ModalProps {
   showCloseButton?: boolean
   closeOnOverlayClick?: boolean
   closeOnEscape?: boolean
+  /** Center title + body text (good for confirm dialogs) */
+  centered?: boolean
 }
 
 export function Modal({
@@ -25,6 +27,7 @@ export function Modal({
   showCloseButton = true,
   closeOnOverlayClick = true,
   closeOnEscape = true,
+  centered = false,
 }: ModalProps) {
   useEffect(() => {
     if (!isOpen || !closeOnEscape) return
@@ -58,22 +61,35 @@ export function Modal({
 
   return (
     <Fragment>
+      {/* Backdrop — full viewport */}
       <div
-        className="fixed inset-0 bg-void/80 z-50"
+        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-[2px]"
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
+      {/* Center stage — full viewport flex, size only on the card */}
       <div
-        className={cn('fixed inset-0 z-50 flex items-center justify-center p-4', sizes[size])}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
         aria-describedby={description ? 'modal-description' : undefined}
       >
-        <div className="w-full bg-darker border border-brand/30 rounded-lg overflow-hidden">
+        <div
+          className={cn(
+            'pointer-events-auto w-full bg-darker border border-brand/30 rounded-lg overflow-hidden shadow-2xl',
+            sizes[size]
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
           {(title || showCloseButton) && (
-            <div className="flex items-start justify-between p-4 border-b border-brand/20">
-              <div>
+            <div
+              className={cn(
+                'flex items-start gap-3 p-4 border-b border-brand/20',
+                centered ? 'flex-col items-center text-center relative' : 'justify-between'
+              )}
+            >
+              <div className={cn(centered && 'w-full px-6')}>
                 {title && (
                   <h2 id="modal-title" className="text-base font-semibold text-white">
                     {title}
@@ -86,13 +102,20 @@ export function Modal({
                 )}
               </div>
               {showCloseButton && (
-                <button onClick={onClose} aria-label="Close modal" className="p-1 text-text-muted hover:text-white transition-colors">
+                <button
+                  onClick={onClose}
+                  aria-label="Close modal"
+                  className={cn(
+                    'p-1 text-text-muted hover:text-white transition-colors',
+                    centered && 'absolute right-3 top-3'
+                  )}
+                >
                   <X className="h-4 w-4" />
                 </button>
               )}
             </div>
           )}
-          <div className="p-4">{children}</div>
+          <div className={cn('p-4', centered && 'text-center')}>{children}</div>
         </div>
       </div>
     </Fragment>
@@ -123,13 +146,18 @@ export function ConfirmModal({
   loading = false,
 }: ConfirmModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
-      <p className="text-brand-light text-sm mb-4">{message}</p>
-      <div className="flex justify-end gap-2">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm" centered>
+      <p className="text-brand-light text-sm mb-5">{message}</p>
+      <div className="flex justify-center gap-2">
         <Button variant="ghost" size="sm" onClick={onClose} disabled={loading}>
           {cancelText}
         </Button>
-        <Button variant={variant === 'danger' ? 'danger' : 'primary'} size="sm" onClick={onConfirm} loading={loading}>
+        <Button
+          variant={variant === 'danger' ? 'danger' : 'primary'}
+          size="sm"
+          onClick={onConfirm}
+          loading={loading}
+        >
           {confirmText}
         </Button>
       </div>
