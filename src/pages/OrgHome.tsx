@@ -98,7 +98,7 @@ function ExecomSidebar({
       style={{ background: '#FBF8F0', borderLeft: `2.5px solid ${INK}` }}
     >
       <div
-        className="px-3 py-3 flex items-center justify-between"
+        className="px-3 py-3 flex items-center justify-between gap-2"
         style={{ borderBottom: `2.5px solid ${INK}`, background: YELLOW }}
       >
         <p
@@ -107,14 +107,112 @@ function ExecomSidebar({
         >
           Execom · {members.length}
         </p>
-        <Users className="h-4 w-4" style={{ color: INK }} strokeWidth={2.5} />
+        <div className="flex items-center gap-1.5">
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              title={open ? 'Close add form' : 'Add member'}
+              aria-label={open ? 'Close add form' : 'Add member'}
+              className="h-8 w-8 flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+              style={{
+                background: open ? '#fff' : RED,
+                border: `2.5px solid ${INK}`,
+                boxShadow: '2px 2px 0 #14110E',
+                color: open ? INK : '#fff',
+              }}
+            >
+              {open ? (
+                <span className="text-sm font-extrabold leading-none">×</span>
+              ) : (
+                <UserPlus className="h-4 w-4" strokeWidth={2.5} />
+              )}
+            </button>
+          )}
+          {!canManage && <Users className="h-4 w-4" style={{ color: INK }} strokeWidth={2.5} />}
+        </div>
       </div>
+
+      {/* Add form pinned under header — no scroll needed */}
+      {canManage && open && (
+        <div className="p-3 space-y-2" style={{ borderBottom: `2.5px solid ${INK}`, background: '#fff' }}>
+          <p className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: '#4A4640' }}>
+            New member
+          </p>
+          <Input placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            placeholder="Role (Chairperson, Tech Lead…)"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+          />
+          <div className="flex items-center gap-2">
+            <div
+              className="h-10 w-10 shrink-0 overflow-hidden rounded-full flex items-center justify-center text-xs font-extrabold"
+              style={{ border: `2px solid ${INK}`, background: photoPreview ? '#fff' : YELLOW }}
+            >
+              {photoPreview ? (
+                <img src={photoPreview} alt="" className="h-full w-full object-cover" />
+              ) : (
+                (name[0] || '?').toUpperCase()
+              )}
+            </div>
+            <label className="flex-1 flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: '#4A4640' }}>
+              <Upload className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{photo ? photo.name : 'Photo (shows as icon)'}</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null
+                  if (photoPreview) URL.revokeObjectURL(photoPreview)
+                  setPhoto(f)
+                  setPhotoPreview(f ? URL.createObjectURL(f) : null)
+                }}
+              />
+            </label>
+          </div>
+          {formError && (
+            <p className="text-[11px] font-bold" style={{ color: RED }}>{formError}</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="zine-btn zine-btn-accent text-xs flex-1"
+              onClick={() => void handleAdd()}
+              disabled={saving || !name.trim()}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              className="zine-btn text-xs"
+              style={{ background: '#fff' }}
+              onClick={clearForm}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
         {byRole.length === 0 && (
           <p className="text-xs font-semibold px-2 py-6 text-center" style={{ color: '#4A4640' }}>
             No members yet.
-            {canManage && ' Add your team below.'}
+            {canManage && !open && (
+              <>
+                {' '}
+                <button
+                  type="button"
+                  className="font-extrabold underline"
+                  style={{ color: RED }}
+                  onClick={() => setOpen(true)}
+                >
+                  Add one
+                </button>
+              </>
+            )}
           </p>
         )}
         {byRole.map(([roleTitle, list]) => (
@@ -191,77 +289,6 @@ function ExecomSidebar({
           </div>
         ))}
       </div>
-
-      {canManage && (
-        <div className="p-3" style={{ borderTop: `2.5px solid ${INK}`, background: PAPER }}>
-          {!open ? (
-            <button
-              type="button"
-              className="zine-btn w-full text-sm"
-              onClick={() => setOpen(true)}
-            >
-              <Plus className="h-4 w-4" strokeWidth={3} /> Add member
-            </button>
-          ) : (
-            <div className="space-y-2">
-              <Input placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} />
-              <Input
-                placeholder="Role (Chairperson, Tech Lead…)"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              />
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-10 w-10 shrink-0 overflow-hidden rounded-full flex items-center justify-center text-xs font-extrabold"
-                  style={{ border: `2px solid ${INK}`, background: photoPreview ? '#fff' : YELLOW }}
-                >
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    (name[0] || '?').toUpperCase()
-                  )}
-                </div>
-                <label className="flex-1 flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: '#4A4640' }}>
-                  <Upload className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{photo ? photo.name : 'Photo (shows as icon)'}</span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] || null
-                      if (photoPreview) URL.revokeObjectURL(photoPreview)
-                      setPhoto(f)
-                      setPhotoPreview(f ? URL.createObjectURL(f) : null)
-                    }}
-                  />
-                </label>
-              </div>
-              {formError && (
-                <p className="text-[11px] font-bold" style={{ color: RED }}>{formError}</p>
-              )}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="zine-btn zine-btn-accent text-xs flex-1"
-                  onClick={() => void handleAdd()}
-                  disabled={saving || !name.trim()}
-                >
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-                <button
-                  type="button"
-                  className="zine-btn text-xs"
-                  style={{ background: '#fff' }}
-                  onClick={clearForm}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </aside>
   )
 }
