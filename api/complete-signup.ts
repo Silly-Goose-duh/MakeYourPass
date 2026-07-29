@@ -1,14 +1,78 @@
 /**
  * POST /api/complete-signup
- * Body: {
- *   full_name, email, password,
- *   organization_name, organization_slug, organization_description?
- * }
  *
- * - New email → create unconfirmed user + pending org request + verification email
- * - Existing email + correct password → pending org request only (no re-create account)
+ * Reliable account + org-request flow:
+ * 1. createUser (admin) — not generateLink('signup') which leaves half-created users
+ * 2. If email already registered → check password / unconfirmed state properly
+ * 3. Create pending org request
+ * 4. Try Resend verification email; if Resend sandbox blocks (or any send fail),
+ *    auto-confirm the email so the user can sign in (domain not verified yet)
  */
 export const config = { runtime: 'nodejs' }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AdminClient = any
+
+async function findUserByEmail(admin: AdminClient, email: string) {
+  const target = email.toLowerCase()
+  // Prefer profiles (fast)
+  const { data: prof } = await admin.from('profiles').select('id, email').ilike('email', target).maybeSingle()
+  if (prof?.id) {
+    const { data } = await admin.auth.admin.getUserById(prof.id)
+    if (data?.user) return data.user
+  }
+  // Paginate auth users (small projects)
+  for (let page = 1; page <= 5; page++) {
+    const { data } = await admin.auth.admin.listUsers({ page, perPage: 200 })
+    const hit = (data?.users || []).find((u: { email?: string }) => (u.email || '').toLowerCase() === target)
+    if (hit) return hit
+    if (!data?.users?.length || data.users.length < 200) break
+  }
+  return null
+}
+
+async function sendVerifyEmail(opts: {
+  email: string
+  fullName: string
+  orgName: string
+  orgSlug: string
+  actionLink: string
+  origin: string
+}) {
+  const RESEND_API_KEY = process.env.RESEND_API_KEY
+  const RESEND_FROM = process.env.RESEND_FROM || 'MakeYourPass <onboarding@resend.dev>'
+  if (!RESEND_API_KEY) return { sent: false, error: 'RESEND_API_KEY missing' }
+
+  const { Resend } = await import('resend')
+  const resend = new Resend(RESEND_API_KEY)
+  const portalPreview = `${opts.origin}/${opts.orgSlug}`
+  const html = `
+    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#F4EFE1;color:#14110E">
+      <h1 style="font-size:22px;margin:0 0 12px">Verify your email</h1>
+      <p>Hi ${opts.fullName || 'there'},</p>
+      <p>Thanks for registering <strong>${opts.orgName}</strong> on MakeYourPass.</p>
+      <p>Confirm your email, then wait for superadmin approval of your organization.</p>
+      <p style="margin:24px 0">
+        <a href="${opts.actionLink}"
+           style="display:inline-block;background:#FF4D2E;color:#fff;padding:14px 20px;text-decoration:none;font-weight:700;border:2px solid #14110E">
+          Confirm email address
+        </a>
+      </p>
+      <p style="font-size:13px;color:#4A4640">
+        Once approved, your portal opens at<br/><strong>${portalPreview}</strong>
+      </p>
+      <p style="font-size:11px;color:#7A756B;word-break:break-all;margin-top:16px">${opts.actionLink}</p>
+    </div>
+  `
+  const { error } = await resend.emails.send({
+    from: RESEND_FROM,
+    to: opts.email,
+    subject: `Verify your email — ${opts.orgName} on MakeYourPass`,
+    html,
+  })
+  if (error) return { sent: false, error: error.message || 'send failed' }
+  return { sent: true as const, error: null }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
@@ -31,7 +95,7 @@ export default async function handler(req: any, res: any) {
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
     const organization_description = String(body?.organization_description || '').trim()
-    const existingOnly = !!body?.existing_only // logged-in path: skip user create
+    const existingOnly = !!body?.existing_only
 
     if (!organization_name || !organization_slug) {
       return res.status(400).json({ error: 'Organization name and URL are required' })
@@ -51,7 +115,7 @@ export default async function handler(req: any, res: any) {
       auth: { persistSession: false, autoRefreshToken: false },
     })
 
-    // Slug already taken by live org?
+    // Slug checks
     const { data: existingOrg } = await admin
       .from('organizations')
       .select('id')
@@ -60,7 +124,6 @@ export default async function handler(req: any, res: any) {
     if (existingOrg) {
       return res.status(400).json({ error: 'That organization URL is already taken' })
     }
-
     const { data: slugPending } = await admin
       .from('organization_registration_requests')
       .select('id')
@@ -77,11 +140,10 @@ export default async function handler(req: any, res: any) {
     const redirectTo = `${origin}/auth/callback`
 
     let userId: string | null = null
-    let needsVerify = true
-    let actionLink: string | undefined
-    let isExistingAccount = false
+    let isNewUser = false
+    let emailConfirmed = false
 
-    // Path A: already logged in — Authorization bearer
+    // Path A: logged-in bearer
     const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim()
     if (bearer && anon) {
       const userClient = supabaseMod.createClient(url, anon, {
@@ -91,9 +153,7 @@ export default async function handler(req: any, res: any) {
       const { data: u } = await userClient.auth.getUser(bearer)
       if (u?.user?.id) {
         userId = u.user.id
-        isExistingAccount = true
-        needsVerify = !u.user.email_confirmed_at
-        // ensure profile email
+        emailConfirmed = !!u.user.email_confirmed_at
         await admin.from('profiles').upsert(
           {
             id: userId,
@@ -105,15 +165,14 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // Path B: existing_only without valid session
     if (!userId && existingOnly) {
       return res.status(401).json({ error: 'Sign in first, then request your organization.' })
     }
 
-    // Path C: new signup or existing email+password
+    // Path B: create or recover account
     if (!userId) {
       if (!full_name || !email || !password) {
-        return res.status(400).json({ error: 'Missing required fields' })
+        return res.status(400).json({ error: 'Name, email, and password are required' })
       }
       if (password.length < 6) {
         return res.status(400).json({ error: 'Password must be at least 6 characters' })
@@ -122,72 +181,99 @@ export default async function handler(req: any, res: any) {
         return res.status(400).json({ error: 'Invalid email address' })
       }
 
-      const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-        type: 'signup',
+      // Create brand-new user (confirmed later if email can't send)
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email,
         password,
-        options: {
-          data: { full_name },
-          redirectTo,
-        },
+        email_confirm: false,
+        user_metadata: { full_name },
       })
 
-      if (linkErr) {
-        const msg = linkErr.message || 'Could not create account'
-        if (/already|registered|exists/i.test(msg) && anon) {
-          // Existing account — prove password, then only create org request
-          const pub = supabaseMod.createClient(url, anon, {
-            auth: { persistSession: false, autoRefreshToken: false },
+      if (!createErr && created?.user?.id) {
+        userId = created.user.id
+        isNewUser = true
+        emailConfirmed = !!created.user.email_confirmed_at
+      } else {
+        const msg = createErr?.message || 'Could not create account'
+        const isDup = /already|registered|exists|duplicate/i.test(msg)
+
+        if (!isDup) {
+          return res.status(400).json({ error: msg })
+        }
+
+        // Account exists — resolve user + password
+        const existing = await findUserByEmail(admin, email)
+        if (!existing) {
+          return res.status(400).json({
+            error: 'This email is already registered. Sign in, then request an organization from your dashboard.',
+            code: 'ACCOUNT_EXISTS',
           })
-          const { data: signed, error: signErr } = await pub.auth.signInWithPassword({ email, password })
-          if (signErr || !signed.user) {
+        }
+
+        // Try password
+        if (!anon) {
+          return res.status(500).json({ error: 'Auth not configured (anon key)' })
+        }
+        const pub = supabaseMod.createClient(url, anon, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        })
+        const { data: signed, error: signErr } = await pub.auth.signInWithPassword({ email, password })
+
+        if (signed?.user?.id) {
+          userId = signed.user.id
+          emailConfirmed = !!signed.user.email_confirmed_at
+          await pub.auth.signOut().catch(() => {})
+        } else if (signErr && /confirm|not confirmed|verification/i.test(signErr.message || '')) {
+          // Password is correct but email unconfirmed — unlock this attempt
+          userId = existing.id
+          await admin.auth.admin.updateUserById(userId, {
+            password,
+            email_confirm: true,
+            user_metadata: { full_name: full_name || existing.user_metadata?.full_name },
+          })
+          emailConfirmed = true
+        } else if (signErr && /invalid.*credentials|invalid login/i.test(signErr.message || '')) {
+          return res.status(400).json({
+            error:
+              'An account with this email already exists, but that password is wrong. Sign in with the correct password, or use Forgot password.',
+            code: 'ACCOUNT_EXISTS_WRONG_PASSWORD',
+          })
+        } else {
+          // Unknown sign-in error — if unconfirmed, auto-confirm with provided password update
+          if (!existing.email_confirmed_at) {
+            userId = existing.id
+            await admin.auth.admin.updateUserById(userId, {
+              password,
+              email_confirm: true,
+              user_metadata: { full_name: full_name || existing.user_metadata?.full_name },
+            })
+            emailConfirmed = true
+          } else {
             return res.status(400).json({
               error:
-                'An account with this email already exists. Sign in with the correct password, then request an organization from your dashboard.',
+                'An account with this email already exists. Sign in, then request an organization from your dashboard.',
               code: 'ACCOUNT_EXISTS',
             })
           }
-          userId = signed.user.id
-          isExistingAccount = true
-          needsVerify = !signed.user.email_confirmed_at
-          await admin.from('profiles').upsert(
-            {
-              id: userId,
-              full_name: full_name || signed.user.user_metadata?.full_name || '',
-              email,
-              is_superadmin: email === 'gooseisback4u@gmail.com',
-            },
-            { onConflict: 'id' }
-          )
-          // optional: sign out the temporary server session (ignore)
-          await pub.auth.signOut().catch(() => {})
-        } else {
-          return res.status(400).json({ error: msg })
         }
-      } else {
-        userId = linkData.user?.id || null
-        actionLink =
-          linkData.properties?.action_link ||
-          (linkData as { properties?: { action_link?: string } }).properties?.action_link
-        if (!userId) {
-          return res.status(500).json({ error: 'User created but no user id returned' })
-        }
-        await admin.from('profiles').upsert(
-          {
-            id: userId,
-            full_name,
-            email,
-            is_superadmin: email === 'gooseisback4u@gmail.com',
-          },
-          { onConflict: 'id' }
-        )
-        needsVerify = true
       }
+
+      if (!userId) {
+        return res.status(500).json({ error: 'Could not create or find user' })
+      }
+
+      await admin.from('profiles').upsert(
+        {
+          id: userId,
+          full_name,
+          email,
+          is_superadmin: email === 'gooseisback4u@gmail.com',
+        },
+        { onConflict: 'id' }
+      )
     }
 
-    if (!userId) return res.status(500).json({ error: 'Could not resolve user' })
-
-    // One pending request per user
+    // Org request
     const { data: pendingExisting } = await admin
       .from('organization_registration_requests')
       .select('id, status, organization_name, organization_slug')
@@ -196,14 +282,20 @@ export default async function handler(req: any, res: any) {
       .maybeSingle()
 
     if (pendingExisting) {
+      // Ensure they can sign in
+      if (!emailConfirmed) {
+        await admin.auth.admin.updateUserById(userId, { email_confirm: true })
+        emailConfirmed = true
+      }
       return res.status(200).json({
         ok: true,
-        existing: isExistingAccount,
         already_pending: true,
         user_id: userId,
         email,
         organization_slug: pendingExisting.organization_slug,
-        message: `You already have a pending request for ${pendingExisting.organization_name}.`,
+        needs_verify: false,
+        can_sign_in: true,
+        message: `You already have a pending request for ${pendingExisting.organization_name}. Sign in and open /dashboard.`,
       })
     }
 
@@ -218,83 +310,54 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'Org request failed: ' + reqErr.message })
     }
 
-    // New accounts need verification email
-    if (!isExistingAccount && needsVerify) {
-      const RESEND_API_KEY = process.env.RESEND_API_KEY
-      const RESEND_FROM = process.env.RESEND_FROM || 'MakeYourPass <onboarding@resend.dev>'
-      if (!RESEND_API_KEY) {
-        return res.status(500).json({
-          error: 'Email service not configured (RESEND_API_KEY). Account may exist — contact support.',
-        })
-      }
-      if (!actionLink) {
-        // regenerate link
-        const { data: again } = await admin.auth.admin.generateLink({
-          type: 'magiclink',
-          email,
-          options: { redirectTo },
-        })
-        actionLink = again?.properties?.action_link
-      }
-      if (!actionLink) {
-        return res.status(500).json({ error: 'Could not generate verification link' })
-      }
-
-      const { Resend } = await import('resend')
-      const resend = new Resend(RESEND_API_KEY)
-      const portalPreview = `${origin}/${organization_slug}`
-      const html = `
-        <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#F4EFE1;color:#14110E">
-          <h1 style="font-size:22px;margin:0 0 12px">Verify your email</h1>
-          <p>Hi ${full_name || 'there'},</p>
-          <p>Thanks for registering <strong>${organization_name}</strong> on MakeYourPass.</p>
-          <p>Confirm your email to activate your account. After that, a superadmin will review your organization request.</p>
-          <p style="margin:24px 0">
-            <a href="${actionLink}"
-               style="display:inline-block;background:#FF4D2E;color:#fff;padding:14px 20px;text-decoration:none;font-weight:700;border:2px solid #14110E">
-              Confirm email address
-            </a>
-          </p>
-          <p style="font-size:13px;color:#4A4640">
-            Once approved, your portal will open at<br/>
-            <strong>${portalPreview}</strong>
-          </p>
-        </div>
-      `
-      const { error: mailErr } = await resend.emails.send({
-        from: RESEND_FROM,
-        to: email,
-        subject: `Verify your email — ${organization_name} on MakeYourPass`,
-        html,
+    // Try verification email (best effort)
+    let mailSent = false
+    let mailNote = ''
+    if (!emailConfirmed) {
+      const { data: linkData } = await admin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: email || (await admin.auth.admin.getUserById(userId)).data?.user?.email || '',
+        options: { redirectTo },
       })
-      if (mailErr) {
-        return res.status(500).json({
-          error: 'Org request saved but verification email failed: ' + (mailErr.message || 'send error'),
-          user_id: userId,
+      const actionLink = linkData?.properties?.action_link
+      if (actionLink) {
+        const send = await sendVerifyEmail({
+          email: email || '',
+          fullName: full_name,
+          orgName: organization_name,
+          orgSlug: organization_slug,
+          actionLink,
+          origin,
         })
+        mailSent = send.sent
+        if (!send.sent) {
+          // Resend sandbox / domain — auto-confirm so product works
+          await admin.auth.admin.updateUserById(userId, { email_confirm: true })
+          emailConfirmed = true
+          mailNote =
+            'Verification email could not be delivered (email provider limit). Your account is activated — sign in with your password.'
+        }
+      } else {
+        await admin.auth.admin.updateUserById(userId, { email_confirm: true })
+        emailConfirmed = true
+        mailNote = 'Account activated. Sign in with your password.'
       }
-
-      return res.status(200).json({
-        ok: true,
-        user_id: userId,
-        email,
-        organization_slug,
-        needs_verify: true,
-        message: 'Check your inbox to verify your email',
-      })
     }
 
-    // Existing account path — no force re-verify; go wait on dashboard
+    // New users who got mail still need to verify; if auto-confirmed they can sign in now
     return res.status(200).json({
       ok: true,
-      existing: true,
-      needs_verify: needsVerify,
       user_id: userId,
       email,
       organization_slug,
-      message: needsVerify
-        ? 'Organization request submitted. Verify your email, then wait for approval on /dashboard.'
-        : 'Organization request submitted. Wait for superadmin approval on /dashboard.',
+      is_new_user: isNewUser,
+      needs_verify: mailSent && !emailConfirmed,
+      can_sign_in: emailConfirmed || !mailSent,
+      email_sent: mailSent,
+      message: mailSent
+        ? 'Check your inbox to verify your email, then sign in. Your org request is pending approval.'
+        : mailNote ||
+          'Organization request submitted. Sign in and open /dashboard to wait for approval.',
     })
   } catch (err) {
     console.error('complete-signup', err)

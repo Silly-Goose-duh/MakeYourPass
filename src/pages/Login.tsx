@@ -23,7 +23,9 @@ export function LoginPage() {
       const { data, error: signErr } = await signIn(email, password)
       if (signErr) {
         if (/confirm|verified|verification/i.test(signErr.message)) {
-          setError('Please verify your email first — check your inbox for the confirmation link.')
+          setError(
+            'Email not verified yet. Open /signup and tap “Resend verification”, or try again in a moment.'
+          )
         } else {
           setError(signErr.message)
         }
@@ -31,10 +33,11 @@ export function LoginPage() {
       }
       if (!data?.user) return
 
+      // Soft check only — do not block if session exists (server may auto-confirm)
       const confirmed = await isEmailConfirmed()
       if (!confirmed) {
-        setError('Email not verified yet. Open the confirmation link we sent you.')
-        return
+        // Session was created; continue anyway so users aren't stuck when mail fails
+        console.warn('Login: email_confirmed_at missing; continuing with session')
       }
 
       const params = new URLSearchParams(window.location.search)

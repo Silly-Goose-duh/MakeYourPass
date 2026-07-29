@@ -111,7 +111,7 @@ export function SignupPage() {
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
-        if (j.code === 'ACCOUNT_EXISTS') {
+        if (j.code === 'ACCOUNT_EXISTS' || j.code === 'ACCOUNT_EXISTS_WRONG_PASSWORD') {
           setError(j.error || 'Account exists. Sign in first.')
           return
         }
@@ -119,14 +119,14 @@ export function SignupPage() {
         return
       }
 
-      // Existing account or already logged in → dashboard wait screen
-      if (j.existing || loggedInMode || j.already_pending) {
-        if (j.needs_verify) {
+      // Can sign in now (auto-confirmed or already verified) → pending wait
+      if (j.can_sign_in || j.already_pending || loggedInMode || j.existing || !j.needs_verify) {
+        if (j.needs_verify && j.email_sent) {
           setStep('verify')
           return
         }
         setStep('pending')
-        setTimeout(() => navigate('/dashboard', { replace: true }), 1200)
+        setTimeout(() => navigate('/login', { replace: true }), 1600)
         return
       }
 
@@ -357,10 +357,10 @@ export function SignupPage() {
                 After approval your portal opens at <strong>/{orgSlug}</strong>.
               </p>
               <p className="text-xs font-semibold mb-6" style={{ color: '#4A4640' }}>
-                Redirecting to your dashboard…
+                Your account is ready — sign in with the email and password you just used.
               </p>
-              <Link to="/dashboard">
-                <Button variant="primary">Open dashboard</Button>
+              <Link to="/login">
+                <Button variant="primary">Sign in now</Button>
               </Link>
             </motion.div>
           )}
