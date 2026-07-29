@@ -7,6 +7,7 @@ import { LoginPage } from '@/pages/Login'
 import { SignupPage } from '@/pages/Signup'
 import { AuthProvider } from '@/hooks/useAuth'
 import { ProtectedRoute, OrgAdminRoute, SuperAdminRoute } from '@/components/auth/RouteGuards'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 const PublicEventForm = lazy(() => import('@/pages/PublicEventForm').then(m => ({ default: m.PublicEventForm })))
 const OrgDashboard = lazy(() => import('@/pages/OrgDashboard').then(m => ({ default: m.OrgDashboard })))
@@ -34,7 +35,7 @@ function PageSuspense({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     }>
-      {children}
+      <ErrorBoundary name="page">{children}</ErrorBoundary>
     </Suspense>
   )
 }
@@ -44,7 +45,6 @@ function AppRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Public routes */}
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="events" element={<PageSuspense><EventsPage /></PageSuspense>} />
@@ -57,7 +57,6 @@ function AppRoutes() {
           <Route path="auth/callback" element={<PageSuspense><AuthCallbackPage /></PageSuspense>} />
         </Route>
 
-        {/* Hub: pending request OR redirect to /:orgSlug dashboard */}
         <Route path="/dashboard" element={<ProtectedRoute><PageSuspense><OrgDashboard /></PageSuspense></ProtectedRoute>} />
         <Route path="/dashboard/events/new" element={<OrgAdminRoute><PageSuspense><CreateEvent /></PageSuspense></OrgAdminRoute>} />
         <Route path="/dashboard/events/:id/edit" element={<OrgAdminRoute><PageSuspense><EditEvent /></PageSuspense></OrgAdminRoute>} />
@@ -65,11 +64,9 @@ function AppRoutes() {
         <Route path="/host/:eventId/scan" element={<PageSuspense><ScanPage /></PageSuspense>} />
         <Route path="/host/:eventId/dashboard" element={<PageSuspense><DashboardPage /></PageSuspense>} />
 
-        {/* Superadmin Master Control */}
         <Route path="/mc" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
         <Route path="/mc/*" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
 
-        {/* Unified org portal: /:orgSlug (BookMyShow rails + Discord execom sidebar) */}
         <Route path="/:orgSlug" element={<PageSuspense><OrgHome /></PageSuspense>} />
 
         <Route path="*" element={<PageSuspense><NotFoundPage /></PageSuspense>} />
@@ -82,9 +79,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        {/* SEO / OG meta tags */}
         <HeadTags />
-        {/* Ambient background overlay */}
         <div
           className="fixed inset-0 pointer-events-none z-[-1]"
           style={{
@@ -96,7 +91,9 @@ export default function App() {
             backgroundAttachment: 'fixed',
           }}
         />
-        <AppRoutes />
+        <ErrorBoundary name="app">
+          <AppRoutes />
+        </ErrorBoundary>
       </AuthProvider>
     </BrowserRouter>
   )
@@ -112,7 +109,7 @@ function HeadTags() {
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: 'MakeYourPass — Marian Engineering College' },
       { name: 'twitter:description', content: 'Discover and register for events hosted by clubs and departments across Marian Engineering College.' },
-      { name: 'description', content: 'MakeYourPass — Marian Engineering College\'s event platform. Register, organize, and attend campus events seamlessly.' },
+      { name: 'description', content: "MakeYourPass — Marian Engineering College's event platform. Register, organize, and attend campus events seamlessly." },
     ]
     const els = tags.map(t => {
       const el = document.createElement('meta')
@@ -122,11 +119,16 @@ function HeadTags() {
       document.head.appendChild(el)
       return el
     })
-    // Set title
     const titleEl = document.querySelector('title')
     if (titleEl) titleEl.textContent = 'MakeYourPass — Marian Engineering College'
     return () => {
-      els.forEach(el => document.head.removeChild(el))
+      els.forEach(el => {
+        try {
+          if (el.parentNode) el.parentNode.removeChild(el)
+        } catch {
+          /* already removed */
+        }
+      })
     }
   }, [])
   return null
