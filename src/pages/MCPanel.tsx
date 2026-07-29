@@ -77,7 +77,7 @@ export function MCPanel() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [profilesLoading, setProfilesLoading] = useState(true)
   const [userSearch, setUserSearch] = useState('')
-  const [activeTab, setActiveTab] = useState('requests')
+  const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
     if (!user) return
@@ -476,7 +476,7 @@ export function MCPanel() {
             </p>
           </motion.div>
 
-          <Tabs value={activeTab} onChange={setActiveTab} defaultValue="requests" variant="pills">
+          <Tabs value={activeTab} onChange={setActiveTab} defaultValue="overview" variant="pills">
             <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
               <TabsList className="mb-0">
                 <TabsTrigger value="requests" icon={<Clock className="h-4 w-4" />}>
