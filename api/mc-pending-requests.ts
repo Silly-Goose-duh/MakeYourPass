@@ -1,8 +1,10 @@
 /**
  * GET /api/mc-pending-requests
  * Auth: Bearer <supabase access token> of a superadmin
- * Returns all pending organization registration requests with requester info.
+ * Returns pending + recent registration requests (so MC always sees the queue).
  * Uses service role so RLS cannot hide rows from MC.
+ *
+ * Query: ?all=1  → include recent non-pending (default true for history)
  */
 export const config = { runtime: 'nodejs' }
 
@@ -26,7 +28,6 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'Supabase not configured on server' })
     }
 
-    // Validate JWT
     const userClient = supabaseMod.createClient(url, anon, {
       global: { headers: { Authorization: `Bearer ${auth}` } },
       auth: { persistSession: false },
@@ -47,11 +48,12 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: 'Only superadmin can list pending requests' })
     }
 
+    // All recent requests (pending first, then by date) so MC can see history
     const { data: rows, error } = await sb
       .from('organization_registration_requests')
       .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(50)
 
     if (error) return res.status(500).json({ error: error.message })
 
@@ -70,7 +72,7 @@ export default async function handler(req: any, res: any) {
       )
     }
 
-    const requests = (rows || []).map((r: Record<string, unknown>) => {
+    const mapRow = (r: Record<string, unknown>) => {
       const p = profileMap.get(r.user_id as string)
       return {
         id: r.id,
@@ -85,12 +87,22 @@ export default async function handler(req: any, res: any) {
         requester_email: p?.email || '',
         profiles: p || null,
       }
-    })
+    }
+
+    const all = (rows || []).map((r: Record<string, unknown>) => mapRow(r))
+    const pending = all.filter((r: { status: string }) => r.status === 'pending')
+    // Sort pending oldest-first for action queue
+    pending.sort(
+      (a: { created_at: string }, b: { created_at: string }) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
 
     return res.status(200).json({
       ok: true,
-      count: requests.length,
-      requests,
+      count: pending.length,
+      requests: pending,
+      // Full recent list for history UI
+      recent: all,
       viewer: { email: prof.email, is_superadmin: true },
     })
   } catch (err) {

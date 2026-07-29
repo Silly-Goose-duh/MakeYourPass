@@ -254,11 +254,14 @@ export async function getPendingRequests() {
       })
       const j = await res.json().catch(() => ({}))
       if (res.ok && Array.isArray(j.requests)) {
-        return { data: j.requests as PendingOrgRequest[], error: null }
+        return {
+          data: j.requests as PendingOrgRequest[],
+          recent: (Array.isArray(j.recent) ? j.recent : j.requests) as PendingOrgRequest[],
+          error: null,
+        }
       }
-      // If 403/401, fall through — caller may not be superadmin or API not deployed yet
       if (res.status >= 500) {
-        return { data: null, error: new Error(j.error || 'Failed to load pending requests') }
+        return { data: null, recent: null, error: new Error(j.error || 'Failed to load pending requests') }
       }
     }
   } catch {
@@ -269,23 +272,22 @@ export async function getPendingRequests() {
   try {
     const { data, error } = await supabase.rpc('list_pending_org_requests')
     if (!error && Array.isArray(data)) {
-      return { data: data as PendingOrgRequest[], error: null }
+      return { data: data as PendingOrgRequest[], recent: data as PendingOrgRequest[], error: null }
     }
     if (error && !String(error.message || '').includes('Only superadmin')) {
-      // keep going to table fallback
       console.warn('list_pending_org_requests:', error.message)
     }
   } catch {
     /* continue */
   }
 
-  // 3) Plain table select + profile enrich (superadmin RLS)
+  // 3) Plain table select + profile enrich (superadmin RLS) — all recent
   const { data, error } = await supabase
     .from('organization_registration_requests')
     .select('*')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-  if (error) return { data: null, error }
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) return { data: null, recent: null, error }
 
   const rows = (data || []) as Array<Record<string, unknown>>
   const userIds = [...new Set(rows.map((r) => r.user_id as string).filter(Boolean))]
@@ -319,7 +321,8 @@ export async function getPendingRequests() {
       profiles: p || null,
     }
   })
-  return { data: enriched, error: null }
+  const pending = enriched.filter((r) => r.status === 'pending')
+  return { data: pending, recent: enriched, error: null }
 }
 
 export type ApproveOrgResult = {

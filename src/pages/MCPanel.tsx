@@ -56,6 +56,7 @@ export function MCPanel() {
   const [loading, setLoading] = useState(true)
 
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
+  const [recentRequests, setRecentRequests] = useState<PendingRequest[]>([])
   const [requestsLoading, setRequestsLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
@@ -104,23 +105,23 @@ export function MCPanel() {
   async function loadPendingRequests() {
     setRequestsLoading(true)
     try {
-      const { data, error } = await getPendingRequests()
+      const { data, recent, error } = await getPendingRequests()
       if (error) {
         console.error('loadPendingRequests error', error)
         showToast(error.message || 'Failed to load requests', 'error')
         setPendingRequests([])
+        setRecentRequests([])
       } else {
         const list = Array.isArray(data) ? data : []
+        const hist = Array.isArray(recent) ? recent : list
         setPendingRequests(list as PendingRequest[])
-        if (list.length === 0) {
-          // Help diagnose empty vs error
-          console.info('loadPendingRequests: 0 pending rows returned')
-        }
+        setRecentRequests(hist as PendingRequest[])
       }
     } catch (e) {
       console.error('loadPendingRequests threw', e)
       showToast(e instanceof Error ? e.message : 'Failed to load requests', 'error')
       setPendingRequests([])
+      setRecentRequests([])
     } finally {
       setRequestsLoading(false)
     }
@@ -530,85 +531,140 @@ export function MCPanel() {
                   <div className="flex items-center justify-center py-24">
                     <Loader2 className="h-8 w-8 text-secondary animate-spin" />
                   </div>
-                ) : pendingRequests.length === 0 ? (
-                  <motion.div variants={itemVariants} className="text-center py-24">
-                    <div className="h-20 w-20 rounded-2xl bg-surface border border-border mx-auto mb-6 flex items-center justify-center">
-                      <CheckCircle className="h-10 w-10 text-success/60" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-text-primary mb-2">All caught up</h3>
-                    <p className="text-text-secondary text-sm max-w-md mx-auto">
-                      All organization registration requests have been reviewed. New requests will appear here.
-                    </p>
-                  </motion.div>
                 ) : (
-                  <AnimatePresence mode="popLayout">
-                    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
-                      {pendingRequests.map((request) => (
-                        <motion.div
-                          key={request.id}
-                          variants={itemVariants}
-                          layout
-                          className="bg-surface border border-border rounded-2xl p-5 sm:p-6 hover:border-secondary/20 transition-colors"
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-3 mb-1.5">
-                                <h3 className="text-lg font-semibold text-text-primary truncate">
-                                  {request.organization_name}
-                                </h3>
-                                <Badge variant="warning" size="sm">Pending</Badge>
+                  <>
+                    {pendingRequests.length === 0 ? (
+                      <motion.div variants={itemVariants} className="text-center py-12 mb-8">
+                        <div className="h-16 w-16 rounded-2xl bg-surface border border-border mx-auto mb-4 flex items-center justify-center">
+                          <CheckCircle className="h-8 w-8 text-success/60" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-text-primary mb-1">No pending requests</h3>
+                        <p className="text-text-secondary text-sm max-w-md mx-auto">
+                          Nothing waiting for approval. Recent requests are listed below.
+                        </p>
+                      </motion.div>
+                    ) : (
+                      <AnimatePresence mode="popLayout">
+                        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4 mb-10">
+                          {pendingRequests.map((request) => (
+                            <motion.div
+                              key={request.id}
+                              variants={itemVariants}
+                              layout
+                              className="bg-surface border border-border rounded-2xl p-5 sm:p-6 hover:border-secondary/20 transition-colors"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-3 mb-1.5">
+                                    <h3 className="text-lg font-semibold text-text-primary truncate">
+                                      {request.organization_name}
+                                    </h3>
+                                    <Badge variant="warning" size="sm">Pending</Badge>
+                                  </div>
+                                  <p className="text-sm text-text-muted font-mono mb-2">
+                                    @{request.organization_slug}
+                                  </p>
+                                  {request.description && (
+                                    <p className="text-sm text-text-secondary mb-3 line-clamp-2">
+                                      {request.description}
+                                    </p>
+                                  )}
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
+                                    <span className="flex items-center gap-1.5">
+                                      <Users className="h-3.5 w-3.5" />
+                                      {requesterLabel(request)}
+                                    </span>
+                                    {requesterEmail(request) && (
+                                      <span>{requesterEmail(request)}</span>
+                                    )}
+                                    <span className="flex items-center gap-1.5">
+                                      <Clock className="h-3.5 w-3.5" />
+                                      {formatDateTime(request.created_at)}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-text-muted mt-2">
+                                    Portal will open at{' '}
+                                    <strong className="text-text-primary">/{request.organization_slug}</strong>
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    onClick={() => { setConfirmId(request.id); setConfirmAction('approve') }}
+                                    loading={actionLoading === request.id && confirmAction === 'approve'}
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => { setConfirmId(request.id); setConfirmAction('reject') }}
+                                    loading={actionLoading === request.id && confirmAction === 'reject'}
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    Reject
+                                  </Button>
+                                </div>
                               </div>
-                              <p className="text-sm text-text-muted font-mono mb-2">
-                                @{request.organization_slug}
-                              </p>
-                              {request.description && (
-                                <p className="text-sm text-text-secondary mb-3 line-clamp-2">
-                                  {request.description}
-                                </p>
-                              )}
-                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
-                                <span className="flex items-center gap-1.5">
-                                  <Users className="h-3.5 w-3.5" />
-                                  {requesterLabel(request)}
-                                </span>
-                                {requesterEmail(request) && (
-                                  <span>{requesterEmail(request)}</span>
-                                )}
-                                <span className="flex items-center gap-1.5">
-                                  <Clock className="h-3.5 w-3.5" />
-                                  {formatDateTime(request.created_at)}
-                                </span>
-                              </div>
-                              <p className="text-xs text-text-muted mt-2">
-                                Portal will open at{' '}
-                                <strong className="text-text-primary">/{request.organization_slug}</strong>
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <Button
-                                variant="success"
-                                size="sm"
-                                onClick={() => { setConfirmId(request.id); setConfirmAction('approve') }}
-                                loading={actionLoading === request.id && confirmAction === 'approve'}
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                                Approve
-                              </Button>
-                              <Button
-                                variant="danger"
-                                size="sm"
-                                onClick={() => { setConfirmId(request.id); setConfirmAction('reject') }}
-                                loading={actionLoading === request.id && confirmAction === 'reject'}
-                              >
-                                <XCircle className="h-4 w-4" />
-                                Reject
-                              </Button>
-                            </div>
-                          </div>
+                            </motion.div>
+                          ))}
                         </motion.div>
-                      ))}
-                    </motion.div>
-                  </AnimatePresence>
+                      </AnimatePresence>
+                    )}
+
+                    {/* Recent requests history (approved / rejected / pending) */}
+                    {recentRequests.length > 0 && (
+                      <motion.div variants={itemVariants} className="mt-4">
+                        <h3 className="text-sm font-bold text-text-primary mb-3 uppercase tracking-wide">
+                          All recent requests
+                        </h3>
+                        <div className="space-y-2">
+                          {recentRequests.map((request) => {
+                            const sc = statusConfig[request.status] || statusConfig.pending
+                            return (
+                              <div
+                                key={`hist-${request.id}`}
+                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 rounded-xl border border-border bg-surface/80"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold text-text-primary truncate">
+                                      {request.organization_name}
+                                    </span>
+                                    <Badge variant={sc.variant} size="sm">{sc.label}</Badge>
+                                    <span className="text-xs font-mono text-text-muted">
+                                      /{request.organization_slug}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-text-muted mt-1">
+                                    {requesterLabel(request)}
+                                    {requesterEmail(request) ? ` · ${requesterEmail(request)}` : ''}
+                                    {' · '}
+                                    {formatDateTime(request.created_at)}
+                                  </p>
+                                  {request.description && (
+                                    <p className="text-xs text-text-secondary mt-1 line-clamp-2">
+                                      {request.description}
+                                    </p>
+                                  )}
+                                </div>
+                                {request.status === 'approved' && (
+                                  <Link
+                                    to={`/${request.organization_slug}`}
+                                    className="text-xs font-extrabold shrink-0 text-secondary hover:underline"
+                                  >
+                                    Open portal →
+                                  </Link>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </>
                 )}
               </motion.div>
             </TabsContent>
