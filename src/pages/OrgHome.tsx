@@ -38,9 +38,7 @@ const RED = '#FF4D2E'
 /** Safe avatar — never mutates React DOM on broken image URLs */
 function MemberAvatar({ name, photoUrl, size = 36 }: { name: string; photoUrl?: string | null; size?: number }) {
   const [broken, setBroken] = useState(false)
-  useEffect(() => {
-    setBroken(false)
-  }, [photoUrl])
+  // key on img resets broken state when URL changes (no setState-in-effect)
   const showImg = !!photoUrl && !broken
   const initial = (name?.trim()?.[0] || '?').toUpperCase()
   return (
@@ -55,6 +53,7 @@ function MemberAvatar({ name, photoUrl, size = 36 }: { name: string; photoUrl?: 
     >
       {showImg ? (
         <img
+          key={photoUrl || 'none'}
           src={photoUrl!}
           alt=""
           className="h-full w-full object-cover"
@@ -273,7 +272,7 @@ function ExecomSidebar({
                     e.currentTarget.style.boxShadow = 'none'
                   }}
                 >
-                  <MemberAvatar name={m.full_name} photoUrl={m.photo_url} size={36} />
+                  <MemberAvatar key={m.id + (m.photo_url || '')} name={m.full_name} photoUrl={m.photo_url} size={36} />
                   <div className="min-w-0 flex-1">
                     <p
                       className="text-sm font-extrabold truncate"
