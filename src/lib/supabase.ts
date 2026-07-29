@@ -150,7 +150,16 @@ export async function getApprovedOrganizations() {
 
 export async function getOrganizationsWithCounts() {
   const { data, error } = await supabase.rpc('get_organizations_with_counts')
-  return { data: data as Organization[] | null, error }
+  if (!error && Array.isArray(data)) {
+    return { data: data as Organization[], error: null }
+  }
+  // Fallback if RPC missing/broken — plain table (superadmin RLS or approved)
+  const { data: rows, error: e2 } = await supabase
+    .from('organizations')
+    .select('*')
+    .order('name')
+  if (e2) return { data: null, error: error || e2 }
+  return { data: (rows || []) as Organization[], error: null }
 }
 
 export async function getOrganizationBySlug(slug: string) {
