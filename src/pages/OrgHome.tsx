@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   Plus, Settings, Calendar, MapPin, IndianRupee,
   Trash2, Upload, Users, Globe, ArrowLeft, Ticket, UserPlus, Pencil,
-  Mail, Phone, Instagram,
+  Mail, Phone, AtSign,
 } from 'lucide-react'
 import { Input, Textarea } from '@/components/ui/Input'
 import { formatDate } from '@/lib/utils'
@@ -1107,7 +1107,7 @@ export function OrgHome() {
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
                       style={{ background: '#E84AC4', border: `2px solid ${INK}` }}
                     >
-                      <Instagram className="h-3.5 w-3.5" strokeWidth={2.5} /> Instagram
+                      <AtSign className="h-3.5 w-3.5" strokeWidth={2.5} /> Instagram
                     </a>
                   )}
                 </div>
