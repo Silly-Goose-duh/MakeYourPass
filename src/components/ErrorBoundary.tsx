@@ -2,16 +2,21 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
+  /** Optional label for logs / UI (e.g. "org portal") */
+  name?: string
+  /** Soft fallback instead of full-page block (e.g. for a sidebar) */
+  fallback?: ReactNode
 }
 
 interface State {
   hasError: boolean
   error?: Error
+  errorInfo?: string
 }
 
 /**
- * App-wide error boundary. Catches render errors so a single broken component
- * doesn't white-screen the entire SPA. Styled to match the zine design system.
+ * Catches render errors so one broken tree doesn't white-screen the SPA.
+ * Supports "Try again" (reset state) without forcing a full reload first.
  */
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false }
@@ -21,12 +26,40 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Surface for logging/monitoring; swap for Sentry etc. in production.
-    console.error('Uncaught render error:', error, info)
+    console.error(`[ErrorBoundary${this.props.name ? `:${this.props.name}` : ''}]`, error, info)
+    this.setState({ errorInfo: info.componentStack || undefined })
+  }
+
+  private reset = () => {
+    this.setState({ hasError: false, error: undefined, errorInfo: undefined })
+  }
+
+  private hardReload = () => {
+    try {
+      // Drop any bad client state that might re-throw on same path
+      sessionStorage.removeItem('myp_crash_once')
+    } catch {
+      /* ignore */
+    }
+    window.location.assign(window.location.pathname + window.location.search)
   }
 
   render() {
     if (!this.state.hasError) return this.props.children
+
+    if (this.props.fallback) {
+      return (
+        <div role="alert">
+          {this.props.fallback}
+          <button type="button" onClick={this.reset} className="text-xs underline mt-2 block mx-auto">
+            Try again
+          </button>
+        </div>
+      )
+    }
+
+    const msg = this.state.error?.message || 'Unknown error'
+    const isDev = import.meta.env.DEV
 
     return (
       <div
@@ -41,7 +74,7 @@ export class ErrorBoundary extends Component<Props, State> {
       >
         <div
           style={{
-            maxWidth: 460,
+            maxWidth: 480,
             width: '100%',
             background: '#fff',
             border: '2.5px solid #14110E',
@@ -77,14 +110,58 @@ export class ErrorBoundary extends Component<Props, State> {
               margin: '0 0 0.5rem',
             }}
           >
-            Something broke
+            Something went wrong
           </h1>
-          <p style={{ color: '#4A4640', fontWeight: 600, margin: '0 0 1.5rem' }}>
-            An unexpected error occurred. Try reloading the page.
+          <p style={{ color: '#4A4640', fontWeight: 600, margin: '0 0 1rem' }}>
+            Don&apos;t worry — your data is safe. Try again, or go home.
           </p>
-          <button onClick={() => window.location.reload()} className="zine-btn zine-btn-accent" style={{ textTransform: 'uppercase' }}>
-            Reload
-          </button>
+          {(isDev || msg) && (
+            <p
+              style={{
+                fontSize: 11,
+                fontFamily: 'ui-monospace, monospace',
+                color: '#7A756B',
+                background: '#F4EFE1',
+                border: '1px solid #14110E',
+                padding: '8px 10px',
+                marginBottom: 16,
+                textAlign: 'left',
+                wordBreak: 'break-word',
+                maxHeight: 120,
+                overflow: 'auto',
+              }}
+            >
+              {msg}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={this.reset}
+              className="zine-btn zine-btn-accent"
+              style={{ textTransform: 'uppercase' }}
+            >
+              Try again
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = '/'
+              }}
+              className="zine-btn"
+              style={{ textTransform: 'uppercase', background: '#fff' }}
+            >
+              Go home
+            </button>
+            <button
+              type="button"
+              onClick={this.hardReload}
+              className="zine-btn"
+              style={{ textTransform: 'uppercase', background: '#FFD23F' }}
+            >
+              Reload page
+            </button>
+          </div>
         </div>
       </div>
     )

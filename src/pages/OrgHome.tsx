@@ -35,6 +35,36 @@ const PAPER = '#F4EFE1'
 const YELLOW = '#FFD23F'
 const RED = '#FF4D2E'
 
+/** Safe avatar — never mutates React DOM on broken image URLs */
+function MemberAvatar({ name, photoUrl, size = 36 }: { name: string; photoUrl?: string | null; size?: number }) {
+  const [broken, setBroken] = useState(false)
+  const showImg = !!photoUrl && !broken
+  const initial = (name?.trim()?.[0] || '?').toUpperCase()
+  return (
+    <div
+      className="shrink-0 flex items-center justify-center text-xs font-extrabold text-white overflow-hidden rounded-full relative"
+      style={{
+        width: size,
+        height: size,
+        background: zineColorFor(name || '?'),
+        border: `2px solid ${INK}`,
+      }}
+    >
+      {showImg ? (
+        <img
+          src={photoUrl!}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        initial
+      )}
+    </div>
+  )
+}
+
 /** Right rail: Discord-style grouping by role, Zine visual language */
 function ExecomSidebar({
   members,
@@ -240,30 +270,7 @@ function ExecomSidebar({
                     e.currentTarget.style.boxShadow = 'none'
                   }}
                 >
-                  <div
-                    className="h-9 w-9 shrink-0 flex items-center justify-center text-xs font-extrabold text-white overflow-hidden rounded-full"
-                    style={{
-                      background: zineColorFor(m.full_name),
-                      border: `2px solid ${INK}`,
-                    }}
-                  >
-                    {m.photo_url ? (
-                      <img
-                        src={m.photo_url}
-                        alt={m.full_name}
-                        className="h-full w-full object-cover"
-                        onError={(e) => {
-                          const el = e.currentTarget
-                          el.style.display = 'none'
-                          if (el.parentElement) {
-                            el.parentElement.textContent = (m.full_name[0] || '?').toUpperCase()
-                          }
-                        }}
-                      />
-                    ) : (
-                      (m.full_name[0] || '?').toUpperCase()
-                    )}
-                  </div>
+                  <MemberAvatar name={m.full_name} photoUrl={m.photo_url} size={36} />
                   <div className="min-w-0 flex-1">
                     <p
                       className="text-sm font-extrabold truncate"
@@ -1106,7 +1113,14 @@ export function OrgHome() {
                   )}
                   {org.contact_phone && (
                     <a
-                      href={`https://wa.me/${org.contact_phone.replace(/\D/g, '').replace(/^0/, '91')}`}
+                      href={`https://wa.me/${(() => {
+                        const d = org.contact_phone.replace(/\D/g, '')
+                        if (!d) return ''
+                        if (d.length >= 11 && d.startsWith('91')) return d
+                        if (d.startsWith('0')) return `91${d.slice(1)}`
+                        if (d.length === 10) return `91${d}`
+                        return d
+                      })()}`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
