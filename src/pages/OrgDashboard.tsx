@@ -9,10 +9,9 @@ import type { Profile, Organization, OrgRegistrationRequest } from '@/types'
 
 /**
  * /dashboard hub:
- * - Approved org membership → redirect to /{org-slug} (the real dashboard)
- * - Pending org request → "request pending" screen
- * - Neither → CTA to request an organization
- * - Superadmin with no org still sees pending/request + link to MC
+ * - Approved org membership → redirect to /{org-slug}
+ * - Pending org request → "request is pending, please wait"
+ * - Neither → soft CTA to request an organization
  */
 export function OrgDashboard() {
   const { user, loading: authLoading } = useAuth()
@@ -58,11 +57,12 @@ export function OrgDashboard() {
     return <Navigate to={`/${dest.slug}`} replace />
   }
 
-  // Superadmin with no personal org → MC (approvals live there)
   const isSuper = !!profile?.is_superadmin
-  if (isSuper && !pending) {
+  // Superadmin only auto-jumps to MC when nothing is pending for them
+  if (isSuper && !pending && !rejected) {
     return <Navigate to="/mc" replace />
   }
+
   return (
     <div className="min-h-screen px-4 sm:px-6 py-16" style={{ background: '#F4EFE1' }}>
       <motion.div
@@ -79,27 +79,33 @@ export function OrgDashboard() {
             >
               <Clock className="h-8 w-8" strokeWidth={2.5} style={{ color: '#14110E' }} />
             </div>
-            <span className="zine-sticker mb-4" style={{ background: '#FFD23F' }}>Pending approval</span>
+            <span className="zine-sticker mb-4" style={{ background: '#FFD23F' }}>
+              Please wait
+            </span>
             <h1
               className="text-2xl sm:text-3xl font-extrabold mt-4 mb-3"
               style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}
             >
-              Request pending
+              Request is pending — please wait
             </h1>
             <p className="text-sm font-semibold mb-2" style={{ color: '#4A4640' }}>
-              <strong style={{ color: '#14110E' }}>{pending.organization_name}</strong> is waiting for superadmin review.
+              Your request for{' '}
+              <strong style={{ color: '#14110E' }}>{pending.organization_name}</strong> is with the
+              superadmin for review.
             </p>
             <p className="text-sm font-semibold mb-6" style={{ color: '#4A4640' }}>
-              After approval your dashboard opens at{' '}
+              Hang tight. Once approved, your club dashboard opens at{' '}
               <strong style={{ color: '#14110E' }}>
                 makeyourpass.vercel.app/{pending.organization_slug}
               </strong>
             </p>
             <div
               className="p-3 mb-6 text-left text-xs font-semibold"
-              style={{ background: '#F4EFE1', border: '2px solid #14110E', color: '#4A4640' }}
+              style={{ background: '#FFF6D6', border: '2px solid #14110E', color: '#14110E' }}
             >
-              Submitted {new Date(pending.created_at).toLocaleString()}. You can close this tab — we&apos;ll unlock the portal when approved.
+              No action needed right now. Submitted{' '}
+              {new Date(pending.created_at).toLocaleString()}. You can close this tab and come back
+              later — we&apos;ll unlock the portal when it&apos;s approved.
             </div>
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <Link to="/">
@@ -113,6 +119,13 @@ export function OrgDashboard() {
                 </Link>
               )}
             </div>
+            <p className="mt-8 text-[11px] font-semibold flex items-center justify-center gap-1" style={{ color: '#7A756B' }}>
+              <CheckCircle2 className="h-3 w-3" /> Signed in as {user?.email}
+            </p>
+            <p className="mt-2 text-[11px] font-semibold" style={{ color: '#7A756B' }}>
+              <ExternalLink className="inline h-3 w-3 mr-1" />
+              Portal reserved: /{pending.organization_slug}
+            </p>
           </>
         ) : rejected ? (
           <>
@@ -123,14 +136,15 @@ export function OrgDashboard() {
               <Building2 className="h-8 w-8" strokeWidth={2.5} style={{ color: '#FF4D2E' }} />
             </div>
             <h1 className="text-2xl font-extrabold mb-3" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
-              Request was rejected
+              Request wasn&apos;t approved
             </h1>
             <p className="text-sm font-semibold mb-6" style={{ color: '#4A4640' }}>
-              Your request for <strong>{rejected.organization_name}</strong> was not approved. You can submit a new organization request.
+              Your request for <strong>{rejected.organization_name}</strong> was not approved. You can
+              submit a new one when you&apos;re ready.
             </p>
             <Link to="/signup?step=organization">
               <Button variant="primary" size="lg">
-                <Plus className="h-5 w-5" /> New request
+                <Plus className="h-5 w-5" /> Submit a new request
               </Button>
             </Link>
           </>
@@ -138,16 +152,18 @@ export function OrgDashboard() {
           <>
             <div
               className="h-16 w-16 flex items-center justify-center mx-auto mb-6"
-              style={{ background: '#2D5BFF', border: '2.5px solid #14110E' }}
+              style={{ background: '#FFD23F', border: '2.5px solid #14110E' }}
             >
-              <Building2 className="h-8 w-8 text-white" strokeWidth={2.5} />
+              <Clock className="h-8 w-8" strokeWidth={2.5} style={{ color: '#14110E' }} />
             </div>
             <h1 className="text-2xl font-extrabold mb-3" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
-              No organization yet
+              Almost there
             </h1>
             <p className="text-sm font-semibold mb-6" style={{ color: '#4A4640' }}>
-              Dashboard access is only for approved organizations. Request yours — superadmin approves, then your portal at{' '}
-              <code style={{ color: '#14110E' }}>/your-org</code> becomes the live dashboard.
+              You&apos;re signed in. To get a club dashboard, send a short organization request.
+              After superadmin approves it, your portal at{' '}
+              <code style={{ color: '#14110E' }}>/your-club</code> becomes the live dashboard.
+              If you already sent one, hang tight — it may still be pending.
             </p>
             <Link to="/signup?step=organization">
               <Button variant="primary" size="lg">
@@ -161,19 +177,10 @@ export function OrgDashboard() {
                 </Link>
               </div>
             )}
+            <p className="mt-8 text-[11px] font-semibold" style={{ color: '#7A756B' }}>
+              Signed in as {user?.email}
+            </p>
           </>
-        )}
-
-        {orgs.length === 0 && pending && (
-          <p className="mt-8 text-[11px] font-semibold flex items-center justify-center gap-1" style={{ color: '#7A756B' }}>
-            <CheckCircle2 className="h-3 w-3" /> You&apos;re signed in as {user?.email}
-          </p>
-        )}
-        {pending && (
-          <p className="mt-3 text-[11px] font-semibold" style={{ color: '#7A756B' }}>
-            <ExternalLink className="inline h-3 w-3 mr-1" />
-            Portal URL reserved: /{pending.organization_slug}
-          </p>
         )}
       </motion.div>
     </div>
