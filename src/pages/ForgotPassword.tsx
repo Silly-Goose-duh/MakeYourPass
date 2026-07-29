@@ -10,24 +10,55 @@ export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
   const [sent, setSent] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const sendReset = async () => {
     setError('')
+    setInfo('')
     setLoading(true)
     try {
-      const { error: err } = await requestPasswordReset(email)
+      const { data, error: err } = await requestPasswordReset(email)
       if (err) {
         setError(err.message)
         return
       }
       setSent(true)
+      setInfo(data?.message || 'Check your inbox for a reset link.')
+      if (data?.warning) {
+        setError(String(data.warning))
+      }
+      // 30s cooldown before another resend
+      setResendCooldown(30)
+      const t = window.setInterval(() => {
+        setResendCooldown((s) => {
+          if (s <= 1) {
+            window.clearInterval(t)
+            return 0
+          }
+          return s - 1
+        })
+      }, 1000)
     } catch {
       setError('Something went wrong. Try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) {
+      setError('Email is required')
+      return
+    }
+    await sendReset()
+  }
+
+  const handleResend = async () => {
+    if (resendCooldown > 0 || loading) return
+    await sendReset()
   }
 
   return (
@@ -63,9 +94,44 @@ export function ForgotPasswordPage() {
               <p className="text-xs font-semibold" style={{ color: '#4A4640' }}>
                 Open the link in that email, then choose a new password. Also check spam.
               </p>
-              <Link to="/login" className="inline-block font-extrabold text-sm" style={{ color: '#FF4D2E' }}>
-                Back to sign in
-              </Link>
+              {info && (
+                <p className="text-xs font-semibold p-2" style={{ background: '#E8F8F0', border: '2px solid #14B87A', color: '#0A7A4F' }}>
+                  {info}
+                </p>
+              )}
+              {error && (
+                <div className="p-3 text-sm font-bold text-left" style={{ background: '#FFE9E3', border: '2px solid #FF4D2E', color: '#FF4D2E' }}>
+                  {error}
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                fullWidth
+                loading={loading}
+                disabled={loading || resendCooldown > 0}
+                onClick={() => void handleResend()}
+              >
+                {resendCooldown > 0 ? `Resend email (${resendCooldown}s)` : 'Resend email'}
+              </Button>
+              <button
+                type="button"
+                className="text-xs font-bold underline"
+                style={{ color: '#4A4640' }}
+                onClick={() => {
+                  setSent(false)
+                  setError('')
+                  setInfo('')
+                }}
+              >
+                Use a different email
+              </button>
+              <div>
+                <Link to="/login" className="inline-block font-extrabold text-sm" style={{ color: '#FF4D2E' }}>
+                  Back to sign in
+                </Link>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">

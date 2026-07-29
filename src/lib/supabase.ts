@@ -78,12 +78,30 @@ export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password })
 }
 
-/** Send password-reset email. Redirect lands on /auth/callback then /reset-password. */
+/** Send password-reset email via server (Resend + Supabase recovery link). */
 export async function requestPasswordReset(email: string) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://makeyourpass.vercel.app'
-  return supabase.auth.resetPasswordForEmail(email.trim(), {
-    redirectTo: `${origin}/auth/callback?type=recovery`,
-  })
+  try {
+    const res = await fetch('/api/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), action: 'reset-password' }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return { data: null, error: new Error(j.error || 'Could not send reset email') }
+    }
+    return {
+      data: { message: j.message as string, emailed: j.emailed !== false, warning: j.warning as string | undefined },
+      error: null,
+    }
+  } catch (e) {
+    // Fallback to Supabase built-in mail
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://makeyourpass.vercel.app'
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${origin}/auth/callback?type=recovery`,
+    })
+    return { data: error ? null : { message: 'If registered, a reset email was sent.' }, error }
+  }
 }
 
 /** Set a new password while in a recovery session. */
