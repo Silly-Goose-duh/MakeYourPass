@@ -66,26 +66,60 @@ export function HostRoute({ eventId, children }: { eventId: string; children: Re
   const [allowed, setAllowed] = useState<boolean | null>(null)
 
   useEffect(() => {
-    if (!user || !eventId) return
+    if (loading) return
+    if (!user) {
+      setAllowed(false)
+      return
+    }
+    if (!eventId) {
+      setAllowed(false)
+      return
+    }
+    let alive = true
     ;(async () => {
-      const { data: profile } = await getProfile(user.id)
-      if (profile?.is_superadmin) { setAllowed(true); return }
-      const { data: ev } = await supabase
-        .from('events').select('organization_id').eq('id', eventId).single()
-      if (!ev) { setAllowed(false); return }
-      // admin OR host can scan / live-admit
-      const { data: mem } = await supabase
-        .from('organization_members')
-        .select('id, role')
-        .eq('organization_id', ev.organization_id)
-        .eq('user_id', user.id)
-        .in('role', ['admin', 'host'])
-        .limit(1)
-      setAllowed(!!(mem && mem.length > 0))
+      try {
+        const { data: profile } = await getProfile(user.id)
+        if (!alive) return
+        if (profile?.is_superadmin) {
+          setAllowed(true)
+          return
+        }
+        const { data: ev } = await supabase
+          .from('events')
+          .select('organization_id')
+          .eq('id', eventId)
+          .maybeSingle()
+        if (!alive) return
+        if (!ev) {
+          setAllowed(false)
+          return
+        }
+        // admin OR host can scan / live-admit
+        const { data: mem } = await supabase
+          .from('organization_members')
+          .select('id, role')
+          .eq('organization_id', ev.organization_id)
+          .eq('user_id', user.id)
+          .in('role', ['admin', 'host'])
+          .limit(1)
+        if (!alive) return
+        setAllowed(!!(mem && mem.length > 0))
+      } catch {
+        if (alive) setAllowed(false)
+      }
     })()
-  }, [user, eventId])
+    return () => {
+      alive = false
+    }
+  }, [user, eventId, loading])
 
-  if (loading || allowed === null) return <div className="min-h-screen bg-background flex items-center justify-center"><LoadingSpinner /></div>
+  if (loading || (user && allowed === null)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    )
+  }
   if (!user) return <Navigate to="/login" replace />
   if (!allowed) return <Navigate to="/dashboard" replace />
   return <>{children}</>

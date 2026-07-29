@@ -38,6 +38,9 @@ const RED = '#FF4D2E'
 /** Safe avatar — never mutates React DOM on broken image URLs */
 function MemberAvatar({ name, photoUrl, size = 36 }: { name: string; photoUrl?: string | null; size?: number }) {
   const [broken, setBroken] = useState(false)
+  useEffect(() => {
+    setBroken(false)
+  }, [photoUrl])
   const showImg = !!photoUrl && !broken
   const initial = (name?.trim()?.[0] || '?').toUpperCase()
   return (
@@ -1103,7 +1106,7 @@ export function OrgHome() {
                   )}
                   {org.contact_phone && (
                     <a
-                      href={`tel:${org.contact_phone.replace(/\s/g, '')}`}
+                      href={`tel:${String(org.contact_phone).replace(/\s/g, '')}`}
                       className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold"
                       style={{ background: '#fff', border: `2px solid ${INK}`, color: INK }}
                     >
@@ -1114,7 +1117,7 @@ export function OrgHome() {
                   {org.contact_phone && (
                     <a
                       href={`https://wa.me/${(() => {
-                        const d = org.contact_phone.replace(/\D/g, '')
+                        const d = String(org.contact_phone || '').replace(/\D/g, '')
                         if (!d) return ''
                         if (d.length >= 11 && d.startsWith('91')) return d
                         if (d.startsWith('0')) return `91${d.slice(1)}`

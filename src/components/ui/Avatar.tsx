@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from 'react'
+import React, { HTMLAttributes, useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 
 const sizeMap = {
@@ -40,6 +40,7 @@ export function Avatar({
   statusPosition = 'bottom-right',
   ...props
 }: AvatarProps) {
+  const [broken, setBroken] = useState(false)
   const shapeClasses = shape === 'circle' ? 'rounded-full' : 'rounded-md'
 
   const statusColors = {
@@ -57,6 +58,7 @@ export function Avatar({
   }
 
   const fallbackContent = name ? getInitials(name) : '?'
+  const showImg = !!src && !broken
 
   return (
     <div className={cn('relative inline-flex shrink-0', className)} {...props}>
@@ -67,14 +69,12 @@ export function Avatar({
           'overflow-hidden bg-darker flex items-center justify-center border border-brand/20',
         )}
       >
-        {src ? (
+        {showImg ? (
           <img
             src={src}
             alt={alt || name || 'Avatar'}
             className="h-full w-full object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
+            onError={() => setBroken(true)}
           />
         ) : (
           <span className="font-semibold text-brand-light">{fallbackContent}</span>

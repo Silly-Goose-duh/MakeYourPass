@@ -49,8 +49,8 @@ function AppRoutes() {
           <Route index element={<HomePage />} />
           <Route path="events" element={<PageSuspense><EventsPage /></PageSuspense>} />
           <Route path="event/:eventSlug" element={<PageSuspense><PublicEventForm /></PageSuspense>} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="signup" element={<SignupPage />} />
+          <Route path="login" element={<PageSuspense><LoginPage /></PageSuspense>} />
+          <Route path="signup" element={<PageSuspense><SignupPage /></PageSuspense>} />
           <Route path="forgot-password" element={<PageSuspense><ForgotPasswordPage /></PageSuspense>} />
           <Route path="reset-password" element={<PageSuspense><ResetPasswordPage /></PageSuspense>} />
           <Route path="invite/:token" element={<PageSuspense><AcceptInvitePage /></PageSuspense>} />
