@@ -24,6 +24,8 @@ export interface Organization {
   cover_url?: string
   website?: string
   instagram?: string
+  contact_email?: string
+  contact_phone?: string
   created_at: string
   updated_at: string
   member_count?: number

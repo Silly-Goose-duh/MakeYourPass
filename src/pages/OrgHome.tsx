@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   Plus, Settings, Calendar, MapPin, IndianRupee,
   Trash2, Upload, Users, Globe, ArrowLeft, Ticket, UserPlus, Pencil,
+  Mail, Phone, Instagram,
 } from 'lucide-react'
 import { Input, Textarea } from '@/components/ui/Input'
 import { formatDate } from '@/lib/utils'
@@ -412,6 +413,10 @@ export function OrgHome() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [editName, setEditName] = useState('')
   const [editTagline, setEditTagline] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editWebsite, setEditWebsite] = useState('')
+  const [editInstagram, setEditInstagram] = useState('')
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [profileMsg, setProfileMsg] = useState('')
@@ -438,6 +443,10 @@ export function OrgHome() {
       setUpiPhone(o.upi_phone || '')
       setEditName(o.name || '')
       setEditTagline(o.description || '')
+      setEditEmail(o.contact_email || '')
+      setEditPhone(o.contact_phone || '')
+      setEditWebsite(o.website || '')
+      setEditInstagram(o.instagram || '')
       setLogoFile(null)
       setLogoPreview(null)
       setProfileMsg('')
@@ -524,6 +533,10 @@ export function OrgHome() {
     if (!org) return
     setEditName(org.name || '')
     setEditTagline(org.description || '')
+    setEditEmail(org.contact_email || '')
+    setEditPhone(org.contact_phone || '')
+    setEditWebsite(org.website || '')
+    setEditInstagram(org.instagram || '')
     setLogoFile(null)
     if (logoPreview) URL.revokeObjectURL(logoPreview)
     setLogoPreview(null)
@@ -551,10 +564,23 @@ export function OrgHome() {
         if (upErr) throw new Error(upErr.message || 'Logo upload failed')
         logo_url = getOrgAssetPublicUrl(up?.path || path)
       }
+      // Normalize website / instagram a bit
+      let website = editWebsite.trim()
+      if (website && !/^https?:\/\//i.test(website)) website = `https://${website}`
+      let instagram = editInstagram.trim()
+      if (instagram && !instagram.includes('instagram.com') && !instagram.startsWith('http')) {
+        instagram = instagram.replace(/^@/, '')
+        instagram = `https://instagram.com/${instagram}`
+      }
+
       const { data, error } = await updateOrganization(org.id, {
         name,
         description: editTagline.trim(),
         logo_url,
+        contact_email: editEmail.trim(),
+        contact_phone: editPhone.trim(),
+        website,
+        instagram,
       })
       if (error) throw error
       if (data) setOrg(data)
@@ -562,7 +588,6 @@ export function OrgHome() {
       if (logoPreview) URL.revokeObjectURL(logoPreview)
       setLogoFile(null)
       setLogoPreview(null)
-      // keep panel open briefly so they see success, or close
       setTimeout(() => setProfileOpen(false), 700)
     } catch (e) {
       setProfileMsg(e instanceof Error ? e.message : 'Failed to save profile')
@@ -795,7 +820,7 @@ export function OrgHome() {
                   <Pencil className="h-4 w-4" strokeWidth={2.5} /> Edit club profile
                 </h3>
                 <p className="text-xs font-semibold mt-1" style={{ color: '#4A4640' }}>
-                  Update name, tagline, and icon anytime. URL stays <strong>/{org.slug}</strong>.
+                  Name, tagline, icon, and how students reach you. URL stays <strong>/{org.slug}</strong>.
                 </p>
               </div>
               <button
@@ -878,6 +903,41 @@ export function OrgHome() {
                     rows={3}
                   />
                 </div>
+
+                <div className="pt-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider mb-2" style={{ color: '#4A4640' }}>
+                    Contact details
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <Input
+                      label="Contact email"
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="club@college.edu"
+                    />
+                    <Input
+                      label="Phone / WhatsApp"
+                      type="tel"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="9xxxxxxxxx"
+                    />
+                    <Input
+                      label="Website"
+                      value={editWebsite}
+                      onChange={(e) => setEditWebsite(e.target.value)}
+                      placeholder="https://…"
+                    />
+                    <Input
+                      label="Instagram"
+                      value={editInstagram}
+                      onChange={(e) => setEditInstagram(e.target.value)}
+                      placeholder="@yourclub or profile URL"
+                    />
+                  </div>
+                </div>
+
                 <p className="text-[11px] font-semibold" style={{ color: '#4A4640' }}>
                   Portal URL (fixed): makeyourpass.vercel.app/<strong>{org.slug}</strong>
                 </p>
@@ -958,29 +1018,99 @@ export function OrgHome() {
         )}
 
         <div className="px-4 sm:px-6 py-8 pb-20">
-          {(org.website || org.instagram) && (
-            <div className="flex flex-wrap gap-3 mb-8 text-xs font-extrabold uppercase">
-              {org.website && (
-                <a
-                  href={org.website}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="zine-sticker inline-flex items-center gap-1"
-                  style={{ background: '#2D5BFF', color: '#fff' }}
+          {/* Contact strip — sits under hero, before events */}
+          {(org.contact_email || org.contact_phone || org.website || org.instagram || isAdmin) && (
+            <div
+              className="mb-8 p-4 sm:p-5"
+              style={{ background: '#fff', border: `2.5px solid ${INK}`, boxShadow: '4px 4px 0 #14110E' }}
+            >
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <p
+                  className="text-[11px] font-extrabold uppercase tracking-wider"
+                  style={{ fontFamily: 'Syne, sans-serif', color: INK }}
                 >
-                  <Globe className="h-3 w-3" /> Web
-                </a>
-              )}
-              {org.instagram && (
-                <a
-                  href={org.instagram}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="zine-sticker"
-                  style={{ background: '#E84AC4', color: '#fff' }}
-                >
-                  Instagram
-                </a>
+                  Contact
+                </p>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="text-[10px] font-extrabold uppercase flex items-center gap-1 hover:opacity-70"
+                    style={{ color: '#4A4640' }}
+                    onClick={openProfileEditor}
+                  >
+                    <Pencil className="h-3 w-3" /> Edit
+                  </button>
+                )}
+              </div>
+
+              {!(org.contact_email || org.contact_phone || org.website || org.instagram) && isAdmin ? (
+                <p className="text-sm font-semibold" style={{ color: '#4A4640' }}>
+                  Add email, phone, website or Instagram so students can reach you.
+                  <button
+                    type="button"
+                    className="ml-2 font-extrabold underline"
+                    style={{ color: RED }}
+                    onClick={openProfileEditor}
+                  >
+                    Add contacts
+                  </button>
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  {org.contact_email && (
+                    <a
+                      href={`mailto:${org.contact_email}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold"
+                      style={{ background: YELLOW, border: `2px solid ${INK}`, color: INK }}
+                    >
+                      <Mail className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      {org.contact_email}
+                    </a>
+                  )}
+                  {org.contact_phone && (
+                    <a
+                      href={`tel:${org.contact_phone.replace(/\s/g, '')}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold"
+                      style={{ background: '#fff', border: `2px solid ${INK}`, color: INK }}
+                    >
+                      <Phone className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      {org.contact_phone}
+                    </a>
+                  )}
+                  {org.contact_phone && (
+                    <a
+                      href={`https://wa.me/${org.contact_phone.replace(/\D/g, '').replace(/^0/, '91')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
+                      style={{ background: '#25D366', border: `2px solid ${INK}` }}
+                    >
+                      WhatsApp
+                    </a>
+                  )}
+                  {org.website && (
+                    <a
+                      href={org.website}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
+                      style={{ background: '#2D5BFF', border: `2px solid ${INK}` }}
+                    >
+                      <Globe className="h-3.5 w-3.5" strokeWidth={2.5} /> Website
+                    </a>
+                  )}
+                  {org.instagram && (
+                    <a
+                      href={org.instagram}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-extrabold text-white"
+                      style={{ background: '#E84AC4', border: `2px solid ${INK}` }}
+                    >
+                      <Instagram className="h-3.5 w-3.5" strokeWidth={2.5} /> Instagram
+                    </a>
+                  )}
+                </div>
               )}
             </div>
           )}
