@@ -1,21 +1,28 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Building2, CheckCircle2, Pencil, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { generateSlug } from '@/lib/utils'
+import { useAuth } from '@/hooks/useAuth'
+import { getAccessToken, getCurrentProfile } from '@/lib/supabase'
 
-type Step = 'account' | 'organization' | 'verify'
+type Step = 'account' | 'organization' | 'verify' | 'pending'
 
 /**
- * Signup order (product requirement):
- * 1. Account details
- * 2. Organization details
- * 3. Submit → create account + org request → email verification
+ * Signup:
+ * - New users: account → organization → verify email → wait approval
+ * - Existing / already signed-in: organization only → pending wait (/dashboard)
  */
 export function SignupPage() {
-  const [step, setStep] = useState<Step>('account')
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const { user, loading: authLoading } = useAuth()
+  const forceOrg = params.get('step') === 'organization'
+
+  const [step, setStep] = useState<Step>(forceOrg || user ? 'organization' : 'account')
+  const [loggedInMode, setLoggedInMode] = useState(!!user)
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -29,6 +36,23 @@ export function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [resendMsg, setResendMsg] = useState('')
+
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) return
+    let alive = true
+    ;(async () => {
+      if (!alive) return
+      setLoggedInMode(true)
+      setStep((s) => (s === 'account' || forceOrg ? 'organization' : s))
+      const { data } = await getCurrentProfile()
+      if (!alive) return
+      if (data?.full_name) setFullName(data.full_name)
+      if (data?.email) setEmail(data.email)
+      else if (user.email) setEmail(user.email)
+    })()
+    return () => { alive = false }
+  }, [user, authLoading, forceOrg])
 
   const handleOrgNameChange = (name: string) => {
     setOrgName(name)
@@ -68,9 +92,13 @@ export function SignupPage() {
 
     setLoading(true)
     try {
+      const token = loggedInMode ? await getAccessToken() : null
       const res = await fetch('/api/complete-signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           full_name: fullName.trim(),
           email: email.trim().toLowerCase(),
@@ -78,13 +106,30 @@ export function SignupPage() {
           organization_name: orgName.trim(),
           organization_slug: orgSlug.trim(),
           organization_description: orgDescription.trim(),
+          existing_only: loggedInMode,
         }),
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) {
+        if (j.code === 'ACCOUNT_EXISTS') {
+          setError(j.error || 'Account exists. Sign in first.')
+          return
+        }
         setError(j.error || 'Signup failed')
         return
       }
+
+      // Existing account or already logged in → dashboard wait screen
+      if (j.existing || loggedInMode || j.already_pending) {
+        if (j.needs_verify) {
+          setStep('verify')
+          return
+        }
+        setStep('pending')
+        setTimeout(() => navigate('/dashboard', { replace: true }), 1200)
+        return
+      }
+
       setStep('verify')
     } catch {
       setError('Something went wrong. Please try again.')
@@ -122,39 +167,40 @@ export function SignupPage() {
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#F4EFE1' }}>
       <div className="relative w-full max-w-md">
         <Link
-          to="/"
+          to={loggedInMode ? '/dashboard' : '/'}
           className="inline-flex items-center gap-2 mb-6 text-sm font-bold transition-colors hover:opacity-70"
           style={{ color: '#14110E' }}
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2.5} />
-          Back to home
+          {loggedInMode ? 'Back to dashboard' : 'Back to home'}
         </Link>
 
-        {/* Progress: Account → Organization → Email verification */}
-        <div className="flex items-center justify-center gap-1.5 mb-8 flex-wrap">
-          {(['Account', 'Organization', 'Verify email'] as const).map((label, i) => {
-            const active = stepIndex >= i
-            return (
-              <div key={label} className="flex items-center gap-1.5">
-                <div
-                  className="px-2.5 py-1 text-[10px] font-extrabold uppercase"
-                  style={{
-                    border: '2px solid #14110E',
-                    background: active ? '#FF4D2E' : '#fff',
-                    color: active ? '#fff' : '#4A4640',
-                    fontFamily: 'Syne, sans-serif',
-                  }}
-                >
-                  {i + 1}. {label}
+        {!loggedInMode && (
+          <div className="flex items-center justify-center gap-1.5 mb-8 flex-wrap">
+            {(['Account', 'Organization', 'Verify email'] as const).map((label, i) => {
+              const active = stepIndex >= i
+              return (
+                <div key={label} className="flex items-center gap-1.5">
+                  <div
+                    className="px-2.5 py-1 text-[10px] font-extrabold uppercase"
+                    style={{
+                      border: '2px solid #14110E',
+                      background: active ? '#FF4D2E' : '#fff',
+                      color: active ? '#fff' : '#4A4640',
+                      fontFamily: 'Syne, sans-serif',
+                    }}
+                  >
+                    {i + 1}. {label}
+                  </div>
+                  {i < 2 && <div style={{ width: 12, height: 2, background: '#14110E' }} />}
                 </div>
-                {i < 2 && <div style={{ width: 12, height: 2, background: '#14110E' }} />}
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
-          {step === 'account' && (
+          {step === 'account' && !loggedInMode && (
             <motion.div
               key="account"
               initial={{ opacity: 0, y: 20 }}
@@ -173,34 +219,9 @@ export function SignupPage() {
               </div>
 
               <form onSubmit={handleAccountNext} className="space-y-5">
-                <Input
-                  label="Full Name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  autoComplete="name"
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-                <Input
-                  label="Password"
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                  hint="Must be at least 6 characters"
-                />
+                <Input label="Full Name" type="text" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required autoComplete="name" />
+                <Input label="Email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+                <Input label="Password" type="password" placeholder="At least 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" hint="Must be at least 6 characters" />
 
                 {error && (
                   <div className="p-3 text-sm font-bold" style={{ background: '#FFE9E3', border: '2px solid #FF4D2E', color: '#FF4D2E' }}>
@@ -232,29 +253,26 @@ export function SignupPage() {
               style={{ background: '#fff', border: '2.5px solid #14110E', boxShadow: '7px 7px 0 #14110E' }}
             >
               <div className="text-center mb-8">
-                <div
-                  className="h-10 w-10 flex items-center justify-center mx-auto mb-4"
-                  style={{ background: '#2D5BFF', border: '2.5px solid #14110E' }}
-                >
+                <div className="h-10 w-10 flex items-center justify-center mx-auto mb-4" style={{ background: '#2D5BFF', border: '2.5px solid #14110E' }}>
                   <Building2 className="h-5 w-5 text-white" strokeWidth={2.5} />
                 </div>
                 <h1 className="text-3xl font-extrabold mb-2" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
                   Register your Org
                 </h1>
                 <p className="text-sm font-semibold" style={{ color: '#4A4640' }}>
-                  Step 2 of 3 — after this we email a verification link.
+                  {loggedInMode
+                    ? 'Submit a request — superadmin approves, then your portal opens.'
+                    : 'Step 2 of 3 — after this we email a verification link.'}
                 </p>
+                {loggedInMode && email && (
+                  <p className="text-xs font-bold mt-2" style={{ color: '#14110E' }}>
+                    Signed in as {email}
+                  </p>
+                )}
               </div>
 
               <form onSubmit={handleOrgSubmit} className="space-y-5">
-                <Input
-                  label="Organization Name"
-                  type="text"
-                  placeholder="e.g. FOSS Club"
-                  value={orgName}
-                  onChange={(e) => handleOrgNameChange(e.target.value)}
-                  required
-                />
+                <Input label="Organization Name" type="text" placeholder="e.g. FOSS Club" value={orgName} onChange={(e) => handleOrgNameChange(e.target.value)} required />
 
                 <div>
                   <label className="block text-sm font-bold mb-1.5" style={{ color: '#14110E' }}>
@@ -281,12 +299,7 @@ export function SignupPage() {
                         </p>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setSlugEditOpen(!slugEditOpen)}
-                      className="p-1.5 shrink-0"
-                      style={{ color: '#14110E' }}
-                    >
+                    <button type="button" onClick={() => setSlugEditOpen(!slugEditOpen)} className="p-1.5 shrink-0" style={{ color: '#14110E' }}>
                       {slugEditOpen ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
                     </button>
                   </div>
@@ -296,30 +309,59 @@ export function SignupPage() {
                   <label className="block text-sm font-bold mb-1.5" style={{ color: '#14110E' }}>
                     Description
                   </label>
-                  <Textarea
-                    value={orgDescription}
-                    onChange={(e) => setOrgDescription(e.target.value)}
-                    placeholder="Tell us about your organization..."
-                    rows={4}
-                  />
+                  <Textarea value={orgDescription} onChange={(e) => setOrgDescription(e.target.value)} placeholder="Tell us about your organization..." rows={4} />
                 </div>
 
                 {error && (
                   <div className="p-3 text-sm font-bold" style={{ background: '#FFE9E3', border: '2px solid #FF4D2E', color: '#FF4D2E' }}>
                     {error}
+                    {/already exists|Sign in/i.test(error) && (
+                      <div className="mt-2">
+                        <Link to="/login" className="underline font-extrabold">
+                          Go to sign in →
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 <div className="flex flex-col gap-2">
                   <Button type="submit" variant="primary" size="lg" fullWidth loading={loading}>
                     <Building2 className="h-4 w-4" />
-                    Submit &amp; send verification email
+                    {loggedInMode ? 'Submit organization request' : 'Submit & send verification email'}
                   </Button>
-                  <Button type="button" variant="ghost" size="md" fullWidth onClick={() => { setError(''); setStep('account') }}>
-                    Back to account
-                  </Button>
+                  {!loggedInMode && (
+                    <Button type="button" variant="ghost" size="md" fullWidth onClick={() => { setError(''); setStep('account') }}>
+                      Back to account
+                    </Button>
+                  )}
                 </div>
               </form>
+            </motion.div>
+          )}
+
+          {step === 'pending' && (
+            <motion.div
+              key="pending"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-8 sm:p-10 text-center"
+              style={{ background: '#fff', border: '2.5px solid #14110E', boxShadow: '7px 7px 0 #14110E' }}
+            >
+              <CheckCircle2 className="h-12 w-12 mx-auto mb-4" style={{ color: '#14B87A' }} />
+              <h1 className="text-2xl font-extrabold mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
+                Request submitted
+              </h1>
+              <p className="text-sm font-semibold mb-4" style={{ color: '#4A4640' }}>
+                <strong>{orgName}</strong> is waiting for superadmin approval.
+                After approval your portal opens at <strong>/{orgSlug}</strong>.
+              </p>
+              <p className="text-xs font-semibold mb-6" style={{ color: '#4A4640' }}>
+                Redirecting to your dashboard…
+              </p>
+              <Link to="/dashboard">
+                <Button variant="primary">Open dashboard</Button>
+              </Link>
             </motion.div>
           )}
 
@@ -332,10 +374,7 @@ export function SignupPage() {
               className="p-8 sm:p-10 text-center"
               style={{ background: '#fff', border: '2.5px solid #14110E', boxShadow: '7px 7px 0 #14110E' }}
             >
-              <div
-                className="h-14 w-14 flex items-center justify-center mx-auto mb-5"
-                style={{ background: '#FFD23F', border: '2.5px solid #14110E' }}
-              >
+              <div className="h-14 w-14 flex items-center justify-center mx-auto mb-5" style={{ background: '#FFD23F', border: '2.5px solid #14110E' }}>
                 <Mail className="h-7 w-7" strokeWidth={2.5} style={{ color: '#14110E' }} />
               </div>
               <h1 className="text-2xl font-extrabold mb-2" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
@@ -344,20 +383,13 @@ export function SignupPage() {
               <p className="text-sm font-semibold mb-3" style={{ color: '#4A4640' }}>
                 We sent a confirmation link to <strong style={{ color: '#14110E' }}>{email}</strong>.
               </p>
-              <div
-                className="p-3 mb-6 text-left text-sm font-semibold"
-                style={{ background: '#FFF6D6', border: '2px solid #14110E', color: '#14110E' }}
-              >
+              <div className="p-3 mb-6 text-left text-sm font-semibold" style={{ background: '#FFF6D6', border: '2px solid #14110E', color: '#14110E' }}>
                 <p className="mb-2">
                   Your organization request for <strong>{orgName}</strong> is saved and waiting for superadmin approval.
                 </p>
                 <p>
-                  After you verify, sign in and check{' '}
-                  <strong>/dashboard</strong> for pending status. Once approved, your portal opens at{' '}
+                  After you verify, sign in and check <strong>/dashboard</strong>. Once approved, your portal opens at{' '}
                   <strong>/{orgSlug}</strong>.
-                </p>
-                <p className="mt-2 text-xs" style={{ color: '#4A4640' }}>
-                  Check spam if you don&apos;t see the mail within a minute.
                 </p>
               </div>
 
