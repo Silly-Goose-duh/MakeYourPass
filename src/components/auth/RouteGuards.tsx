@@ -72,7 +72,6 @@ export function HostRoute({ eventId, children }: { eventId: string; children: Re
       return
     }
     let alive = true
-    setHostOk(null)
     ;(async () => {
       try {
         const { data: profile } = await getProfile(user.id)
