@@ -179,6 +179,8 @@ export function MCPanel() {
     if (!confirmId || !confirmAction) return
     setActionLoading(confirmId)
     try {
+      const fromList = [...pendingRequests, ...recentRequests].find((r) => r.id === confirmId)
+
       if (confirmAction === 'approve') {
         const { data, error } = await approveRequest(confirmId)
         if (error) {
@@ -186,25 +188,38 @@ export function MCPanel() {
         } else if (data?.error) {
           showToast(data.error, 'error')
         } else {
-          const email = data?.requester_email || ''
+          const email =
+            data?.requester_email ||
+            fromList?.requester_email ||
+            fromList?.profiles?.email ||
+            ''
+          const name =
+            data?.requester_name ||
+            fromList?.requester_name ||
+            fromList?.profiles?.full_name ||
+            ''
+          const orgName =
+            data?.organization_name || fromList?.organization_name || 'your organization'
+          const slug = data?.slug || fromList?.organization_slug || ''
+
           if (email) {
             const { error: nErr } = await notifyOrgDecision({
               type: 'approved',
               email,
-              name: data?.requester_name,
-              organization_name: data?.organization_name || 'your organization',
-              slug: data?.slug,
+              name,
+              organization_name: orgName,
+              slug,
             })
             if (nErr) {
               showToast(
-                `Org approved · portal live at /${data?.slug} — email notify failed (${nErr.message})`,
+                `Org approved · portal live at /${slug} — email notify failed (${nErr.message})`,
                 'error'
               )
             } else {
-              showToast(`Approved! Portal live at /${data?.slug} — email sent to ${email}`)
+              showToast(`Approved! Portal live at /${slug} — “you're live” email sent to ${email}`)
             }
           } else {
-            showToast(`Approved! Portal live at /${data?.slug || '…'} (no email on file)`)
+            showToast(`Approved! Portal live at /${slug || '…'} (no email on file to notify)`)
           }
           await refreshAll()
         }
@@ -215,18 +230,26 @@ export function MCPanel() {
         } else if (data?.error) {
           showToast(data.error, 'error')
         } else {
-          if (data?.requester_email) {
+          const email =
+            data?.requester_email ||
+            fromList?.requester_email ||
+            fromList?.profiles?.email ||
+            ''
+          if (email) {
             await notifyOrgDecision({
               type: 'rejected',
-              email: data.requester_email,
-              name: data.requester_name,
-              organization_name: data.organization_name || 'your organization',
+              email,
+              name: data?.requester_name || fromList?.requester_name,
+              organization_name:
+                data?.organization_name || fromList?.organization_name || 'your organization',
             })
           }
           showToast('Request rejected')
-          await loadPendingRequests()
+          await refreshAll()
         }
       }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Action failed', 'error')
     } finally {
       setActionLoading(null)
       setConfirmId(null)
