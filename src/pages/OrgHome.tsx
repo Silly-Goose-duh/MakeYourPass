@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   Plus, Settings, Calendar, MapPin, IndianRupee,
-  Trash2, Upload, Users, Globe, ArrowLeft, Ticket, UserPlus,
+  Trash2, Upload, Users, Globe, ArrowLeft, Ticket, UserPlus, Pencil,
 } from 'lucide-react'
-import { Input } from '@/components/ui/Input'
+import { Input, Textarea } from '@/components/ui/Input'
 import { formatDate } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -409,10 +409,17 @@ export function OrgHome() {
   const [notFound, setNotFound] = useState(slugInvalid)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [collabOpen, setCollabOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editTagline, setEditTagline] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [profileMsg, setProfileMsg] = useState('')
   const [upiId, setUpiId] = useState('')
   const [upiPhone, setUpiPhone] = useState('')
   const [upiQrFile, setUpiQrFile] = useState<File | null>(null)
   const [savingSettings, setSavingSettings] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
 
   useEffect(() => {
     if (slugInvalid) return
@@ -429,6 +436,11 @@ export function OrgHome() {
       setOrg(o)
       setUpiId(o.upi_id || '')
       setUpiPhone(o.upi_phone || '')
+      setEditName(o.name || '')
+      setEditTagline(o.description || '')
+      setLogoFile(null)
+      setLogoPreview(null)
+      setProfileMsg('')
 
       const [{ data: pub }, { data: ex }] = await Promise.all([
         getPublishedEventsByOrg(o.id),
@@ -506,6 +518,57 @@ export function OrgHome() {
   const handleDeleteExecom = async (id: string) => {
     await deleteExecomMember(id)
     setExecom((prev) => prev.filter((x) => x.id !== id))
+  }
+
+  const openProfileEditor = () => {
+    if (!org) return
+    setEditName(org.name || '')
+    setEditTagline(org.description || '')
+    setLogoFile(null)
+    if (logoPreview) URL.revokeObjectURL(logoPreview)
+    setLogoPreview(null)
+    setProfileMsg('')
+    setProfileOpen(true)
+    setSettingsOpen(false)
+    setCollabOpen(false)
+  }
+
+  const saveOrgProfile = async () => {
+    if (!org) return
+    const name = editName.trim()
+    if (!name) {
+      setProfileMsg('Name is required')
+      return
+    }
+    setSavingProfile(true)
+    setProfileMsg('')
+    try {
+      let logo_url = org.logo_url || ''
+      if (logoFile) {
+        const ext = (logoFile.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+        const path = `org/${org.id}/logo-${Date.now()}.${ext}`
+        const { data: up, error: upErr } = await uploadOrgAsset(logoFile, path)
+        if (upErr) throw new Error(upErr.message || 'Logo upload failed')
+        logo_url = getOrgAssetPublicUrl(up?.path || path)
+      }
+      const { data, error } = await updateOrganization(org.id, {
+        name,
+        description: editTagline.trim(),
+        logo_url,
+      })
+      if (error) throw error
+      if (data) setOrg(data)
+      setProfileMsg('Saved — your portal looks updated.')
+      if (logoPreview) URL.revokeObjectURL(logoPreview)
+      setLogoFile(null)
+      setLogoPreview(null)
+      // keep panel open briefly so they see success, or close
+      setTimeout(() => setProfileOpen(false), 700)
+    } catch (e) {
+      setProfileMsg(e instanceof Error ? e.message : 'Failed to save profile')
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
   const saveUpiSettings = async () => {
@@ -604,33 +667,59 @@ export function OrgHome() {
               ★ Club portal
             </span>
             <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-4">
-              <div
-                className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 flex items-center justify-center text-2xl font-extrabold text-white overflow-hidden"
+              <button
+                type="button"
+                disabled={!isAdmin}
+                onClick={() => isAdmin && openProfileEditor()}
+                className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 flex items-center justify-center text-2xl font-extrabold text-white overflow-hidden group"
                 style={{
                   background: brandColor,
                   border: `2.5px solid ${INK}`,
                   boxShadow: '4px 4px 0 #14110E',
                   fontFamily: 'Syne, sans-serif',
+                  cursor: isAdmin ? 'pointer' : 'default',
                 }}
+                title={isAdmin ? 'Edit club icon' : undefined}
               >
                 {org.logo_url ? (
                   <img src={org.logo_url} alt="" className="h-full w-full object-cover" />
                 ) : (
                   org.name.slice(0, 2).toUpperCase()
                 )}
-              </div>
+                {isAdmin && (
+                  <span
+                    className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-hidden
+                  >
+                    <Pencil className="h-5 w-5 text-white" strokeWidth={2.5} />
+                  </span>
+                )}
+              </button>
               <div className="flex-1 min-w-0">
-                <h1
-                  className="font-extrabold tracking-tighter"
-                  style={{
-                    fontFamily: 'Syne, sans-serif',
-                    fontSize: 'clamp(1.75rem, 5vw, 3rem)',
-                    lineHeight: 0.95,
-                    color: INK,
-                  }}
-                >
-                  {org.name.toUpperCase()}
-                </h1>
+                <div className="flex items-start gap-2 flex-wrap">
+                  <h1
+                    className="font-extrabold tracking-tighter"
+                    style={{
+                      fontFamily: 'Syne, sans-serif',
+                      fontSize: 'clamp(1.75rem, 5vw, 3rem)',
+                      lineHeight: 0.95,
+                      color: INK,
+                    }}
+                  >
+                    {org.name.toUpperCase()}
+                  </h1>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="mt-1 p-1.5 hover:opacity-80"
+                      style={{ background: '#fff', border: `2px solid ${INK}` }}
+                      onClick={openProfileEditor}
+                      title="Edit name, tagline & icon"
+                    >
+                      <Pencil className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    </button>
+                  )}
+                </div>
                 <p className="mt-2 max-w-xl text-sm font-semibold" style={{ color: INK }}>
                   {org.description || 'Campus club on MakeYourPass — events, tickets, check-in.'}
                 </p>
@@ -651,7 +740,15 @@ export function OrgHome() {
                     type="button"
                     className="zine-btn text-sm"
                     style={{ background: '#fff' }}
-                    onClick={() => { setCollabOpen((v) => !v); setSettingsOpen(false) }}
+                    onClick={openProfileEditor}
+                  >
+                    <Pencil className="h-4 w-4" strokeWidth={2.5} /> Edit profile
+                  </button>
+                  <button
+                    type="button"
+                    className="zine-btn text-sm"
+                    style={{ background: '#fff' }}
+                    onClick={() => { setCollabOpen((v) => !v); setSettingsOpen(false); setProfileOpen(false) }}
                   >
                     <UserPlus className="h-4 w-4" strokeWidth={2.5} /> Team
                   </button>
@@ -659,7 +756,7 @@ export function OrgHome() {
                     type="button"
                     className="zine-btn text-sm"
                     style={{ background: '#fff' }}
-                    onClick={() => { setSettingsOpen((v) => !v); setCollabOpen(false) }}
+                    onClick={() => { setSettingsOpen((v) => !v); setCollabOpen(false); setProfileOpen(false) }}
                   >
                     <Settings className="h-4 w-4" strokeWidth={2.5} /> UPI
                   </button>
@@ -686,6 +783,134 @@ export function OrgHome() {
             </div>
           </div>
         </section>
+
+        {isAdmin && profileOpen && org && (
+          <div
+            className="mx-4 sm:mx-6 mt-6 p-4 sm:p-5 space-y-4"
+            style={{ background: '#fff', border: `2.5px solid ${INK}`, boxShadow: '4px 4px 0 #14110E' }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="font-extrabold flex items-center gap-2" style={{ fontFamily: 'Syne, sans-serif', color: INK }}>
+                  <Pencil className="h-4 w-4" strokeWidth={2.5} /> Edit club profile
+                </h3>
+                <p className="text-xs font-semibold mt-1" style={{ color: '#4A4640' }}>
+                  Update name, tagline, and icon anytime. URL stays <strong>/{org.slug}</strong>.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="text-xs font-extrabold px-2 py-1"
+                style={{ border: `2px solid ${INK}` }}
+                onClick={() => setProfileOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 items-start">
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className="h-24 w-24 overflow-hidden flex items-center justify-center text-xl font-extrabold text-white"
+                  style={{
+                    background: brandColor,
+                    border: `2.5px solid ${INK}`,
+                    boxShadow: '3px 3px 0 #14110E',
+                    fontFamily: 'Syne, sans-serif',
+                  }}
+                >
+                  {logoPreview || org.logo_url ? (
+                    <img
+                      src={logoPreview || org.logo_url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    (editName || org.name).slice(0, 2).toUpperCase()
+                  )}
+                </div>
+                <label className="zine-btn text-xs cursor-pointer" style={{ background: '#fff' }}>
+                  <Upload className="h-3.5 w-3.5" /> Change icon
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null
+                      if (logoPreview) URL.revokeObjectURL(logoPreview)
+                      setLogoFile(f)
+                      setLogoPreview(f ? URL.createObjectURL(f) : null)
+                    }}
+                  />
+                </label>
+                {logoFile && (
+                  <button
+                    type="button"
+                    className="text-[10px] font-bold underline"
+                    style={{ color: '#4A4640' }}
+                    onClick={() => {
+                      if (logoPreview) URL.revokeObjectURL(logoPreview)
+                      setLogoFile(null)
+                      setLogoPreview(null)
+                    }}
+                  >
+                    Remove new photo
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 w-full space-y-3">
+                <Input
+                  label="Organization name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="e.g. Under25"
+                  required
+                />
+                <div>
+                  <label className="block text-sm font-bold mb-1.5" style={{ color: INK }}>
+                    Tagline / description
+                  </label>
+                  <Textarea
+                    value={editTagline}
+                    onChange={(e) => setEditTagline(e.target.value)}
+                    placeholder="Short line about your club…"
+                    rows={3}
+                  />
+                </div>
+                <p className="text-[11px] font-semibold" style={{ color: '#4A4640' }}>
+                  Portal URL (fixed): makeyourpass.vercel.app/<strong>{org.slug}</strong>
+                </p>
+                {profileMsg && (
+                  <p
+                    className="text-xs font-bold"
+                    style={{ color: profileMsg.startsWith('Saved') ? '#0A7A4F' : RED }}
+                  >
+                    {profileMsg}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="zine-btn zine-btn-accent text-sm"
+                    onClick={() => void saveOrgProfile()}
+                    disabled={savingProfile}
+                  >
+                    {savingProfile ? 'Saving…' : 'Save profile'}
+                  </button>
+                  <button
+                    type="button"
+                    className="zine-btn text-sm"
+                    style={{ background: '#fff' }}
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isAdmin && collabOpen && org && (
           <div className="mx-4 sm:mx-6 mt-6" style={{ boxShadow: '4px 4px 0 #14110E' }}>
