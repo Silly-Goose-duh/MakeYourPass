@@ -115,6 +115,16 @@ export function SignupPage() {
           setError(j.error || 'Account exists. Sign in first.')
           return
         }
+        if (j.code === 'SLUG_TAKEN' || j.code === 'SLUG_PENDING') {
+          setError(j.error || 'That organization URL is unavailable.')
+          // Nudge slug editor open with a free-looking alternative
+          setSlugEditOpen(true)
+          if (!slugEdited || orgSlug === j.slug) {
+            setOrgSlug(`${orgSlug}-club`)
+            setSlugEdited(true)
+          }
+          return
+        }
         setError(j.error || 'Signup failed')
         return
       }

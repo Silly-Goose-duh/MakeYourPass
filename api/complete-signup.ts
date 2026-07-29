@@ -118,20 +118,28 @@ export default async function handler(req: any, res: any) {
     // Slug checks
     const { data: existingOrg } = await admin
       .from('organizations')
-      .select('id')
+      .select('id, name, slug')
       .eq('slug', organization_slug)
       .maybeSingle()
     if (existingOrg) {
-      return res.status(400).json({ error: 'That organization URL is already taken' })
+      return res.status(400).json({
+        error: `“/${organization_slug}” is already taken by ${existingOrg.name || 'another club'}. Pick a different Organization URL (e.g. ${organization_slug}-club or ${organization_slug}2). Or ask that club’s admin to invite you as a collaborator under Team.`,
+        code: 'SLUG_TAKEN',
+        slug: organization_slug,
+      })
     }
     const { data: slugPending } = await admin
       .from('organization_registration_requests')
-      .select('id')
+      .select('id, organization_name')
       .eq('organization_slug', organization_slug)
       .eq('status', 'pending')
       .maybeSingle()
     if (slugPending) {
-      return res.status(400).json({ error: 'That organization URL already has a pending request' })
+      return res.status(400).json({
+        error: `“/${organization_slug}” already has a pending request (${slugPending.organization_name}). Choose another URL or wait for that review to finish.`,
+        code: 'SLUG_PENDING',
+        slug: organization_slug,
+      })
     }
 
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'makeyourpass.vercel.app'
