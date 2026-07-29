@@ -17,7 +17,7 @@ export function OrgAdminRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) return
-    (async () => {
+    ;(async () => {
       const { data: profileData } = await getProfile(user.id)
       if (profileData?.is_superadmin) {
         setIsOrgAdmin(true)
@@ -63,25 +63,22 @@ export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
 
 export function HostRoute({ eventId, children }: { eventId: string; children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  const [allowed, setAllowed] = useState<boolean | null>(null)
+  // null = still checking; only used when user is present
+  const [hostOk, setHostOk] = useState<boolean | null>(null)
 
   useEffect(() => {
-    if (loading) return
-    if (!user) {
-      setAllowed(false)
-      return
-    }
-    if (!eventId) {
-      setAllowed(false)
+    if (!user || !eventId) {
+      // Don't setState here — render path handles !user / !eventId
       return
     }
     let alive = true
+    setHostOk(null)
     ;(async () => {
       try {
         const { data: profile } = await getProfile(user.id)
         if (!alive) return
         if (profile?.is_superadmin) {
-          setAllowed(true)
+          setHostOk(true)
           return
         }
         const { data: ev } = await supabase
@@ -91,10 +88,9 @@ export function HostRoute({ eventId, children }: { eventId: string; children: Re
           .maybeSingle()
         if (!alive) return
         if (!ev) {
-          setAllowed(false)
+          setHostOk(false)
           return
         }
-        // admin OR host can scan / live-admit
         const { data: mem } = await supabase
           .from('organization_members')
           .select('id, role')
@@ -103,17 +99,17 @@ export function HostRoute({ eventId, children }: { eventId: string; children: Re
           .in('role', ['admin', 'host'])
           .limit(1)
         if (!alive) return
-        setAllowed(!!(mem && mem.length > 0))
+        setHostOk(!!(mem && mem.length > 0))
       } catch {
-        if (alive) setAllowed(false)
+        if (alive) setHostOk(false)
       }
     })()
     return () => {
       alive = false
     }
-  }, [user, eventId, loading])
+  }, [user, eventId])
 
-  if (loading || (user && allowed === null)) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <LoadingSpinner />
@@ -121,7 +117,15 @@ export function HostRoute({ eventId, children }: { eventId: string; children: Re
     )
   }
   if (!user) return <Navigate to="/login" replace />
-  if (!allowed) return <Navigate to="/dashboard" replace />
+  if (!eventId) return <Navigate to="/dashboard" replace />
+  if (hostOk === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+  if (!hostOk) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
