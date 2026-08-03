@@ -135,6 +135,13 @@ export function SignupPage() {
           setStep('verify')
           return
         }
+        // A signed-in user who just registered an org request should land on
+        // their dashboard (pending wait), NOT be bounced to /login.
+        if (loggedInMode) {
+          setStep('pending')
+          setTimeout(() => navigate('/dashboard', { replace: true }), 1600)
+          return
+        }
         setStep('pending')
         setTimeout(() => navigate('/login', { replace: true }), 1600)
         return

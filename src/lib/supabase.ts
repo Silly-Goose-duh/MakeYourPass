@@ -166,18 +166,21 @@ export async function getApprovedOrganizations() {
   return { data: data as Organization[] | null, error }
 }
 
-export async function getOrganizationsWithCounts() {
+export async function getOrganizationsWithCounts(): Promise<{ data: Organization[] | null; error: unknown; degraded?: boolean }> {
   const { data, error } = await supabase.rpc('get_organizations_with_counts')
   if (!error && Array.isArray(data)) {
     return { data: data as Organization[], error: null }
   }
-  // Fallback if RPC missing/broken — plain table (superadmin RLS or approved)
+  // RPC failed (e.g. superadmin RLS or a broken aggregate). Fall back to a plain
+  // table select, but flag it so the caller can warn the user — a broken RPC is
+  // NOT the same as real data, and without member_count/event_count MC would
+  // otherwise silently render '-' everywhere.
   const { data: rows, error: e2 } = await supabase
     .from('organizations')
     .select('*')
     .order('name')
   if (e2) return { data: null, error: error || e2 }
-  return { data: (rows || []) as Organization[], error: null }
+  return { data: (rows || []) as Organization[], error: null, degraded: true }
 }
 
 export async function getOrganizationBySlug(slug: string) {
@@ -945,12 +948,16 @@ export interface AdmitResult {
   name: string | null
   unique_code: string | null
   already_admitted: boolean
-  status: 'admitted' | 'already_admitted' | 'waitlisted' | 'not_found'
+  status: 'admitted' | 'already_admitted' | 'waitlisted' | 'not_found' | 'wrong_event'
 }
 
-/** Call the admit_registration SECURITY DEFINER RPC (scans a qr_token). */
-export async function admitByQrToken(qrToken: string): Promise<{ data: AdmitResult | null; error: unknown }> {
-  const { data, error } = await supabase.rpc('admit_registration', { p_qr_token: qrToken })
+/** Call the admit_registration SECURITY DEFINER RPC (scans a qr_token).
+ *  Pass eventId to scope the admit to the event being hosted (rejects cross-event tickets). */
+export async function admitByQrToken(qrToken: string, eventId?: string): Promise<{ data: AdmitResult | null; error: unknown }> {
+  const { data, error } = await supabase.rpc('admit_registration', {
+    p_qr_token: qrToken,
+    ...(eventId ? { p_event_id: eventId } : {}),
+  })
   if (error) return { data: null, error }
   const row = Array.isArray(data) ? data[0] : data
   if (!row) return { data: null, error: new Error('No result from admit RPC') }
@@ -969,14 +976,18 @@ export async function admitByQrToken(qrToken: string): Promise<{ data: AdmitResu
 /**
  * Admit by QR token UUID OR human unique_code (e.g. EVT-0001).
  * Tries flexible RPC first, then falls back to qr_token-only RPC.
+ * Pass eventId to scope the admit to the event being hosted (rejects cross-event tickets).
  */
-export async function admitByCodeOrToken(input: string): Promise<{ data: AdmitResult | null; error: unknown }> {
+export async function admitByCodeOrToken(input: string, eventId?: string): Promise<{ data: AdmitResult | null; error: unknown }> {
   const raw = input.trim()
   if (!raw) return { data: null, error: new Error('Empty code') }
 
   // Prefer flexible RPC if present
   try {
-    const { data, error } = await supabase.rpc('admit_by_code_or_token', { p_input: raw })
+    const { data, error } = await supabase.rpc('admit_by_code_or_token', {
+      p_input: raw,
+      ...(eventId ? { p_event_id: eventId } : {}),
+    })
     if (!error) {
       const row = Array.isArray(data) ? data[0] : data
       if (row) {
@@ -993,9 +1004,9 @@ export async function admitByCodeOrToken(input: string): Promise<{ data: AdmitRe
     }
   } catch { /* fall through */ }
 
-  // UUID-looking → direct token admit
+  // UUID-looking → direct token admit (still event-scoped if eventId given)
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-  if (uuidRe.test(raw)) return admitByQrToken(raw)
+  if (uuidRe.test(raw)) return admitByQrToken(raw, eventId)
 
   // unique_code path via flexible RPC only — if missing, report not_found
   return { data: { name: null, unique_code: null, already_admitted: false, status: 'not_found' }, error: null }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Users, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -18,6 +18,10 @@ export function AcceptInvitePage() {
   )
   const [message, setMessage] = useState(!token ? 'Invalid invite link' : '')
   const [orgSlug, setOrgSlug] = useState<string | null>(null)
+  // One-shot guard: useAuth can re-emit `user` with a new object reference on
+  // mount (getSession → getUser → onAuthStateChange). Keying on user?.id and a
+  // ref prevents the RPC from firing twice (which flips a success into "already used").
+  const firedFor = useRef<string | null>(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -26,9 +30,13 @@ export function AcceptInvitePage() {
       navigate(`/login?next=${encodeURIComponent(`/invite/${token}`)}`, { replace: true })
       return
     }
+    // One-shot guard: useAuth can re-emit `user` with a new object reference on
+    // mount (getSession → getUser → onAuthStateChange). Keying the guard on the
+    // token prevents the RPC from firing twice (which flips success into "already used").
+    if (firedFor.current === token) return
     let alive = true
     ;(async () => {
-      if (!alive) return
+      firedFor.current = token
       setStatus('working')
       const { data, error } = await acceptOrgInvite(token)
       if (!alive) return

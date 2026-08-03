@@ -59,7 +59,7 @@ export function MCPanel() {
   const [recentRequests, setRecentRequests] = useState<PendingRequest[]>([])
   const [requestsLoading, setRequestsLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warn' } | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | null>(null)
 
@@ -129,12 +129,15 @@ export function MCPanel() {
 
   async function loadOrganizations() {
     setOrgsLoading(true)
-    const { data, error } = await getOrganizationsWithCounts()
+    const { data, error, degraded } = await getOrganizationsWithCounts()
     if (error) {
-      showToast(error.message || 'Failed to load organizations', 'error')
+      showToast((error instanceof Error ? error.message : String(error)) || 'Failed to load organizations', 'error')
       setOrganizations([])
     } else if (data) {
       setOrganizations(data)
+      if (degraded) {
+        showToast('Org stats limited (counts unavailable) — showing names only', 'warn')
+      }
     }
     setOrgsLoading(false)
   }
@@ -163,7 +166,7 @@ export function MCPanel() {
     setProfilesLoading(false)
   }
 
-  function showToast(message: string, type: 'success' | 'error' = 'success') {
+  function showToast(message: string, type: 'success' | 'error' | 'warn' = 'success') {
     setToast({ message, type })
     setTimeout(() => setToast(null), 4500)
   }

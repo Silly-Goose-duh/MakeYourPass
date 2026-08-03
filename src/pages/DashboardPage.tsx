@@ -67,8 +67,8 @@ function DashboardInner({ eventId }: { eventId: string }) {
     if (!q) return responses
     return responses.filter(
       (r) =>
-        r.respondent_name.toLowerCase().includes(q) ||
-        r.respondent_email.toLowerCase().includes(q) ||
+        (r.respondent_name || '').toLowerCase().includes(q) ||
+        (r.respondent_email || '').toLowerCase().includes(q) ||
         (r.unique_code || '').toLowerCase().includes(q)
     )
   }, [responses, query])
@@ -89,11 +89,13 @@ function DashboardInner({ eventId }: { eventId: string }) {
   const manualAdmit = async (r: EventResponse) => {
     if (r.admitted_at) return
     setBusyId(r.id)
-    const { data } = await admitByQrToken(r.qr_token)
+    const { data } = await admitByQrToken(r.qr_token, eventId)
     setBusyId(null)
     if (data && (data.status === 'admitted' || data.status === 'already_admitted')) {
       setResponses((rs) => rs.map((x) => (x.id === r.id ? { ...x, admitted_at: new Date().toISOString() } : x)))
-      getSeatStatus(eventId).then(({ data: st }) => st && setSeat(st))
+      getSeatStatus(eventId).then(({ data: st }) => { if (st) setSeat(st) }).catch(() => {})
+    } else if (data && data.status === 'wrong_event') {
+      flash('Ticket belongs to a different event')
     }
   }
 

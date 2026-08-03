@@ -294,6 +294,7 @@ export default async function handler(req: any, res: any) {
 
     // Generate ticket (reuse deployed /api/generate-ticket).
     let ticketUrl = reg.ticket_url
+    let ticketError: string | undefined
     if ((!ticketUrl || force) && reg.status === 'confirmed') {
       const host = req.headers['x-forwarded-host'] || req.headers.host
       const proto = req.headers['x-forwarded-proto'] || 'https'
@@ -302,11 +303,16 @@ export default async function handler(req: any, res: any) {
         const r = await fetch(`${base}/api/generate-ticket`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ registration_id: registrationId, regenerate: force && !ticketUrl }),
+          // force=true means the host explicitly asked to (re)generate — always regenerate.
+          body: JSON.stringify({ registration_id: registrationId, regenerate: force }),
         })
         if (r.ok) {
           const j = await r.json()
           ticketUrl = j.ticket_url || ticketUrl
+        } else {
+          // Don't silently pretend the ticket is attached. Surface it so the
+          // caller knows the email may go out without a PNG.
+          ticketError = `generate-ticket ${r.status}`
         }
       }
     }
@@ -320,6 +326,11 @@ export default async function handler(req: any, res: any) {
 
     let subject = ''
     let html = ''
+
+    if (reg.status === 'cancelled') {
+      // Cancelled registrations must not get a "You're in!" confirmation.
+      return res.status(409).json({ error: 'This registration was cancelled.' })
+    }
 
     if (reg.status === 'waitlisted') {
       subject = `You're on the waitlist — ${ev.title || 'event'}`
@@ -373,7 +384,7 @@ export default async function handler(req: any, res: any) {
     if (sendErr) return res.status(502).json({ error: 'Resend failed: ' + sendErr.message })
 
     await sb.from('event_responses').update({ email_sent_at: new Date().toISOString() }).eq('id', reg.id)
-    return res.status(200).json({ ok: true, ticket_url: ticketUrl, kind })
+    return res.status(200).json({ ok: true, ticket_url: ticketUrl, kind, ticket_error: ticketError ?? null })
   } catch (err: unknown) {
     console.error('on-registration error:', err)
     const message = err instanceof Error ? err.message : 'Internal error'

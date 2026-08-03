@@ -52,9 +52,12 @@ function useAuthState(): AuthContextValue {
 
     // 2. Validate the token against Supabase in the background.
     //    If expired, this will set user to null and trigger re-login.
-    supabase.auth.getUser().then(({ data: { user: validatedUser } }) => {
+    //    CRITICAL: only clear the user if validation actually fails — a
+    //    transient 5xx / offline response returns user:null but must NOT
+    //    log a validly-signed-in user out.
+    supabase.auth.getUser().then(({ data: { user: validatedUser }, error: getUserErr }) => {
       if (!mounted) return
-      setUser(validatedUser)
+      if (!getUserErr) setUser(validatedUser)
     })
 
     // 3. Listen for auth state changes (login, logout, token refresh)

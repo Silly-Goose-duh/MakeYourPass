@@ -275,19 +275,31 @@ export default async function handler(req: any, res: any) {
           id: userId,
           full_name,
           email,
-          is_superadmin: email === 'gooseisback4u@gmail.com',
+          // Only set is_superadmin true for the owner. Never pass `false` here:
+          // it would strip /mc access from any OTHER existing superadmin who
+          // re-runs signup (the column already holds their true value).
+          ...(email === 'gooseisback4u@gmail.com' ? { is_superadmin: true } : {}),
         },
         { onConflict: 'id' }
       )
     }
 
-    // Org request
-    const { data: pendingExisting } = await admin
+    // Org request — guard against duplicate pending rows (no unique index exists
+    // on user_id, and maybeSingle() throws if >1 row is returned). Order by
+    // recency and take the latest so a stray second row can't cause a crash or
+    // a third insert.
+    const { data: pendingRows, error: pendingErr } = await admin
       .from('organization_registration_requests')
       .select('id, status, organization_name, organization_slug')
       .eq('user_id', userId)
       .eq('status', 'pending')
-      .maybeSingle()
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (pendingErr) {
+      return res.status(500).json({ error: 'Org request lookup failed: ' + pendingErr.message })
+    }
+    const pendingExisting = pendingRows && pendingRows.length > 0 ? pendingRows[0] : null
 
     if (pendingExisting) {
       // Ensure they can sign in

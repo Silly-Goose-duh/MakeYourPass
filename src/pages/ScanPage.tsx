@@ -26,10 +26,13 @@ function ScanInner({ eventId }: { eventId: string }) {
     getEventById(eventId).then(({ data }) => { if (alive && data) setEventTitle(data.title) })
     return () => {
       alive = false
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {})
-        scannerRef.current = null
-      }
+      try {
+        if (scannerRef.current) {
+          scannerRef.current.stop().catch(() => {})
+        }
+      } catch { /* html5-qrcode may throw a synchronous string if not running */ }
+      scannerRef.current = null
+      if (flashTimer.current) clearTimeout(flashTimer.current)
     }
   }, [eventId])
 
@@ -46,6 +49,8 @@ function ScanInner({ eventId }: { eventId: string }) {
       showFlash({ kind: 'warn', message: `Already admitted (${r.unique_code ?? ''})`, name: r.name ?? undefined })
     } else if (r.status === 'waitlisted') {
       showFlash({ kind: 'warn', message: 'Waitlisted — not admitted', name: r.name ?? undefined })
+    } else if (r.status === 'wrong_event') {
+      showFlash({ kind: 'error', message: 'Ticket belongs to a different event', name: r.name ?? undefined })
     } else {
       showFlash({ kind: 'error', message: 'Not a valid ticket', name: r.name ?? undefined })
     }
@@ -56,36 +61,39 @@ function ScanInner({ eventId }: { eventId: string }) {
     if (lastAdmit.current && lastAdmit.current.token === token && now - lastAdmit.current.t < 1200) return
     lastAdmit.current = { token, t: now }
     try {
-      const { data, error } = await admitByCodeOrToken(token)
+      const { data, error } = await admitByCodeOrToken(token, eventId)
       if (error || !data) showFlash({ kind: 'error', message: 'Could not admit — try again' })
       else applyResult(data)
     } catch {
       showFlash({ kind: 'error', message: 'Network error — try again' })
     }
-  }, [applyResult, showFlash])
+  }, [applyResult, showFlash, eventId])
 
   const startCamera = useCallback(async () => {
     if (!regionRef.current || scannerRef.current) return
     try {
       const scanner = new Html5Qrcode('scan-region')
-      scannerRef.current = scanner
       await scanner.start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 240, height: 240 } },
         (decoded: string) => { void handleResult(decoded) },
         () => { /* ignore per-frame errors */ }
       )
+      scannerRef.current = scanner
       setCamOn(true)
     } catch {
+      scannerRef.current = null
       showFlash({ kind: 'error', message: 'Camera unavailable — use manual entry' })
     }
   }, [handleResult, showFlash])
 
   const stopCamera = useCallback(() => {
-    if (scannerRef.current) {
-      scannerRef.current.stop().catch(() => {})
-      scannerRef.current = null
-    }
+    try {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {})
+      }
+    } catch { /* html5-qrcode may throw a synchronous string if not running */ }
+    scannerRef.current = null
     setCamOn(false)
   }, [])
 

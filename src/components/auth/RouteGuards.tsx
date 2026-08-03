@@ -71,6 +71,9 @@ export function HostRoute({ eventId, children }: { eventId: string; children: Re
       // Don't setState here — render path handles !user / !eventId
       return
     }
+    // Reset before re-checking a (possibly different) event
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHostOk(null)
     let alive = true
     ;(async () => {
       try {
