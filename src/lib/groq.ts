@@ -1,5 +1,28 @@
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+/**
+ * Client-side helper for the AI event-document parser.
+ *
+ * ── SECURITY CHANGE ────────────────────────────────────────────────────────
+ * This file used to read the Groq API key straight out of the bundle:
+ *
+ *     const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
+ *
+ * Vite inlines every `VITE_*` variable into the shipped JavaScript, so the key
+ * was public to anyone who opened devtools, and could be lifted out and used to
+ * rack up spend on the Groq account.
+ *
+ * The key is gone from the browser entirely. Requests now go to our own
+ * `/api/poster-theme` serverless proxy (`action: 'chat'`), which holds
+ * `GROQ_API_KEY` as a SERVER env var, requires a signed-in user, rate-limits
+ * per user, and pins the model. That endpoint is shared with the poster
+ * theming feature because Vercel's Hobby plan caps a deployment at 12
+ * serverless functions and this project sits at the ceiling. The exported
+ * signatures and return types below are UNCHANGED, so every caller keeps
+ * compiling.
+ */
+
+import { getAccessToken } from '@/lib/supabase'
+
+const PROXY_URL = '/api/poster-theme'
 
 export interface ExtractedEventData {
   title: string
@@ -17,15 +40,74 @@ export interface ExtractedEventData {
   maxAttendees: string
 }
 
+/** A single part of a multimodal (vision) message. */
+interface GroqContentPart {
+  type: 'text' | 'image_url'
+  text?: string
+  image_url?: { url: string }
+}
+
+interface GroqMessage {
+  role: 'system' | 'user'
+  content: string | GroqContentPart[]
+}
+
+/** Shape of the subset of the Groq response we read. */
+interface GroqChatResponse {
+  choices?: Array<{ message?: { content?: string | null } }>
+}
+
+/** Send one chat-completion request through the authenticated server proxy. */
+async function callProxy(
+  mode: 'vision' | 'text',
+  messages: GroqMessage[],
+  options: { temperature?: number; maxTokens?: number; jsonObject?: boolean } = {}
+): Promise<GroqChatResponse> {
+  const token = await getAccessToken()
+  if (!token) {
+    throw new Error('You must be signed in to use AI document parsing.')
+  }
+
+  const response = await fetch(PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      action: 'chat',
+      mode,
+      messages,
+      temperature: options.temperature,
+      max_tokens: options.maxTokens,
+      response_format: options.jsonObject ? { type: 'json_object' } : undefined,
+    }),
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    const message =
+      payload && typeof payload === 'object' && 'error' in payload
+        ? String((payload as { error?: unknown }).error || '')
+        : ''
+    throw new Error(message || `AI request failed (${response.status})`)
+  }
+
+  return (payload || {}) as GroqChatResponse
+}
+
 /**
- * Parse event details from a PDF document by sending extracted text to Groq
+ * Parse event details from a PDF/document/image by sending extracted text (or
+ * page images) through the /api/poster-theme proxy (action: 'chat').
  */
 export async function parseEventDocument(
   file: File,
   onProgress?: (msg: string) => void
 ): Promise<ExtractedEventData | null> {
-  if (!GROQ_API_KEY) {
-    throw new Error('Groq API key not configured. Set VITE_GROQ_API_KEY in .env.local')
+  // Fail fast (and with a useful message) when there is no session at all.
+  const token = await getAccessToken()
+  if (!token) {
+    throw new Error('You must be signed in to use AI document parsing.')
   }
 
   onProgress?.('Reading document...')
@@ -73,7 +155,7 @@ export async function parseEventDocument(
     try {
       documentText = await file.text()
     } catch {
-      // Fallback: try as image
+      // Fallback: try reading as image
       if (file.type === 'application/octet-stream' || !file.type) {
         onProgress?.('Analyzing document with AI...')
         return await analyzeImageWithGroq(file)
@@ -97,7 +179,7 @@ export async function parseEventDocument(
  */
 async function extractTextFromPDF(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer()
-  
+
   // Load pdfjs from CDN dynamically — avoids Vite code-split chunk issues
   // @ts-expect-error — URL import is resolved at runtime, not by TypeScript
   const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs')
@@ -163,17 +245,12 @@ async function analyzeImageWithGroq(file: File): Promise<ExtractedEventData> {
 }
 
 /**
- * Send one or more base64 images to Groq vision API
- * Uses response_format: json_object to force structured JSON output
+ * Send one or more base64 images to Groq vision via the /api/poster-theme proxy (action: 'chat').
  * @param base64Images Array of base64-encoded images (max 5 per Groq limits)
  */
 async function sendToGroqVision(base64Images: string[], mimeType: string): Promise<ExtractedEventData> {
-  if (!GROQ_API_KEY) {
-    throw new Error('Groq API key not configured. Set VITE_GROQ_API_KEY in .env.local')
-  }
-
   // Build content array: text prompt + all page images
-  const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+  const content: GroqContentPart[] = [
     {
       type: 'text',
       text: `You are a precise event detail extraction AI. This is a multi-page event brochure.
@@ -212,7 +289,6 @@ SPECIAL INSTRUCTIONS FOR CATEGORY:
 - Networking event → "networking"
 
 CRITICAL: Read EVERY page. If the brochure has multiple pages, information may be spread across them.`,
-
     },
   ]
 
@@ -223,51 +299,29 @@ CRITICAL: Read EVERY page. If the brochure has multiple pages, information may b
     })
   }
 
-  const response = await fetch(GROQ_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      messages: [{ role: 'user', content }],
-      temperature: 0.1,
-      max_tokens: 2048,
-      response_format: { type: 'json_object' },
-    }),
-  })
-
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`Groq API error: ${err}`)
-  }
-
-  const result = await response.json()
+  const result = await callProxy(
+    'vision',
+    [{ role: 'user', content }],
+    { temperature: 0.1, maxTokens: 2048, jsonObject: true }
+  )
   const responseContent = result.choices?.[0]?.message?.content || '{}'
   return parseGroqResponse(responseContent)
 }
 
 /**
- * Send extracted text to Groq for structured data extraction
+ * Send extracted text to Groq (via /api/poster-theme) for structured data extraction
  */
 async function parseTextWithGroq(text: string): Promise<ExtractedEventData> {
-  const response = await fetch(GROQ_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        {
-          role: 'system',
-          content: 'You extract ALL structured event data from text. Be thorough — read every line and fill as many fields as possible.',
-        },
-        {
-          role: 'user',
-          content: `Extract ALL event details from the document text below. Be THOROUGH — read every line and fill as many fields as possible.
+  const result = await callProxy(
+    'text',
+    [
+      {
+        role: 'system',
+        content: 'You extract ALL structured event data from text. Be thorough — read every line and fill as many fields as possible.',
+      },
+      {
+        role: 'user',
+        content: `Extract ALL event details from the document text below. Be THOROUGH — read every line and fill as many fields as possible.
 
 Return ONLY valid JSON with exactly this structure. Use "" only if truly absent:
 {
@@ -299,22 +353,15 @@ CATEGORY HINTS:
 - Music/dance show → "concert"
 - Sports → "sports"
 - Workshop/seminar → "workshop"
+- Networking → "networking"
 
 DOCUMENT TEXT:
 ${text.slice(0, 8000)}`,
-        },
-      ],
-      temperature: 0.2,
-      max_tokens: 2048,
-    }),
-  })
+      },
+    ],
+    { temperature: 0.2, maxTokens: 2048 }
+  )
 
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`Groq API error: ${err}`)
-  }
-
-  const result = await response.json()
   const content = result.choices?.[0]?.message?.content || '{}'
   return parseGroqResponse(content)
 }
@@ -335,7 +382,7 @@ function parseGroqResponse(content: string): ExtractedEventData {
   // Step 2: If still not valid JSON, try finding the first { and last }
   if (jsonStr) {
     const firstBrace = jsonStr.indexOf('{')
-    const lastBrace = jsonStr.lastIndexOf('}')
+    const lastBrace = jsonStr.indexOf('}')
     if (firstBrace !== -1 && lastBrace > firstBrace) {
       jsonStr = jsonStr.slice(firstBrace, lastBrace + 1)
     }

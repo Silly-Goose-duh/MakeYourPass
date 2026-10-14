@@ -1,12 +1,12 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Layout } from '@/components/layout/Layout'
 import HomePage from '@/pages/Home'
 import { LoginPage } from '@/pages/Login'
 import { SignupPage } from '@/pages/Signup'
 import { AuthProvider } from '@/hooks/useAuth'
-import { ProtectedRoute, OrgAdminRoute, SuperAdminRoute } from '@/components/auth/RouteGuards'
+import { ProtectedRoute, OrgAdminRoute, SuperAdminRoute, HostRoute } from '@/components/auth/RouteGuards'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 const PublicEventForm = lazy(() => import('@/pages/PublicEventForm').then(m => ({ default: m.PublicEventForm })))
@@ -40,6 +40,18 @@ function PageSuspense({ children }: { children: React.ReactNode }) {
   )
 }
 
+/**
+ * Host pages are mounted behind /host/:eventId/*. HostRoute needs the event id
+ * to check membership, but the id only exists in the route pattern, so read it
+ * back out of the params and hand it to the guard. Renders the page for
+ * superadmins and for organization_members rows with role admin/host only;
+ * everyone else is redirected to /login or /dashboard before the page mounts.
+ */
+function HostRouteForEvent({ children }: { children: React.ReactNode }) {
+  const { eventId } = useParams<{ eventId: string }>()
+  return <HostRoute eventId={eventId ?? ''}>{children}</HostRoute>
+}
+
 function AppRoutes() {
   const location = useLocation()
   return (
@@ -61,8 +73,8 @@ function AppRoutes() {
         <Route path="/dashboard/events/new" element={<OrgAdminRoute><PageSuspense><CreateEvent /></PageSuspense></OrgAdminRoute>} />
         <Route path="/dashboard/events/:id/edit" element={<OrgAdminRoute><PageSuspense><EditEvent /></PageSuspense></OrgAdminRoute>} />
         <Route path="/dashboard/events/:id/analytics" element={<OrgAdminRoute><PageSuspense><EventAnalytics /></PageSuspense></OrgAdminRoute>} />
-        <Route path="/host/:eventId/scan" element={<PageSuspense><ScanPage /></PageSuspense>} />
-        <Route path="/host/:eventId/dashboard" element={<PageSuspense><DashboardPage /></PageSuspense>} />
+        <Route path="/host/:eventId/scan" element={<HostRouteForEvent><PageSuspense><ScanPage /></PageSuspense></HostRouteForEvent>} />
+        <Route path="/host/:eventId/dashboard" element={<HostRouteForEvent><PageSuspense><DashboardPage /></PageSuspense></HostRouteForEvent>} />
 
         <Route path="/mc" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />
         <Route path="/mc/*" element={<SuperAdminRoute><PageSuspense><MCPanel /></PageSuspense></SuperAdminRoute>} />

@@ -13,10 +13,8 @@ export const config = { runtime: 'nodejs' }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  if (req.method === 'OPTIONS') return res.status(200).end()
+  const { applyCors, fail } = await import('./_lib/http')
+  if (applyCors(req, res)) return
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
@@ -159,9 +157,9 @@ export default async function handler(req: any, res: any) {
       subject,
       html,
     })
-    if (error) return res.status(500).json({ error: error.message || 'Send failed' })
+    if (error) return fail(res, 502, 'Could not send the decision email', error)
     return res.status(200).json({ ok: true, id: data?.id, to: email, type })
   } catch (err) {
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) })
+    return fail(res, 500, 'Internal error', err)
   }
 }

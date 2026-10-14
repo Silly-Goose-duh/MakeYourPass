@@ -701,7 +701,14 @@ export function PublicEventForm() {
                       })
                       const j = await r.json().catch(() => ({}))
                       if (!r.ok) throw new Error(j.error || 'Could not resend ticket')
-                      setResendMsg({ ok: true, text: 'Ticket sent — check your inbox (and spam).' })
+                      // Use the server's deliberately non-committal wording. It
+                      // never confirms whether an address is registered on this
+                      // event, which is what stops this form being used to
+                      // enumerate who signed up for what.
+                      setResendMsg({
+                        ok: true,
+                        text: j.message || 'If that email has a ticket, it has been sent.',
+                      })
                     } catch (err) {
                       setResendMsg({ ok: false, text: err instanceof Error ? err.message : 'Resend failed' })
                     } finally {

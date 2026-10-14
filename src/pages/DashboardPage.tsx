@@ -96,6 +96,12 @@ function DashboardInner({ eventId }: { eventId: string }) {
       getSeatStatus(eventId).then(({ data: st }) => { if (st) setSeat(st) }).catch(() => {})
     } else if (data && data.status === 'wrong_event') {
       flash('Ticket belongs to a different event')
+    } else if (data && data.status === 'cancelled') {
+      flash('Ticket was cancelled — not valid')
+    } else if (data && data.status === 'waitlisted') {
+      flash('Waitlisted — not admitted')
+    } else if (data) {
+      flash('Not a valid ticket')
     }
   }
 
@@ -107,9 +113,19 @@ function DashboardInner({ eventId }: { eventId: string }) {
         const { error } = await verifyPayment(r.id)
         if (error) throw error
       }
+      // /api/on-registration requires an authenticated org host/admin: the
+      // endpoint used to accept a bare { registration_id, force: true } from
+      // anyone, which let a stranger re-send (and mail-bomb) any attendee's
+      // ticket. The bearer token is what makes this call legitimate.
+      const token = await getAccessToken()
+      if (!token) throw new Error('Session expired — sign in again')
+
       const res = await fetch('/api/on-registration', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ registration_id: r.id, force: true }),
       })
       const j = await res.json().catch(() => ({}))
@@ -331,10 +347,8 @@ function DashboardInner({ eventId }: { eventId: string }) {
                     Send ticket
                   </Button>
                 )}
-                {r.ticket_url && (
-                  <a href={r.ticket_url} target="_blank" rel="noreferrer">
-                    <Button size="sm" variant="ghost"><ExternalLink className="h-3.5 w-3.5" /> Ticket</Button>
-                  </a>
+                {(r.ticket_url || r.email_sent_at) && (
+                  <TicketLink registrationId={r.id} ticketUrl={r.ticket_url} />
                 )}
                 {!r.admitted_at && r.status === 'confirmed' && (
                   <Button size="sm" variant="ghost" onClick={() => void manualAdmit(r)} disabled={busyId === r.id}>
@@ -347,6 +361,69 @@ function DashboardInner({ eventId }: { eventId: string }) {
         </Card>
       </div>
     </div>
+  )
+}
+
+/**
+ * The `tickets` bucket is private now, so event_responses.ticket_url holds a
+ * storage PATH (tickets/{event_id}/{registration_id}.png), not something you can
+ * put in an href. Ask POST /api/ticket-image for a ~2 minute signed URL instead.
+ *
+ * The URL is fetched on click rather than on mount: a 500-registrant event would
+ * fire 500 requests and every signed URL would expire long before it was read.
+ * Legacy rows that still hold a public http(s) URL are linked directly.
+ */
+function TicketLink({ registrationId, ticketUrl }: { registrationId: string; ticketUrl: string | null }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const isDirect = !!ticketUrl && /^https?:\/\//i.test(ticketUrl)
+
+  const openTicket = async () => {
+    if (isDirect) {
+      window.open(ticketUrl as string, '_blank', 'noopener,noreferrer')
+      return
+    }
+    setBusy(true)
+    setErr(null)
+    // Opened synchronously so popup blockers don't swallow the tab, then
+    // navigated once the signed URL comes back (and closed again on failure).
+    const tab = window.open('', '_blank')
+    try {
+      const token = await getAccessToken()
+      if (!token) throw new Error('Session expired — sign in again')
+      const res = await fetch('/api/ticket-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ registration_id: registrationId }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (res.status === 401) throw new Error('Session expired — sign in again')
+      if (res.status === 403) throw new Error('Not allowed to view this ticket')
+      if (res.status === 404) throw new Error('Registration not found')
+      if (!res.ok) throw new Error(j.error || 'Could not load ticket')
+      if (!j.url) throw new Error('Ticket not generated yet')
+      if (tab) {
+        tab.opener = null
+        tab.location.replace(j.url)
+      } else {
+        window.open(j.url, '_blank', 'noopener,noreferrer')
+      }
+    } catch (e) {
+      tab?.close()
+      setErr(e instanceof Error ? e.message : 'Could not load ticket')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" onClick={() => void openTicket()} disabled={busy}>
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+        View ticket
+      </Button>
+      {err && <span className="basis-full text-xs text-red-400">{err}</span>}
+    </>
   )
 }
 

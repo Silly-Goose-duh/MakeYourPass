@@ -13,6 +13,24 @@ export const config = { runtime: 'nodejs' }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminClient = any
 
+/**
+ * Addresses auto-granted platform superadmin on signup.
+ *
+ * Configured via the server env var `SUPERADMIN_EMAILS` (comma-separated,
+ * case-insensitive). Falls back to the original hardcoded owner address so
+ * existing behaviour is preserved — but see the note at the call site: email
+ * confirmation is currently off, so this list effectively acts as a set of
+ * shared secrets and belongs in the environment, not in source.
+ */
+function isSuperadminEmail(email: string): boolean {
+  const configured = (process.env.SUPERADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+  const list = configured.length ? configured : ['gooseisback4u@gmail.com']
+  return list.includes((email || '').trim().toLowerCase())
+}
+
 async function findUserByEmail(admin: AdminClient, email: string) {
   const target = email.toLowerCase()
   // Prefer profiles (fast)
@@ -76,10 +94,8 @@ async function sendVerifyEmail(opts: {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  if (req.method === 'OPTIONS') return res.status(200).end()
+  const { applyCors, fail } = await import('./_lib/http')
+  if (applyCors(req, res)) return
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
@@ -217,6 +233,17 @@ export default async function handler(req: any, res: any) {
             code: 'ACCOUNT_EXISTS',
           })
         }
+        // Resolved once here so both branches below use a narrowed, non-null
+        // id instead of re-reading a `string | null` off the lookup result.
+        // Explicitly annotated because `findUserByEmail` returns `any`, which
+        // would otherwise defeat narrowing entirely.
+        const existingId: string | null =
+          typeof existing.id === 'string' && existing.id ? (existing.id as string) : null
+        if (!existingId) {
+          return res.status(500).json({
+            error: 'Account lookup returned no user id. Try again or sign in directly.',
+          })
+        }
 
         // Try password
         if (!anon) {
@@ -233,7 +260,7 @@ export default async function handler(req: any, res: any) {
           await pub.auth.signOut().catch(() => {})
         } else if (signErr && /confirm|not confirmed|verification/i.test(signErr.message || '')) {
           // Password is correct but email unconfirmed — unlock this attempt
-          userId = existing.id
+          userId = existingId
           await admin.auth.admin.updateUserById(userId, {
             password,
             email_confirm: true,
@@ -249,7 +276,7 @@ export default async function handler(req: any, res: any) {
         } else {
           // Unknown sign-in error — if unconfirmed, auto-confirm with provided password update
           if (!existing.email_confirmed_at) {
-            userId = existing.id
+            userId = existingId
             await admin.auth.admin.updateUserById(userId, {
               password,
               email_confirm: true,
@@ -278,7 +305,15 @@ export default async function handler(req: any, res: any) {
           // Only set is_superadmin true for the owner. Never pass `false` here:
           // it would strip /mc access from any OTHER existing superadmin who
           // re-runs signup (the column already holds their true value).
-          ...(email === 'gooseisback4u@gmail.com' ? { is_superadmin: true } : {}),
+          //
+          // The list is env-driven (`SUPERADMIN_EMAILS`, comma-separated) rather
+          // than a literal, because signup email confirmation is currently OFF:
+          // with the address hardcoded in source, anyone who knew it could
+          // register with it and be granted full platform admin. The legacy
+          // address is kept as the default so the existing owner is not locked
+          // out, but it should be moved into the env var and email
+          // confirmation should be turned on in Supabase.
+          ...(isSuperadminEmail(email) ? { is_superadmin: true } : {}),
         },
         { onConflict: 'id' }
       )
@@ -381,6 +416,6 @@ export default async function handler(req: any, res: any) {
     })
   } catch (err) {
     console.error('complete-signup', err)
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) })
+    return fail(res, 500, 'Internal error', err)
   }
 }

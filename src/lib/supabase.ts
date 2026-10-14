@@ -948,15 +948,23 @@ export interface AdmitResult {
   name: string | null
   unique_code: string | null
   already_admitted: boolean
-  status: 'admitted' | 'already_admitted' | 'waitlisted' | 'not_found' | 'wrong_event'
+  /** 'cancelled' = the registration was cancelled — must be refused at the door. */
+  status: 'admitted' | 'already_admitted' | 'waitlisted' | 'cancelled' | 'not_found' | 'wrong_event'
 }
 
 /** Call the admit_registration SECURITY DEFINER RPC (scans a qr_token).
- *  Pass eventId to scope the admit to the event being hosted (rejects cross-event tickets). */
-export async function admitByQrToken(qrToken: string, eventId?: string): Promise<{ data: AdmitResult | null; error: unknown }> {
+ *
+ *  `eventId` is REQUIRED. The server-side RPC was `SECURITY DEFINER` and was
+ *  originally granted to `anon` with an optional scope parameter, so omitting
+ *  it admitted a ticket from ANY event on the platform and returned the
+ *  attendee's name. `supabase/migrations/001_hardening.sql` drops the unscoped
+ *  overloads and rejects a missing `p_event_id`, and this signature now makes
+ *  that a compile error rather than a runtime surprise.
+ */
+export async function admitByQrToken(qrToken: string, eventId: string): Promise<{ data: AdmitResult | null; error: unknown }> {
   const { data, error } = await supabase.rpc('admit_registration', {
     p_qr_token: qrToken,
-    ...(eventId ? { p_event_id: eventId } : {}),
+    p_event_id: eventId,
   })
   if (error) return { data: null, error }
   const row = Array.isArray(data) ? data[0] : data
@@ -976,9 +984,12 @@ export async function admitByQrToken(qrToken: string, eventId?: string): Promise
 /**
  * Admit by QR token UUID OR human unique_code (e.g. EVT-0001).
  * Tries flexible RPC first, then falls back to qr_token-only RPC.
- * Pass eventId to scope the admit to the event being hosted (rejects cross-event tickets).
+ *
+ * `eventId` is REQUIRED for the same reason as in admitByQrToken: the
+ * event-scoped RPC refuses an unscoped call, and TypeScript now refuses to
+ * let one be written.
  */
-export async function admitByCodeOrToken(input: string, eventId?: string): Promise<{ data: AdmitResult | null; error: unknown }> {
+export async function admitByCodeOrToken(input: string, eventId: string): Promise<{ data: AdmitResult | null; error: unknown }> {
   const raw = input.trim()
   if (!raw) return { data: null, error: new Error('Empty code') }
 
@@ -986,7 +997,7 @@ export async function admitByCodeOrToken(input: string, eventId?: string): Promi
   try {
     const { data, error } = await supabase.rpc('admit_by_code_or_token', {
       p_input: raw,
-      ...(eventId ? { p_event_id: eventId } : {}),
+      p_event_id: eventId,
     })
     if (!error) {
       const row = Array.isArray(data) ? data[0] : data

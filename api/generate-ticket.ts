@@ -2,11 +2,34 @@
  * POST /api/generate-ticket
  *
  * Generates a PNG ticket for a registration and uploads it to the
- * `tickets` storage bucket, then saves the public URL to
+ * `tickets` storage bucket, then saves the STORAGE PATH to
  * event_responses.ticket_url.
  *
  * Body: { registration_id: string, regenerate?: boolean }
- * Response: { ticket_url: string }
+ * Response: { ticket_url: string }   // a storage path, e.g.
+ *                                     // tickets/<event_id>/<registration_id>.png
+ *
+ * ── AUTH ────────────────────────────────────────────────────────────────────
+ * This endpoint had NO authorization at all: anyone who learned (or guessed)
+ * a registration_id could render — and therefore read — anyone's ticket.
+ * It now requires EITHER
+ *   (a) `Authorization: Bearer <supabase access token>` belonging to a
+ *       superadmin / org admin / host of the registration's event
+ *       (401 unauthenticated, 403 wrong org), OR
+ *   (b) the server-to-server `x-internal-secret` header
+ *       (INTERNAL_API_SECRET || CRON_SECRET || SETUP_SECRET), used by
+ *       on-registration.ts so the anonymous signup funnel can still render a
+ *       ticket without a user session.
+ * Rate limit: 20 generations / 10 min per caller (PNG rendering + storage
+ * upload + DB write is the most expensive thing this API does).
+ *
+ * ── PRIVATE BUCKET ──────────────────────────────────────────────────────────
+ * The `tickets` bucket is going PRIVATE (it used to be world-readable and
+ * leaked every attendee's name and QR through a public URL), so
+ * `getPublicUrl()` is dead. We store and return the storage PATH instead.
+ * Rows written before the migration still contain a full public URL; those are
+ * passed back untouched (backward compatible) — use /api/ticket-image to get a
+ * short-lived signed URL for display.
  *
  * Server-side only. Uses the SUPABASE_SERVICE_ROLE_KEY (never exposed to
  * the browser). The QR encodes ONLY the random qr_token (unguessable).
@@ -15,6 +38,8 @@
  *  - @supabase/supabase-js + qrcode-generator MUST be dynamically imported
  *    inside the handler. satori / @resvg/resvg-js / @vercel/og ALL crash the
  *    Vercel function at init (FUNCTION_INVOCATION_FAILED).
+ *  - the same applies to the shared helpers in ./_lib: they MUST be imported
+ *    with `await import(...)` INSIDE the handler, never statically at the top.
  *  - pureimage is a PURE-JS PNG encoder (no native binary) — the only
  *    rasterizer that loads reliably here. Email clients can't preview SVG
  *    attachments, so we ship PNG (opens everywhere).
@@ -73,36 +98,68 @@ function textWidth(text: string, scale: number): number {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-  if (req.method === 'OPTIONS') return res.status(200).end()
+  // NOTE: every helper is dynamically imported INSIDE the handler — a static
+  // top-level import of _lib/* crashes the Vercel function bundler.
+  const { applyCors, fail, readBody, isUuid } = await import('./_lib/http')
+  const { rateLimit, applyLimitHeaders, clientIp } = await import('./_lib/rateLimit')
+  const { resolveCaller, requireResponseAccess, serviceClient } = await import('./_lib/authz')
+
+  if (applyCors(req, res)) return
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
-    const supabaseMod = await import('@supabase/supabase-js')
-    const qrg = (await import('qrcode-generator')).default
-    const pure = await import('pureimage')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const PImage = ((pure as any).default || pure)
-
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    const body = readBody(req)
+    if (body === null) return fail(res, 400, 'Invalid request body')
     const { registration_id, regenerate } = body as { registration_id?: string; regenerate?: boolean }
-    if (!registration_id) return res.status(400).json({ error: 'registration_id required' })
+    if (!isUuid(registration_id)) return res.status(400).json({ error: 'registration_id required' })
 
-    const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!url || !key) return res.status(500).json({ error: 'Supabase service role not configured' })
-    const sb = supabaseMod.createClient(url, key, { auth: { persistSession: false } })
+    const sb = await serviceClient()
+    if (!sb) return fail(res, 500, 'Server not configured')
+
+    // ── Auth: user token with org scoping, or the internal server secret ──
+    const expectedSecret =
+      process.env.INTERNAL_API_SECRET || process.env.CRON_SECRET || process.env.SETUP_SECRET || ''
+    const gotSecret = String(req.headers['x-internal-secret'] || '')
+    const internal =
+      !!expectedSecret && gotSecret.length === expectedSecret.length && gotSecret === expectedSecret
+
+    const caller = await resolveCaller(req)
+    if (!caller && !internal) return fail(res, 401, 'Authentication required')
+
+    const rl = await rateLimit(
+      `gen-ticket:${caller ? caller.id : `internal:${clientIp(req)}`}`,
+      20,
+      10 * 60 * 1000,
+    )
+    if (applyLimitHeaders(res, rl)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again shortly.' })
+    }
+
+    if (caller) {
+      const access = await requireResponseAccess(sb, caller, registration_id)
+      if (!access.ok) {
+        if (access.status === 404) return fail(res, 404, 'Registration not found')
+        return fail(res, access.status, access.error)
+      }
+    }
 
     const { data: reg, error: regErr } = await sb
       .from('event_responses')
       .select('id, event_id, respondent_name, respondent_email, unique_code, qr_token, ticket_url, events(title, date, time, venue)')
       .eq('id', registration_id)
-      .single()
-    if (regErr || !reg) return res.status(404).json({ error: 'Registration not found' })
+      .maybeSingle()
+    if (regErr) return fail(res, 500, 'Internal error', regErr)
+    if (!reg) return res.status(404).json({ error: 'Registration not found' })
 
+    // Legacy rows still hold a full public URL — hand it back untouched.
     if (reg.ticket_url && !regenerate) return res.status(200).json({ ticket_url: reg.ticket_url })
+
+    // Heavy modules are imported HERE (after auth) so an unauthorized or
+    // cached request never pays for loading pureimage/qrcode at all.
+    const qrg = (await import('qrcode-generator')).default
+    const pure = await import('pureimage')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const PImage = ((pure as any).default || pure)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ev = (reg as any).events || {}
@@ -166,17 +223,20 @@ export default async function handler(req: any, res: any) {
     const { error: upErr } = await sb.storage
       .from('tickets')
       .upload(filePath, png, { contentType: 'image/png', upsert: true })
-    if (upErr) return res.status(500).json({ error: 'Upload failed: ' + upErr.message })
+    if (upErr) return fail(res, 500, 'Ticket upload failed', upErr)
 
-    const { data: urlData } = sb.storage.from('tickets').getPublicUrl(filePath)
-    const ticketUrl = urlData.publicUrl
+    // The bucket is PRIVATE: store the storage PATH, not a public URL.
+    // getPublicUrl() is intentionally gone — it would hand out a dead link
+    // the moment the bucket migration lands, and a working one while the
+    // bucket is still public (the attendee-name leak we are closing).
+    const { error: dbErr } = await sb
+      .from('event_responses')
+      .update({ ticket_url: filePath })
+      .eq('id', reg.id)
+    if (dbErr) return fail(res, 500, 'Internal error', dbErr)
 
-    await sb.from('event_responses').update({ ticket_url: ticketUrl }).eq('id', reg.id)
-
-    return res.status(200).json({ ticket_url: ticketUrl })
+    return res.status(200).json({ ticket_url: filePath })
   } catch (err: unknown) {
-    console.error('generate-ticket error:', err)
-    const message = err instanceof Error ? err.message : 'Internal error'
-    return res.status(500).json({ error: message })
+    return fail(res, 500, 'Internal error', err)
   }
 }

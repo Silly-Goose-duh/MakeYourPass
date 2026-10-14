@@ -27,10 +27,8 @@ async function findUserByEmail(admin: any, email: string) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-  if (req.method === 'OPTIONS') return res.status(200).end()
+  const { applyCors, fail } = await import('./_lib/http')
+  if (applyCors(req, res)) return
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
@@ -196,6 +194,6 @@ export default async function handler(req: any, res: any) {
         'Email delivery is limited right now. Your account is activated — sign in with your password.',
     })
   } catch (err) {
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) })
+    return fail(res, 500, 'Internal error', err)
   }
 }

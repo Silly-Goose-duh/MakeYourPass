@@ -2,31 +2,97 @@
  * POST /api/generate-certificate
  * Body: { registration_id, regenerate? }
  * Draws attendee name onto certificate template (or a simple default).
+ *
+ * SECURITY: this endpoint previously had NO authentication at all — any caller
+ * who learned a `registration_id` could render (and repeatedly re-render) a
+ * named certificate for an arbitrary attendee and write objects into the
+ * `certificates` bucket. It now requires an authenticated org admin/host (or a
+ * superadmin) for the registration's event, exactly like /api/generate-ticket.
+ *
+ * NOTE: as of this writing no client code calls this endpoint, so it is
+ * currently orphaned. It is kept because certificate issuance is a shipped
+ * roadmap item, but it should be wired up (or deleted) rather than left as a
+ * service-role-backed write path nobody exercises.
  */
 export const config = { runtime: 'nodejs' }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any -- Vercel gives us untyped req/res. */
+
+/** Refuse internal/loopback/link-local targets before we fetch them server-side. */
+function assertFetchableTemplateUrl(rawUrl: string): URL | null {
+  let url: URL
+  try {
+    url = new URL(rawUrl)
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host === 'metadata.google.internal'
+  ) {
+    return null
+  }
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    const [a, b] = host.split('.').map(Number)
+    if (
+      a === 0 || a === 10 || a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      a >= 224
+    ) {
+      return null
+    }
+  }
+  if (host === '::1' || host === '::' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80')) {
+    return null
+  }
+  return url
+}
+
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  if (req.method === 'OPTIONS') return res.status(200).end()
+  const { applyCors, fail, readBody, isUuid } = await import('./_lib/http')
+  const { rateLimit, applyLimitHeaders, clientIp } = await import('./_lib/rateLimit')
+  const { resolveCaller, requireResponseAccess } = await import('./_lib/authz')
+
+  if (applyCors(req, res)) return
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
-    const { registration_id, regenerate } = body || {}
-    if (!registration_id) return res.status(400).json({ error: 'registration_id required' })
+    // Rate limit before the expensive image work.
+    const limit = await rateLimit(`rl:cert:${clientIp(req)}`, 20, 10 * 60 * 1000)
+    if (applyLimitHeaders(res, limit)) {
+      return res.status(429).json({ error: 'Too many certificate requests — try again shortly' })
+    }
+
+    const body = readBody(req)
+    if (!body) return fail(res, 400, 'Invalid JSON body')
+    const { registration_id, regenerate } = body as { registration_id?: string; regenerate?: boolean }
+    if (!isUuid(registration_id)) return fail(res, 400, 'registration_id required')
+
+    // ── Authorization ──────────────────────────────────────────────────────
+    const caller = await resolveCaller(req)
+    if (!caller) return res.status(401).json({ error: 'Sign in to generate certificates' })
 
     const supabaseMod = await import('@supabase/supabase-js')
     const pure = await import('pureimage')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const PImage = ((pure as any).default || pure)
 
     const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!url || !key) return res.status(500).json({ error: 'Supabase not configured' })
+    if (!url || !key) return fail(res, 500, 'Server not configured')
     const sb = supabaseMod.createClient(url, key, { auth: { persistSession: false } })
+
+    const access = await requireResponseAccess(sb, caller, registration_id)
+    if (!access.ok) {
+      return res.status(access.status).json({ error: access.error })
+    }
 
     const { data: reg, error } = await sb
       .from('event_responses')
@@ -38,7 +104,6 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ certificate_url: reg.certificate_url })
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ev = (reg as any).events || {}
     const name = (reg.respondent_name || 'Participant').toString()
     const title = (ev.title || 'Event').toString()
@@ -51,9 +116,16 @@ export default async function handler(req: any, res: any) {
 
     // Background: try template image, else solid
     let usedTemplate = false
-    if (templateUrl) {
+    // The template URL is org-supplied, so this is not user-controlled SSRF —
+    // but a malicious/compromised org admin could still point it at an
+    // internal service, so it goes through the same guard as the poster fetch.
+    const templateTarget = templateUrl ? assertFetchableTemplateUrl(templateUrl) : null
+    if (templateUrl && !templateTarget) {
+      console.warn('[generate-certificate] refused non-public certificate template URL')
+    }
+    if (templateTarget) {
       try {
-        const imgRes = await fetch(templateUrl)
+        const imgRes = await fetch(templateTarget.toString())
         if (imgRes.ok) {
           const buf = Buffer.from(await imgRes.arrayBuffer())
           // pureimage can decode PNG/JPEG from stream
@@ -106,9 +178,7 @@ export default async function handler(req: any, res: any) {
 
     const chunks: Uint8Array[] = []
     const { Writable } = await import('stream')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sink = new Writable({ write(chunk: any, _e: any, next: any) { chunks.push(chunk); next() } })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await PImage.encodePNGToStream(canvas, sink as any)
     const png = Buffer.concat(chunks)
 
@@ -116,7 +186,7 @@ export default async function handler(req: any, res: any) {
     const { error: upErr } = await sb.storage
       .from('certificates')
       .upload(filePath, png, { contentType: 'image/png', upsert: true })
-    if (upErr) return res.status(500).json({ error: 'Upload failed: ' + upErr.message })
+    if (upErr) return fail(res, 500, 'Could not store the certificate', upErr)
 
     const { data: urlData } = sb.storage.from('certificates').getPublicUrl(filePath)
     const certificate_url = urlData.publicUrl
@@ -124,7 +194,6 @@ export default async function handler(req: any, res: any) {
 
     return res.status(200).json({ certificate_url })
   } catch (err) {
-    console.error('generate-certificate', err)
-    return res.status(500).json({ error: err instanceof Error ? err.message : 'Internal error' })
+    return fail(res, 500, 'Internal error', err)
   }
 }

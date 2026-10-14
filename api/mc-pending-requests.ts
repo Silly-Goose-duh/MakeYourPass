@@ -8,12 +8,25 @@
  */
 export const config = { runtime: 'nodejs' }
 
+/** Row shape returned to the MC panel after joining the requester's profile. */
+interface MappedRequest {
+  id: unknown
+  user_id: unknown
+  organization_name: unknown
+  organization_slug: unknown
+  description: unknown
+  status: string
+  created_at: string
+  updated_at: unknown
+  requester_name: string
+  requester_email: string
+  profiles: { full_name: string; email: string } | null
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  if (req.method === 'OPTIONS') return res.status(200).end()
+  const { applyCors, fail } = await import('./_lib/http')
+  if (applyCors(req, res)) return
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
@@ -55,7 +68,7 @@ export default async function handler(req: any, res: any) {
       .order('created_at', { ascending: false })
       .limit(50)
 
-    if (error) return res.status(500).json({ error: error.message })
+    if (error) return fail(res, 500, 'Could not load requests', error)
 
     const userIds = [...new Set((rows || []).map((r: { user_id: string }) => r.user_id).filter(Boolean))]
     let profileMap = new Map<string, { full_name: string; email: string }>()
@@ -72,7 +85,7 @@ export default async function handler(req: any, res: any) {
       )
     }
 
-    const mapRow = (r: Record<string, unknown>) => {
+    const mapRow = (r: Record<string, unknown>): MappedRequest => {
       const p = profileMap.get(r.user_id as string)
       return {
         id: r.id,
@@ -80,8 +93,11 @@ export default async function handler(req: any, res: any) {
         organization_name: r.organization_name,
         organization_slug: r.organization_slug,
         description: r.description || null,
-        status: r.status,
-        created_at: r.created_at,
+        // Coerced to string so the pending filter and the queue sort below
+        // have a concrete type to work against (raw `unknown` made the
+        // predicate overload unresolvable).
+        status: String(r.status ?? ''),
+        created_at: String(r.created_at ?? ''),
         updated_at: r.updated_at,
         requester_name: p?.full_name || '',
         requester_email: p?.email || '',
@@ -89,12 +105,11 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    const all = (rows || []).map((r: Record<string, unknown>) => mapRow(r))
-    const pending = all.filter((r: { status: string }) => r.status === 'pending')
+    const all: MappedRequest[] = (rows || []).map((r: Record<string, unknown>) => mapRow(r))
+    const pending = all.filter((r) => r.status === 'pending')
     // Sort pending oldest-first for action queue
     pending.sort(
-      (a: { created_at: string }, b: { created_at: string }) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     )
 
     return res.status(200).json({
@@ -106,6 +121,6 @@ export default async function handler(req: any, res: any) {
       viewer: { email: prof.email, is_superadmin: true },
     })
   } catch (err) {
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) })
+    return fail(res, 500, 'Internal error', err)
   }
 }

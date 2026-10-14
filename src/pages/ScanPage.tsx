@@ -6,20 +6,44 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { HostRoute } from '@/components/auth/RouteGuards'
-import { getEventById, admitByCodeOrToken, type AdmitResult } from '@/lib/supabase'
+import { getEventById, admitByCodeOrToken, getAccessToken, type AdmitResult } from '@/lib/supabase'
 
 type FlashKind = 'idle' | 'success' | 'warn' | 'error'
 type Flash = { kind: FlashKind; message: string; name?: string; code?: string } | null
+
+/** Abuse guard — refuse further scans after this many consecutive non-admitting attempts. */
+const MAX_CONSECUTIVE_FAILURES = 5
+/** ...and lock scanning out for this long so the admit RPC cannot be hammered. */
+const COOLDOWN_MS = 20_000
+
+function errorText(error: unknown): string {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message: string }).message)
+  }
+  return typeof error === 'string' ? error : ''
+}
+
+/** The admit RPC now requires a valid JWT + org membership; surface those distinctly. */
+function isAuthError(error: unknown): boolean {
+  return /jwt|not authenticated|unauthorized|forbidden|401|403|PGRST301/i.test(errorText(error))
+}
 
 function ScanInner({ eventId }: { eventId: string }) {
   const [eventTitle, setEventTitle] = useState('')
   const [flash, setFlash] = useState<Flash>(null)
   const [manual, setManual] = useState('')
   const [camOn, setCamOn] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [cooldownUntil, setCooldownUntil] = useState(0)
+  const [clock, setClock] = useState(() => Date.now())
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const regionRef = useRef<HTMLDivElement | null>(null)
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastAdmit = useRef<{ token: string; t: number } | null>(null)
+  const failsRef = useRef(0)
+  /** Mirror of cooldownUntil — html5-qrcode keeps the callback it was started
+   *  with, so the gate has to be readable without a re-render. */
+  const cooldownRef = useRef(0)
 
   useEffect(() => {
     let alive = true
@@ -42,11 +66,41 @@ function ScanInner({ eventId }: { eventId: string }) {
     flashTimer.current = setTimeout(() => setFlash(null), 2200)
   }, [])
 
+  // Countdown for the abuse cooldown. The tick runs inside a timer callback so the
+  // effect itself only exists while a lockout is active.
+  useEffect(() => {
+    if (cooldownUntil === 0) return
+    const id = setInterval(() => {
+      const t = Date.now()
+      setClock(t)
+      if (t >= cooldownUntil) {
+        cooldownRef.current = 0
+        setCooldownUntil(0)
+      }
+    }, 250)
+    return () => clearInterval(id)
+  }, [cooldownUntil])
+
+  const cooldownLeft = cooldownUntil === 0 ? 0 : Math.max(0, Math.ceil((cooldownUntil - clock) / 1000))
+  const cooling = cooldownLeft > 0
+
+  /** Count a non-admitting attempt; trip the cooldown once the cap is reached. */
+  const noteFailure = useCallback(() => {
+    failsRef.current += 1
+    if (failsRef.current < MAX_CONSECUTIVE_FAILURES) return
+    failsRef.current = 0
+    setClock(Date.now())
+    cooldownRef.current = Date.now() + COOLDOWN_MS
+    setCooldownUntil(cooldownRef.current)
+  }, [])
+
   const applyResult = useCallback((r: AdmitResult) => {
     if (r.status === 'admitted') {
       showFlash({ kind: 'success', message: 'Admitted', name: r.name ?? undefined, code: r.unique_code ?? undefined })
     } else if (r.status === 'already_admitted') {
       showFlash({ kind: 'warn', message: `Already admitted (${r.unique_code ?? ''})`, name: r.name ?? undefined })
+    } else if (r.status === 'cancelled') {
+      showFlash({ kind: 'error', message: 'Cancelled — not valid', name: r.name ?? undefined })
     } else if (r.status === 'waitlisted') {
       showFlash({ kind: 'warn', message: 'Waitlisted — not admitted', name: r.name ?? undefined })
     } else if (r.status === 'wrong_event') {
@@ -58,19 +112,42 @@ function ScanInner({ eventId }: { eventId: string }) {
 
   const handleResult = useCallback(async (token: string) => {
     const now = Date.now()
+    if (now < cooldownRef.current) return
     if (lastAdmit.current && lastAdmit.current.token === token && now - lastAdmit.current.t < 1200) return
     lastAdmit.current = { token, t: now }
+
+    // The admit RPC is server-guarded (valid Supabase JWT + org membership), so
+    // never fire it while signed out — the call would only come back 401.
+    const accessToken = await getAccessToken()
+    if (!accessToken) {
+      showFlash({ kind: 'error', message: 'Session expired — sign in to scan' })
+      return
+    }
+
     try {
       const { data, error } = await admitByCodeOrToken(token, eventId)
-      if (error || !data) showFlash({ kind: 'error', message: 'Could not admit — try again' })
-      else applyResult(data)
+      if (error || !data) {
+        // An auth rejection is not abuse — don't burn the failure budget on it.
+        if (isAuthError(error)) {
+          showFlash({ kind: 'error', message: 'Not authorized to admit for this event' })
+          return
+        }
+        noteFailure()
+        showFlash({ kind: 'error', message: 'Could not admit — try again' })
+        return
+      }
+      if (data.status === 'admitted' || data.status === 'already_admitted') failsRef.current = 0
+      else noteFailure()
+      applyResult(data)
     } catch {
+      noteFailure()
       showFlash({ kind: 'error', message: 'Network error — try again' })
     }
-  }, [applyResult, showFlash, eventId])
+  }, [applyResult, showFlash, noteFailure, eventId])
 
   const startCamera = useCallback(async () => {
     if (!regionRef.current || scannerRef.current) return
+    setCameraError(null)
     try {
       const scanner = new Html5Qrcode('scan-region')
       await scanner.start(
@@ -82,7 +159,10 @@ function ScanInner({ eventId }: { eventId: string }) {
       scannerRef.current = scanner
       setCamOn(true)
     } catch {
+      // Permission denied / no camera / insecure origin — fall back to manual lookup.
       scannerRef.current = null
+      setCamOn(false)
+      setCameraError('Camera unavailable or permission denied — look the attendee up by name, email or code below.')
       showFlash({ kind: 'error', message: 'Camera unavailable — use manual entry' })
     }
   }, [handleResult, showFlash])
@@ -140,18 +220,34 @@ function ScanInner({ eventId }: { eventId: string }) {
           </div>
         </Card>
 
+        {cooling && (
+          <Card className="p-3 mb-4 border-2 border-red-500 bg-red-500/10 flex items-center gap-3">
+            <div className="shrink-0"><XCircle className="h-6 w-6 text-red-500" /></div>
+            <p className="text-sm text-text-primary">
+              Too many invalid scans — scanning paused for {cooldownLeft}s
+            </p>
+          </Card>
+        )}
+
         <div className="rounded-xl overflow-hidden border border-white/10 bg-black mb-4">
           <div id="scan-region" ref={regionRef} className="w-full aspect-square" />
         </div>
 
         {!camOn ? (
-          <Button variant="primary" className="w-full mb-4" onClick={startCamera}>
+          <Button variant="primary" className="w-full mb-4" onClick={startCamera} disabled={cooling}>
             <QrCode className="h-4 w-4 mr-2" /> Start Camera
           </Button>
         ) : (
           <Button variant="ghost" className="w-full mb-4" onClick={stopCamera}>
             Stop Camera
           </Button>
+        )}
+
+        {cameraError && (
+          <Card className="p-3 mb-4 border-2 border-yellow-500 bg-yellow-500/10 flex items-start gap-3">
+            <div className="shrink-0"><AlertTriangle className="h-5 w-5 text-yellow-500" /></div>
+            <p className="text-sm text-text-primary">{cameraError}</p>
+          </Card>
         )}
 
         <Card className="p-4">
@@ -164,8 +260,9 @@ function ScanInner({ eventId }: { eventId: string }) {
               onChange={(e) => setManual(e.target.value)}
               placeholder="Paste unique code or scan token"
               className="flex-1"
+              disabled={cooling}
             />
-            <Button type="submit" variant="primary">Admit</Button>
+            <Button type="submit" variant="primary" disabled={cooling}>Admit</Button>
           </form>
         </Card>
       </div>
