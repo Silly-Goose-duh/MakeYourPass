@@ -8,6 +8,53 @@
  */
 export const config = { runtime: 'nodejs' }
 
+/* ── Inlined from api/_lib/ (http.ts / rateLimit.ts / authz.ts) ───────────────────
+ * These helpers are duplicated in every handler ON PURPOSE. The previous
+ * revision loaded them with `await import('./_lib/...')` and every single
+ * endpoint then failed on Vercel at init with FUNCTION_INVOCATION_FAILED.
+ * Note that a local `vercel build` still succeeds in that state, so the only
+ * reliable check is an HTTP smoke test against the deployed URL.
+ *
+ * api/_lib/ is still the canonical copy and is what the unit tests import
+ * (tests/http.test.ts, tests/cors.test.ts, tests/rateLimit.test.ts). If you
+ * change a helper here, change it there too.                       */
+/* eslint-disable @typescript-eslint/no-explicit-any -- Vercel gives us untyped req/res. */
+
+function applyCors(req: any, res: any): boolean {
+  const configured = (process.env.APP_ORIGIN || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean)
+
+  const rawHost = req.headers['x-forwarded-host'] || req.headers.host
+  const proto = req.headers['x-forwarded-proto'] || 'https'
+  const host = rawHost ? String(rawHost).split(',')[0].trim() : ''
+  const fromHost = host ? `${proto}://${host}` : ''
+  const allowed = configured.length ? configured : fromHost ? [fromHost] : []
+
+  const origin = req.headers.origin ? String(req.headers.origin).replace(/\/+$/, '') : ''
+  if (origin && allowed.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Vary', 'Origin')
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return true
+  }
+  return false
+}
+
+function fail(res: any, status: number, publicMessage: string, err?: unknown): any {
+  if (err) {
+    console.error(`[api] ${publicMessage} ::`, err instanceof Error ? err.message : err)
+  }
+  return res.status(status).json({ error: publicMessage })
+}
+
 /** Row shape returned to the MC panel after joining the requester's profile. */
 interface MappedRequest {
   id: unknown
@@ -22,10 +69,7 @@ interface MappedRequest {
   requester_email: string
   profiles: { full_name: string; email: string } | null
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
-  const { applyCors, fail } = await import('./_lib/http')
   if (applyCors(req, res)) return
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
