@@ -8,6 +8,66 @@ this file is the current source of truth.
 
 ---
 
+## 0. 🔴 BLOCKER (2026-10-15) — the database does not exist
+
+```
+getaddrinfo ENOTFOUND isvylfovcwtlemjpkdqp.supabase.co
+```
+
+`isvylfovcwtlemjpkdqp.supabase.co` does not resolve in DNS. Confirmed from two
+independent networks: a local resolver, and the Vercel function itself
+(region `bom1`) via `vercel logs`. A control lookup of `supabase.com` resolves
+fine, so this is not a general DNS problem.
+
+A **paused** Supabase project still resolves. `NXDOMAIN` means the project has
+been deleted, renamed, or torn down. **Nothing that touches the database works** —
+not the serverless API, and not the browser, because the SPA calls Supabase
+directly.
+
+This is infrastructure, not code, and it predates the October deploy. No amount
+of code changes fixes it.
+
+**To resolve:** sign in to Supabase and either restore the project or create a
+replacement. If you create a new one you must also:
+
+1. Re-apply the schema in order: `migration.sql`, `event-setup-fix.sql`,
+   `phase1-ticketing.sql`, `phase4-admit-event-scoped.sql`,
+   `phase7-org-portal-upi.sql`, `phase8-mc-requests.sql`,
+   `phase9-finish-polish.sql`, `phase10-collaborators.sql`, and finally
+   **`supabase/migrations/001_hardening.sql`** — the audit migration, which is
+   the one that actually closes the P0 holes.
+2. Create the storage buckets `event-posters` and `tickets`. The deleted
+   `/api/setup-storage` endpoint used to create them; their policies now live in
+   `001_hardening.sql`, but the buckets themselves must exist.
+3. Update `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and
+   `SUPABASE_SERVICE_ROLE_KEY` on Vercel.
+4. Re-run `npm run doctor`.
+
+Run `npm run doctor` before any deploy — it fails loudly on exactly this class
+of problem.
+
+---
+
+## 0b. Incident log — what went wrong on 2026-10-15
+
+Recorded because the failure mode was invisible to every local check.
+
+1. The hardening work introduced `await import('./_lib/...')` across all 12
+   handlers. `npm run verify` passed and `vercel build` passed — and deploying
+   it **took down the entire API**, with every endpoint returning
+   `FUNCTION_INVOCATION_FAILED`. The repo's own header comment in
+   `generate-ticket.ts` had already documented this exact bundler failure; it
+   was ignored. Fixed by inlining the helpers into every handler.
+2. While smoke-testing that fix, every DB-touching endpoint returned a bare
+   `500 Internal error`. Reading the function log surfaced the Supabase DNS
+   failure above.
+
+**Lesson:** for this project a successful build proves nothing about whether the
+app can serve traffic. Only an HTTP smoke test against the deployed URL, plus
+`npm run doctor`, catches these.
+
+---
+
 ## 1. What was wrong, and what changed
 
 | # | Severity | Flaw | Fix |
