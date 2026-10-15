@@ -10,26 +10,36 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * Apply CORS headers, restricted to the app's own origin.
+ * Apply CORS headers, restricted to the app's own origin(s).
  *
  * Previously every endpoint sent `Access-Control-Allow-Origin: *`, which let
  * any website on the internet drive the unauthenticated endpoints (ticket
  * resend, registration) from a victim's browser. We now echo the configured
  * app origin only.
+ *
+ * `APP_ORIGIN` accepts a comma-separated list, because one Vercel project is
+ * reachable through several aliases (e.g. makeyourpass.vercel.app,
+ * mec-campuspass.vercel.app, campuspass-<team>.vercel.app). Pinning only one
+ * would silently break the rest.
+ *
+ * When `APP_ORIGIN` is unset we fall back to the incoming request host, which
+ * is still far tighter than `*`.
  */
 export function applyCors(req: any, res: any): boolean {
-  const allowed =
-    process.env.APP_ORIGIN ||
-    // Derive from the incoming host when APP_ORIGIN is unset.
-    (() => {
-      const host = req.headers['x-forwarded-host'] || req.headers.host
-      const proto = req.headers['x-forwarded-proto'] || 'https'
-      return host ? `${proto}://${host}` : ''
-    })()
+  const configured = (process.env.APP_ORIGIN || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean)
 
-  const origin = req.headers.origin
-  if (allowed && origin && origin === allowed) {
-    res.setHeader('Access-Control-Allow-Origin', allowed)
+  const rawHost = req.headers['x-forwarded-host'] || req.headers.host
+  const proto = req.headers['x-forwarded-proto'] || 'https'
+  const host = rawHost ? String(rawHost).split(',')[0].trim() : ''
+  const fromHost = host ? `${proto}://${host}` : ''
+  const allowed = configured.length ? configured : fromHost ? [fromHost] : []
+
+  const origin = req.headers.origin ? String(req.headers.origin).replace(/\/+$/, '') : ''
+  if (origin && allowed.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Vary', 'Origin')
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')

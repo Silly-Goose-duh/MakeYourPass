@@ -19,22 +19,39 @@ backend, secrets, or product decisions and are handed off.
 - ~~VITE env on Vercel~~ — re-synced from `.env.local` (2026-07-22).
 
 ## 🟠 Remaining product work
-- **Razorpay payments** — UI now shows "Paid · soon" (disabled). Wire checkout when keys ready.
+- **Razorpay payments** — server side is now correct (amount resolved from `events.price`,
+  capture + amount verified server-side, idempotent). Still no client checkout wiring and
+  no `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` in Vercel. Either wire the UI or hide the option.
 - **Email** — Resend + `/api/on-registration` (not EmailJS) handles ticket email. Confirm Resend domain.
 - **QR check-in** — **DONE** (`/host/:eventId/scan` + `admit_registration` RPC).
 - **Live host dashboard** — **DONE** (`/host/:eventId/dashboard`); linked from org dashboard.
-- **Storage buckets** — create `event-posters` + `tickets` via `/api/setup-storage` if missing.
-- **`EventBuilder.tsx` + `useColorExtractor.ts`** still orphaned — safe to delete later.
+- **Storage buckets** — `/api/setup-storage` is **DELETED**. Policies now ship as SQL in
+  `supabase/migrations/001_hardening.sql` (`tickets` is private; `event-posters` no longer
+  accepts SVG).
+- **`EventBuilder.tsx` + `useColorExtractor.ts`** still orphaned. Note `EventBuilder` is the
+  ONLY caller of `src/lib/groq.ts`, so deleting it also deletes the AI document-parsing
+  feature. Route it or remove it deliberately — do not delete it by accident.
+- **`/api/generate-certificate`** is authenticated but still has no client caller, and writes
+  to a `certificates` bucket that may not exist. Wire it up or delete it.
 
 ## 🟡 Security / config
-- **Groq API key exposed client-side** (`VITE_GROQ_API_KEY` shipped to browser in `groq.ts`).
-  Proxy server-side to avoid key extraction / billing abuse.
-- **Razorpay `Access-Control-Allow-Origin: *`** and order amount never re-validated server-side
-  against expected price (client sets price authoritatively). HMAC verify itself is correct.
+> Resolved on 2026-10-15 — see `SECURITY.md` for the full audit. Kept here as a record.
+- ~~**Groq API key exposed client-side** (`VITE_GROQ_API_KEY`)~~ — **FIXED.** Groq is proxied
+  server-side; `VITE_GROQ_API_KEY` deleted from Vercel (both environments). The key should
+  still be rotated in the Groq console, since it was publicly readable for ~3 months.
+- ~~**Razorpay `Access-Control-Allow-Origin: *`** + client-set amount~~ — **FIXED.** CORS locked
+  to `APP_ORIGIN`; amount read from the DB; verification asserts capture + amount.
+- **Rate limiting is per-instance** until `UPSTASH_REDIS_REST_URL`/`_TOKEN` are set.
+- **Email confirmation is OFF in Supabase** — any address can register and use the app
+  immediately, including one listed in `SUPERADMIN_EMAILS`.
 - **Admin authz is data-dependent** (`profiles.is_superadmin` + RLS). No server-side enforcement
   beyond `SECURITY DEFINER` RPCs. Harden if RLS misconfig is a realistic risk.
-- **No error boundaries** — a render error crashes the whole SPA.
+- ~~**No error boundaries**~~ — **DONE** (per-page + app-level `ErrorBoundary`).
 - **Missing `/favicon.svg`** referenced in `index.html` (no file in `public/`).
+- **No error monitoring** — `ErrorBoundary` catches render errors but reports nowhere.
+- **No CI** — `npm run verify` must be run by hand.
+- **Vercel function count is at 12/12 (Hobby cap)** — the next endpoint added will fail the
+  build. Merge it into an existing function behind an `action` discriminator, or upgrade.
 
 ## 🧪 Testing
 - **No test suite exists** (no test script, no framework). Add Vitest + RTL for the data layer
