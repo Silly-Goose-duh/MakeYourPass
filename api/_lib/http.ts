@@ -58,12 +58,44 @@ export function applyCors(req: any, res: any): boolean {
  *
  * Handlers used to return `err.message` straight to the client, which leaked
  * Supabase internals (schema names, policy names, project ref) to attackers.
+ *
+ * One exception: if the failure is the database being unreachable (DNS gone,
+ * connection refused, TLS failure), a plain "Internal error" is useless to
+ * whoever is trying to operate the app. Those surface as 503 with an explicit
+ * message, because the fix is always the same and is never in the request.
  */
 export function fail(res: any, status: number, publicMessage: string, err?: unknown): any {
-  if (err) {
-    console.error(`[api] ${publicMessage} ::`, err instanceof Error ? err.message : err)
+  if (err) console.error(`[api] ${publicMessage} ::`, err)
+  if (status >= 500 && isDatabaseUnreachable(err)) {
+    return res
+      .status(503)
+      .json({ error: 'The database is unreachable right now. Please try again shortly.' })
   }
   return res.status(status).json({ error: publicMessage })
+}
+
+/**
+ * True when an error means "we could not reach the backing service" rather
+ * than "the request was wrong".
+ *
+ * NOTE: this copies the error text into a client-visible branch, but it never
+ * returns the error itself — only a fixed string — so it leaks nothing.
+ */
+function isDatabaseUnreachable(err: unknown): boolean {
+  if (!err) return false
+  const text =
+    typeof err === 'string'
+      ? err
+      : `${(err as { message?: unknown }).message ?? ''} ${
+          (err as { details?: unknown }).details ?? ''
+        } ${
+          (err as { cause?: unknown })?.cause instanceof Error
+            ? (err as { cause: Error }).cause.message
+            : ''
+        }`
+  return /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|fetch failed|getaddrinfo|socket hang up/i.test(
+    text
+  )
 }
 
 /**

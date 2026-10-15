@@ -119,10 +119,32 @@ function applyCors(req: any, res: any): boolean {
 }
 
 function fail(res: any, status: number, publicMessage: string, err?: unknown): any {
-  if (err) {
-    console.error(`[api] ${publicMessage} ::`, err instanceof Error ? err.message : err)
+  if (err) console.error(`[api] ${publicMessage} ::`, err)
+  if (status >= 500 && isDatabaseUnreachable(err)) {
+    return res
+      .status(503)
+      .json({ error: 'The database is unreachable right now. Please try again shortly.' })
   }
   return res.status(status).json({ error: publicMessage })
+}
+
+/**
+ * True when an error means "we could not reach the backing service" rather
+ * than "the request was wrong".
+ *
+ * NOTE: this inspects the error text, but it never returns the error itself --
+ * only a fixed string -- so it leaks nothing to the caller.
+ */
+function isDatabaseUnreachable(err: unknown): boolean {
+  if (!err) return false
+  const e = err as { message?: unknown; details?: unknown; cause?: unknown }
+  const text = [
+    typeof err === 'string' ? err : '',
+    e?.message ?? '',
+    e?.details ?? '',
+    e?.cause instanceof Error ? e.cause.message : '',
+  ].join(' ')
+  return /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|fetch failed|getaddrinfo|socket hang up/i.test(text)
 }
 
 function readBody(req: any): any {

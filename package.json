@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "doctor": "node scripts/doctor.mjs",
     "verify": "npm run typecheck && npm run typecheck:api && npm run lint && npm run test",
     "preview": "vite preview"
   },
