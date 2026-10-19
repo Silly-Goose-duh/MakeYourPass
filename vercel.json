@@ -14,7 +14,7 @@
     "api/on-registration.ts": { "maxDuration": 30 },
     "api/generate-certificate.ts": { "maxDuration": 30 },
     "api/poster-theme.ts": { "maxDuration": 30 },
-    "api/razorpay.ts": { "maxDuration": 15 },
+    "api/payments.ts": { "maxDuration": 30 },
     "api/reachout.ts": { "maxDuration": 60 },
     "api/end-event.ts": { "maxDuration": 60 },
     "api/notify-org-decision.ts": { "maxDuration": 30 },
