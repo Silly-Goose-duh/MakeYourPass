@@ -819,11 +819,11 @@ export default async function handler(req: any, res: any) {
     // bucket is still public (the attendee-name leak we are closing).
     const { error: dbErr } = await sb
       .from('event_responses')
-      .update({ ticket_url: filePath })
+      .update({ ticket_url: `tickets/${filePath}` }) // readers (on-registration, ticket-image, payments) expect the `tickets/`-prefixed form as the stored value
       .eq('id', reg.id)
     if (dbErr) return fail(res, 500, 'Internal error', dbErr)
 
-    return res.status(200).json({ ticket_url: filePath })
+    return res.status(200).json({ ticket_url: `tickets/${filePath}` })
   } catch (err: unknown) {
     return fail(res, 500, 'Internal error', err)
   }
