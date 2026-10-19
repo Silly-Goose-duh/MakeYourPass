@@ -587,13 +587,13 @@ BEGIN
     RAISE EXCEPTION 'Event not found';
   END IF;
 
-  -- 001 contract retained: a payment_type='paid' event demands the
-  -- screenshot up front (the modern flow fetches it from the
-  -- payment-proofs bucket layout and passes that object path here).
+  -- 001 contract retained BUT relaxed for the modern flow: the client does
+  -- NOT need the screenshot at submit time (the storage-proofs folder is
+  -- keyed by registration_id, which only exists after the submit). The real
+  -- enforcement happens in resolve_payment_confirmed(): no uploaded object
+  -- → no confirmation → no seat, no ticket. The 15-minute hold protects
+  -- capacity regardless.
   IF v_payment_type = 'paid' THEN
-    IF v_proof = '' THEN
-      RAISE EXCEPTION 'Payment screenshot is required for paid events';
-    END IF;
     v_pay_status := 'pending';
   ELSE
     v_pay_status := 'na';
@@ -743,7 +743,7 @@ BEGIN
   VALUES
        (p_registration, v_event_id, btrim(p_proof_path), v_sha,
         CASE WHEN v_duplicate THEN 'duplicate' ELSE 'uploaded' END)
-  ON CONFLICT (registration_id) DO UPDATE
+  ON CONFLICT ON CONSTRAINT payment_proofs_registration_id_key DO UPDATE
        SET path       = EXCLUDED.path,
            sha256     = EXCLUDED.sha256,
            status     = CASE WHEN v_duplicate THEN 'duplicate'
