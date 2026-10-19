@@ -82,6 +82,8 @@ export interface CampusEvent {
   response_count: number
   ticket_template_url?: string
   certificate_template_url?: string
+  whatsapp_group_url?: string
+  post_register_message?: string
   ended_at?: string | null
   created_at: string
   updated_at: string

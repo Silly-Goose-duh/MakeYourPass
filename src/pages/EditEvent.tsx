@@ -9,6 +9,9 @@ import { FormBuilder } from '@/components/forms/FormBuilder'
 import { getEventById, getEventQuestions, updateEvent, saveEventQuestions } from '@/lib/supabase'
 import type { CampusEvent, EventQuestion, FormQuestion } from '@/types'
 
+const WHATSAPP_URL_PATTERN = /^https:\/\/(chat\.whatsapp\.com|wa\.me)\//
+const WHATSAPP_URL_ERROR = 'Use a WhatsApp invite link like https://chat.whatsapp.com/…'
+
 export function EditEvent() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -27,6 +30,8 @@ export function EditEvent() {
   const [paymentType, setPaymentType] = useState<'free' | 'paid'>('free')
   const [price, setPrice] = useState('')
   const [status, setStatus] = useState<'draft' | 'published' | 'cancelled'>('draft')
+  const [whatsappGroupUrl, setWhatsappGroupUrl] = useState('')
+  const [postRegisterMessage, setPostRegisterMessage] = useState('')
 
   const [questions, setQuestions] = useState<FormQuestion[]>([])
 
@@ -61,6 +66,8 @@ export function EditEvent() {
       setPaymentType(event.payment_type || 'free')
       setPrice(event.price ? String(event.price) : '')
       setStatus(event.status || 'draft')
+      setWhatsappGroupUrl(event.whatsapp_group_url || '')
+      setPostRegisterMessage(event.post_register_message || '')
 
       const { data: questionsData } = await getEventQuestions(eid!)
       if (questionsData) {
@@ -82,10 +89,18 @@ export function EditEvent() {
     load()
   }, [id])
 
+  const trimmedWhatsappUrl = whatsappGroupUrl.trim()
+  const whatsappUrlError = trimmedWhatsappUrl !== '' && !WHATSAPP_URL_PATTERN.test(trimmedWhatsappUrl) ? WHATSAPP_URL_ERROR : ''
+
   const handleSave = async () => {
     if (!id) return
     if (!title.trim()) {
       setError('Event title is required')
+      return
+    }
+    const trimmedWhatsapp = whatsappGroupUrl.trim()
+    if (trimmedWhatsapp && !WHATSAPP_URL_PATTERN.test(trimmedWhatsapp)) {
+      setError(WHATSAPP_URL_ERROR)
       return
     }
 
@@ -103,6 +118,8 @@ export function EditEvent() {
       payment_type: paymentType,
       price: paymentType === 'paid' ? (parseFloat(price) || 0) : 0,
       status,
+      whatsapp_group_url: whatsappGroupUrl.trim(),
+      post_register_message: postRegisterMessage.trim(),
     })
 
     if (updateErr) {
@@ -304,6 +321,35 @@ export function EditEvent() {
                       </p>
                     </div>
                   )}
+                </div>
+
+                <div className="p-4 rounded-xl border border-border bg-surface/50 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-text-primary">Paid-event extras (optional)</label>
+                    <p className="text-[11px] text-text-muted mt-1">Buyers see these right after registering — on the ticket screen and in the ticket email.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-primary mb-1.5">WhatsApp group link (optional)</label>
+                    <Input
+                      placeholder="https://chat.whatsapp.com/…"
+                      value={whatsappGroupUrl}
+                      onChange={e => setWhatsappGroupUrl(e.target.value)}
+                      error={whatsappUrlError || undefined}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-text-primary">Post-registration message (optional)</label>
+                      <span className="text-[11px] text-text-muted">{postRegisterMessage.length}/400</span>
+                    </div>
+                    <Textarea
+                      rows={3}
+                      maxLength={400}
+                      placeholder="Shown to buyers right after their ticket is generated"
+                      value={postRegisterMessage}
+                      onChange={e => setPostRegisterMessage(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 <div>

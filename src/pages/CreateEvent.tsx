@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { FormBuilder } from '@/components/forms/FormBuilder'
 import { cn, generateSlug } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { getUserOrganizations, createEvent, saveEventQuestions, uploadPoster, getPosterPublicUrl, uploadBrochure, getBrochurePublicUrl } from '@/lib/supabase'
+import { getUserOrganizations, createEvent, saveEventQuestions, uploadPoster, getPosterPublicUrl, uploadBrochure, getBrochurePublicUrl, supabase } from '@/lib/supabase'
 import type { Organization, CampusEvent, FormQuestion } from '@/types'
 
 const slideVariants = {
@@ -25,6 +25,9 @@ const slideVariants = {
     opacity: 0,
   }),
 }
+
+const WHATSAPP_URL_PATTERN = /^https:\/\/(chat\.whatsapp\.com|wa\.me)\//
+const WHATSAPP_URL_ERROR = 'Use a WhatsApp invite link like https://chat.whatsapp.com/…'
 
 export function CreateEvent() {
   const navigate = useNavigate()
@@ -51,11 +54,14 @@ export function CreateEvent() {
   const [idPrefix, setIdPrefix] = useState('')
   const [ticketTemplateFile, setTicketTemplateFile] = useState<File | null>(null)
   const [certTemplateFile, setCertTemplateFile] = useState<File | null>(null)
+  const [whatsappGroupUrl, setWhatsappGroupUrl] = useState('')
+  const [postRegisterMessage, setPostRegisterMessage] = useState('')
 
   const [questions, setQuestions] = useState<FormQuestion[]>([])
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [extrasWarning, setExtrasWarning] = useState('')
   const [posterUploading, setPosterUploading] = useState(false)
 
   useEffect(() => {
@@ -109,6 +115,11 @@ export function CreateEvent() {
     }
     if (!title.trim()) {
       setError('Event title is required')
+      return
+    }
+    const trimmedWhatsapp = whatsappGroupUrl.trim()
+    if (trimmedWhatsapp && !WHATSAPP_URL_PATTERN.test(trimmedWhatsapp)) {
+      setError(WHATSAPP_URL_ERROR)
       return
     }
 
@@ -212,6 +223,20 @@ export function CreateEvent() {
         }
       }
 
+      // create_event RPC doesn't accept the payments-extras columns; patch them
+      // in a follow-up update. Non-fatal: the event already exists either way.
+      const extrasWhatsapp = whatsappGroupUrl.trim()
+      const extrasMessage = postRegisterMessage.trim()
+      if (extrasWhatsapp || extrasMessage) {
+        const extrasPayload: Partial<CampusEvent> = {}
+        if (extrasWhatsapp) extrasPayload.whatsapp_group_url = extrasWhatsapp
+        if (extrasMessage) extrasPayload.post_register_message = extrasMessage
+        const { error: extrasErr } = await supabase.from('events').update(extrasPayload).eq('id', newEvent.id)
+        if (extrasErr) {
+          setExtrasWarning('Event published, but the paid-event extras could not be saved: ' + extrasErr.message)
+        }
+      }
+
       navigate('/dashboard')
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong'
@@ -227,6 +252,9 @@ export function CreateEvent() {
 
   const canProceedFromStep1 = title.trim() && selectedOrgId
   const canProceedFromStep2 = true
+
+  const trimmedWhatsappUrl = whatsappGroupUrl.trim()
+  const whatsappUrlError = trimmedWhatsappUrl !== '' && !WHATSAPP_URL_PATTERN.test(trimmedWhatsappUrl) ? WHATSAPP_URL_ERROR : ''
 
   if (loadingOrgs) {
     return (
@@ -299,6 +327,16 @@ export function CreateEvent() {
             <button onClick={() => setError('')} className="ml-auto shrink-0">
               <X className="h-4 w-4" />
             </button>
+          </motion.div>
+        )}
+
+        {extrasWarning && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-warning/10 border border-warning/30 rounded-xl text-warning text-sm"
+          >
+            {extrasWarning}
           </motion.div>
         )}
 
@@ -586,6 +624,35 @@ export function CreateEvent() {
                       <label className="block text-xs font-medium text-text-primary mt-2">Certificate template (PNG, optional)</label>
                       <input type="file" accept="image/png,image/jpeg" onChange={(e) => setCertTemplateFile(e.target.files?.[0] || null)} className="text-xs text-text-secondary" />
                       <p className="text-[11px] text-text-muted">Leave clear space for the attendee name (center). Used when sending tickets / ending the event.</p>
+                    </div>
+
+                    <div className="mt-4 p-4 rounded-xl border border-border bg-surface/50 space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-text-primary">Paid-event extras (optional)</label>
+                        <p className="text-[11px] text-text-muted mt-1">Buyers see these right after registering — on the ticket screen and in the ticket email.</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-text-primary mb-1.5">WhatsApp group link (optional)</label>
+                        <Input
+                          placeholder="https://chat.whatsapp.com/…"
+                          value={whatsappGroupUrl}
+                          onChange={e => setWhatsappGroupUrl(e.target.value)}
+                          error={whatsappUrlError || undefined}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-medium text-text-primary">Post-registration message (optional)</label>
+                          <span className="text-[11px] text-text-muted">{postRegisterMessage.length}/400</span>
+                        </div>
+                        <Textarea
+                          rows={3}
+                          maxLength={400}
+                          placeholder="Shown to buyers right after their ticket is generated"
+                          value={postRegisterMessage}
+                          onChange={e => setPostRegisterMessage(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
