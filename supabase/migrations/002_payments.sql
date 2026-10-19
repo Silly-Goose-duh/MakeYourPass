@@ -328,6 +328,7 @@ DECLARE
   v_capacity  integer;
   v_counter   integer;
   v_confirmed integer;
+  v_holds     integer;
   v_paid      boolean;
 BEGIN
   -- Serialise every registration for this event on the parent row lock.
@@ -356,11 +357,40 @@ BEGIN
   v_prefix := COALESCE(NULLIF(btrim(v_prefix), ''), 'EVT');
   NEW.unique_code := v_prefix || '-' || lpad(v_counter::text, 4, '0');
 
+  -- Lazy expiry sweep BEFORE any capacity evaluation (dead holds release
+  -- their slot; a free event simply has nothing to sweep).
+  PERFORM public._expire_stale_holds(NEW.event_id);
+
   IF v_paid THEN
     -- Paid flow: provisional 15-minute hold; the seat is decided at
     -- confirm time (resolve_payment_confirmed) under the row lock.
-    NEW.status          := 'pending';
-    NEW.hold_expires_at := now() + interval '15 minutes';
+    -- Overbooking guard: a hold occupies a seat while it lives, so admits
+    -- a hold ONLY when confirmed + live holds stay under capacity.
+    -- Otherwise the row goes straight to the waitlist (no immortal
+    -- holds, no phantom capacity).
+    IF v_capacity IS NULL OR v_capacity <= 0 THEN
+      NEW.status          := 'pending';
+      NEW.hold_expires_at := now() + interval '15 minutes';
+    ELSE
+      SELECT count(*)::int INTO v_confirmed
+        FROM public.event_responses er
+       WHERE er.event_id  = NEW.event_id
+         AND er.status    = 'confirmed';
+
+      SELECT count(*)::int INTO v_holds
+        FROM public.event_responses er
+       WHERE er.event_id       = NEW.event_id
+         AND er.status         = 'pending'
+         AND er.hold_expires_at > now();
+
+      IF v_confirmed + v_holds >= v_capacity THEN
+        NEW.status          := 'waitlisted';
+        NEW.hold_expires_at := NULL;
+      ELSE
+        NEW.status          := 'pending';
+        NEW.hold_expires_at := now() + interval '15 minutes';
+      END IF;
+    END IF;
   ELSE
     -- Free flow: 001_hardening behaviour, verbatim.
     IF v_capacity IS NULL OR v_capacity <= 0 THEN
@@ -378,10 +408,6 @@ BEGIN
       END IF;
     END IF;
   END IF;
-
-  -- Lazy expiry sweep before any capacity evaluation (dead holds release
-  -- their slot; a free event simply has nothing to sweep).
-  PERFORM public._expire_stale_holds(NEW.event_id);
 
   RETURN NEW;
 END;

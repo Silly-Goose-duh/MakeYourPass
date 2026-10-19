@@ -804,7 +804,10 @@ export default async function handler(req: any, res: any) {
     await PImage.encodePNGToStream(canvas, sink as any)
     const png = Buffer.concat(chunks)
 
-    const filePath = `tickets/${reg.event_id}/${reg.id}.png`
+    // NOTE: .from('tickets') already scopes to the bucket — the object name
+    // must NOT repeat the `tickets/` prefix (that would address
+    // `tickets/tickets/…`, which every reader normalises away from).
+    const filePath = `${reg.event_id}/${reg.id}.png`
     const { error: upErr } = await sb.storage
       .from('tickets')
       .upload(filePath, png, { contentType: 'image/png', upsert: true })
