@@ -547,13 +547,54 @@ async function kickTicketGeneration(req: any, registrationId: string): Promise<s
         signal: controller.signal,
       })
       const j = await r.json().catch(() => ({}))
-      return r.ok && typeof j?.ticket_url === 'string' ? j.ticket_url : null
+      const url = r.ok && typeof j?.ticket_url === 'string' ? j.ticket_url : null
+      if (r.ok) {
+        // Ticket is in — mail it (attachment + club message + WhatsApp link).
+        // Await keeps the confirm answer honest about the email attempt.
+        await kickTicketEmail(req, registrationId)
+      }
+      return url
     } finally {
       clearTimeout(timer)
     }
   } catch (err) {
     console.error('[payments] ticket generation kick failed (tolerated):', err)
     return null
+  }
+}
+
+/**
+ * Fire the ticket email (attachment + event info + club message + WhatsApp
+ * link) through /api/on-registration with the internal secret. The handler
+ * already suppresses duplicate sends ("already_sent") and skips ticket
+ * regeneration when ticket_url exists. Best-effort: never blocks or fails
+ * the confirm answer.
+ */
+async function kickTicketEmail(req: any, registrationId: string): Promise<void> {
+  const host = req.headers['x-forwarded-host'] || req.headers.host
+  const proto = req.headers['x-forwarded-proto'] || 'https'
+  const base = host ? `${proto}://${host}` : ''
+  const secret = internalSecret()
+  if (!base || !secret) return
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), TICKET_KICK_TIMEOUT_MS)
+    try {
+      await fetch(`${base}/api/on-registration`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': secret,
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ registration_id: registrationId, internal_skip_regen: true }),
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+  } catch (err) {
+    console.error('[payments] ticket email kick failed (tolerated):', err)
   }
 }
 

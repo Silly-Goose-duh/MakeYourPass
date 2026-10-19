@@ -355,7 +355,7 @@ const RESEND_COOLDOWN_MS = 60 * 1000
 const REG_SELECT =
   'id, event_id, respondent_name, respondent_email, respondent_phone, status, ' +
   'submitted_at, email_sent_at, unique_code, ticket_url, ' +
-  'events(title, date, time, venue)'
+  'events(title, date, time, venue, whatsapp_group_url, post_register_message)'
 
 function esc(s: string) {
   return String(s || '')
@@ -363,6 +363,25 @@ function esc(s: string) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+/** Club-personalized footer (002 fields): editable message + WhatsApp group link. */
+function clubFooter(ev: any): string {
+  const msg = String(ev?.post_register_message || '').trim()
+  const wa = String(ev?.whatsapp_group_url || '').trim()
+  if (!msg && !wa) return ''
+  const parts: string[] = []
+  if (msg) {
+    parts.push(`<p style="margin:14px 0 12px;font-size:15px;line-height:1.55;color:#1A1611"><b>From the club:</b> ${esc(msg)}</p>`)
+  }
+  if (wa) {
+    parts.push(
+      `<p style="margin:0 0 4px"><a href="${esc(wa)}" style="display:inline-block;background:#0F766E;color:#FFFFFF;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600">Join the club\u2019s WhatsApp group →</a></p>` +
+      `<p style="margin:0;font-size:12px;color:#6B6660">Official club link from the event. Crews will never ask for payment OTPs or PINs.</p>` +
+      `<p style="margin:12px 0 0"></p>`
+    )
+  }
+  return parts.join('')
 }
 
 function emailShell(opts: {
@@ -551,7 +570,7 @@ async function deliverEmail(opts: {
       title: "You're on the waitlist",
       preheader: `Waitlisted for ${ev.title || 'the event'}`,
       bodyHtml: `<p style="margin:0 0 12px;font-size:15px;line-height:1.55">Hi ${name}, you're registered for <b>${title}</b> but it's currently full. We'll email you if a spot opens.</p>
-          <p style="margin:0;font-size:14px;color:#4A4640"><b>When:</b> ${esc(when || 'TBD')}<br/><b>Where:</b> ${where}</p>`,
+          <p style="margin:0;font-size:14px;color:#4A4640"><b>When:</b> ${esc(when || 'TBD')}<br/><b>Where:</b> ${where}</p>${clubFooter(ev)}`,
       code: code || undefined,
     })
   } else if (kind === 'reminder') {
@@ -571,7 +590,7 @@ async function deliverEmail(opts: {
       preheader: `Ticket confirmed for ${ev.title || 'the event'}`,
       bodyHtml: `<p style="margin:0 0 12px;font-size:15px;line-height:1.55">Hi ${name}, your spot for <b>${title}</b> is confirmed.</p>
           <p style="margin:0 0 12px;font-size:14px;color:#4A4640"><b>When:</b> ${esc(when || 'TBD')}<br/><b>Where:</b> ${where}</p>
-          <p style="margin:0;font-size:14px;color:#4A4640">Your ticket PNG is attached — keep it ready at the door.</p>`,
+          <p style="margin:0 0 12px;font-size:14px;color:#4A4640">Your ticket PNG is attached — keep it ready at the door.</p>${clubFooter(ev)}`,
       code: code || undefined,
     })
   }
