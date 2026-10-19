@@ -24,6 +24,7 @@ const AuthCallbackPage = lazy(() => import('@/pages/AuthCallback').then(m => ({ 
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPasswordPage })))
 const ResetPasswordPage = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPasswordPage })))
 const AcceptInvitePage = lazy(() => import('@/pages/AcceptInvite').then(m => ({ default: m.AcceptInvitePage })))
+const WaitlistPage = lazy(() => import('@/pages/WaitlistPage').then(m => ({ default: m.default })))
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -61,6 +62,7 @@ function AppRoutes() {
           <Route index element={<HomePage />} />
           <Route path="events" element={<PageSuspense><EventsPage /></PageSuspense>} />
           <Route path="event/:eventSlug" element={<PageSuspense><PublicEventForm /></PageSuspense>} />
+          <Route path="event/:eventSlug/full" element={<PageSuspense><WaitlistPage /></PageSuspense>} />
           <Route path="login" element={<PageSuspense><LoginPage /></PageSuspense>} />
           <Route path="signup" element={<PageSuspense><SignupPage /></PageSuspense>} />
           <Route path="forgot-password" element={<PageSuspense><ForgotPasswordPage /></PageSuspense>} />

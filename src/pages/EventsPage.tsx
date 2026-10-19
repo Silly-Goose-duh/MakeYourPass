@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Calendar, AlertTriangle } from 'lucide-react'
-import { getPublishedEvents, getApprovedOrganizations } from '@/lib/supabase'
+import { useNavigate } from 'react-router-dom'
+import { getPublishedEvents, getApprovedOrganizations, getSeatStatus, type SeatStatus } from '@/lib/supabase'
 import type { Organization } from '@/types'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { OrgSidebar, SidebarReopen } from '@/components/event/OrgSidebar'
 import { EventCard } from '@/components/event/EventCard'
-import type { EventWithOrg } from '@/components/event/eventUtils'
+import { isPast, type EventWithOrg } from '@/components/event/eventUtils'
 
 const FILTER_CATEGORIES = ['All events', 'Workshops', 'Hackathons', 'Talks', 'Competitions'] as const
 type FilterCategory = (typeof FILTER_CATEGORIES)[number]
@@ -22,8 +23,36 @@ function getEventCategory(event: EventWithOrg): FilterCategory {
 
 type TimeWindow = 'upcoming' | 'all' | 'past'
 
+// ─── Seats-left snapshot (from the event_seat_status view) ───
+// One anon row per event via the existing getSeatStatus helper — the same query
+// EventCard's SeatPill runs per card, simply run up front for the whole list so
+// the page can grey-out + reroute filled events. (The dev-mode supabase proxy
+// can reject the query chain outright, hence the per-call catch.)
+async function loadSeatSnapshot(events: EventWithOrg[]): Promise<Record<string, SeatStatus>> {
+  const snapshots = await Promise.all(events.map(async (event) => {
+    try {
+      const { data } = await getSeatStatus(event.id)
+      return data ? ([event.id, data] as const) : null
+    } catch { return null }
+  }))
+  const map: Record<string, SeatStatus> = {}
+  for (const s of snapshots) { if (s) map[s[0]] = s[1] }
+  return map
+}
+
+/** seats_left <= 0 ⇒ filled — the exact semantics of the card's live "Sold out"
+ *  pill. seats_left === null means unlimited (capacity 0 / not enforced), so it
+ *  is never filled. Past events never get the filled treatment. */
+function isEventFilled(event: EventWithOrg, seatMap: Record<string, SeatStatus>): boolean {
+  if (isPast(event)) return false
+  const row = seatMap[event.id]
+  return !!row && row.seats_left !== null && row.seats_left <= 0
+}
+
 export default function EventsPage() {
+  const navigate = useNavigate()
   const [events, setEvents] = useState<EventWithOrg[]>([])
+  const [seats, setSeats] = useState<Record<string, SeatStatus>>({})
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -43,7 +72,9 @@ export default function EventsPage() {
         ])
         if (eventsRes.error) throw new Error(eventsRes.error.message || 'Failed to load events')
         if (orgsRes.error) throw new Error(orgsRes.error.message || 'Failed to load organizations')
-        setEvents((eventsRes.data ?? []) as EventWithOrg[])
+        const evs = (eventsRes.data ?? []) as EventWithOrg[]
+        setEvents(evs)
+        setSeats(await loadSeatSnapshot(evs))
         setOrganizations(orgsRes.data ?? [])
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Something went wrong'
@@ -56,6 +87,17 @@ export default function EventsPage() {
     }
     fetchData()
   }, [])
+
+  // Re-check seats when the tab becomes visible again — a seat can free up (a
+  // registration is cancelled) while the user was away. Same anon snapshot.
+  useEffect(() => {
+    if (events.length === 0) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadSeatSnapshot(events).then(setSeats).catch(() => {})
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [events])
 
   const { upcomingEvents, pastEvents } = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -216,9 +258,42 @@ export default function EventsPage() {
                 <motion.div key="grid" initial="hidden" animate="visible"
                   style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))', gap: '20px' }}>
                   <AnimatePresence mode="popLayout">
-                    {filteredEvents.map((event) => (
-                      <EventCard key={event.id} event={event} />
-                    ))}
+                    {filteredEvents.map((event) => {
+                      const filled = isEventFilled(event, seats)
+                      // Filled cards stay fully informative but get a muted
+                      // treatment, a "SEATS FILLED" chip, not-allowed cursor on
+                      // the card's register CTA (its only anchor), and route to
+                      // the waiting-list page on click.
+                      // INTERNAL REPORT: clicking a greyed card navigates to
+                      // `/event/:slug/full` — a NEW route whose App.tsx wiring
+                      // is handled separately (main session).
+                      return (
+                        <motion.div
+                          key={event.id}
+                          className="relative"
+                          onClickCapture={(e) => {
+                            if (!filled) return
+                            // Let the browser handle modified/new-tab clicks.
+                            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+                            e.preventDefault()
+                            e.stopPropagation()
+                            navigate(`/event/${event.slug}/full`)
+                          }}
+                        >
+                          <motion.div
+                            style={filled ? { opacity: 0.75, filter: 'saturate(0.45)' } : undefined}
+                            className={filled ? '[&_a]:cursor-not-allowed' : undefined}
+                          >
+                            <EventCard event={event} />
+                          </motion.div>
+                          {filled && (
+                            <span className="zine-sticker absolute top-2 left-2 z-10" style={{ background: '#E11D1D', color: '#fff', transform: 'rotate(-3deg)' }}>
+                              Seats filled
+                            </span>
+                          )}
+                        </motion.div>
+                      )
+                    })}
                   </AnimatePresence>
                 </motion.div>
               )}

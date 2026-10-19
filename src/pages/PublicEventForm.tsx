@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Send, CheckCircle, Calendar, MapPin, Clock, Building2, AlertCircle, Palette, Download, IndianRupee, Upload } from 'lucide-react'
+import { ArrowLeft, Send, CheckCircle, Calendar, MapPin, Clock, Building2, AlertCircle, Palette, IndianRupee, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { formatTime, cn } from '@/lib/utils'
 import {
@@ -9,9 +9,10 @@ import {
   getEventQuestions,
   submitEventResponse,
   submitResponseAnswers,
-  uploadPaymentProof,
-  getPaymentProofPublicUrl,
+  getOrganizationBySlug,
 } from '@/lib/supabase'
+import { PaymentPanel } from '@/components/event/PaymentPanel'
+import { TicketSuccess } from '@/components/event/TicketSuccess'
 import type { CampusEvent, Organization, EventQuestion } from '@/types'
 
 interface PosterTheme {
@@ -27,9 +28,47 @@ interface PosterTheme {
   suggestedAccent: string
 }
 
+type CampusEventWithOrg = CampusEvent & { organizations: Organization }
+
+/** Optional (migration-002-ready) fields read defensively off the event row. */
+interface EventExtras {
+  post_register_message?: string | null
+  whatsapp_group_url?: string | null
+}
+
+/** Paid-flow stages reached after the first submit ("Continue"). */
+type PaidStage = 'payment' | 'success' | 'waitlisted' | 'holdExpired'
+
+/** Seat hold for paid registrations before the server self-cancels it (migration 002). */
+const HOLD_WINDOW_MS = 15 * 60 * 1000
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+}
+
+/**
+ * submit_event_response's return shape may be a bare uuid string, a full
+ * event_responses row, or (post-migration-002) an { id, unique_code } payload —
+ * and src/lib/supabase.ts additionally wraps it as { id: <rpc result> }.
+ * Normalise all of those here.
+ */
+function extractRegistration(data: unknown): { id: string; uniqueCode: string } | null {
+  if (isUuid(data)) return { id: data, uniqueCode: '' }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null
+  const row = data as Record<string, unknown>
+  const rawId = row.id
+  if (rawId && typeof rawId === 'object' && !Array.isArray(rawId)) {
+    const nested = rawId as Record<string, unknown>
+    if (!isUuid(nested.id)) return null
+    return { id: nested.id, uniqueCode: typeof nested.unique_code === 'string' ? nested.unique_code : '' }
+  }
+  if (!isUuid(rawId)) return null
+  return { id: rawId, uniqueCode: typeof row.unique_code === 'string' ? row.unique_code : '' }
+}
+
 export function PublicEventForm() {
   const { eventSlug } = useParams<{ eventSlug: string }>()
-  const [event, setEvent] = useState<(CampusEvent & { organizations: Organization }) | null>(null)
+  const [event, setEvent] = useState<CampusEventWithOrg | null>(null)
   const [questions, setQuestions] = useState<EventQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -46,13 +85,23 @@ export function PublicEventForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [submittedPaid, setSubmittedPaid] = useState(false)
   const [questionsLoading, setQuestionsLoading] = useState(false)
-  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null)
-  const [paymentPreview, setPaymentPreview] = useState<string | null>(null)
   const [resendEmail, setResendEmail] = useState('')
   const [resendBusy, setResendBusy] = useState(false)
   const [resendMsg, setResendMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  // Paid flow (events.price > 0): registration id/code from the first submit,
+  // the 15-minute seat hold, and the step the user is on.
+  const [paidStage, setPaidStage] = useState<PaidStage | null>(null)
+  const [paidRegId, setPaidRegId] = useState('')
+  const [paidCode, setPaidCode] = useState('')
+  const [holdExpiresAt, setHoldExpiresAt] = useState(0)
+  const [ticketInfo, setTicketInfo] = useState<{ ticketImageUrl: string; uniqueCode: string } | null>(null)
+
+  // UPI fields are not always present in the event→org embed select, so
+  // fetch the club row the same way the page already loads data and merge
+  // it with whatever the embed carries.
+  const [upiFields, setUpiFields] = useState<Organization | null>(null)
 
   // Load the event itself first (fast) so the page renders immediately.
   useEffect(() => {
@@ -83,7 +132,7 @@ export function PublicEventForm() {
           setNotFound(true)
           return
         }
-        setEvent(eventData as unknown as CampusEvent & { organizations: Organization })
+        setEvent(eventData as unknown as CampusEventWithOrg)
       } catch (err) {
         if (cancelled) return
         const message = err instanceof Error ? err.message : 'Failed to load event'
@@ -132,6 +181,18 @@ export function PublicEventForm() {
     return () => { cancelled = true }
   }, [event?.poster_url])
 
+  // Paid events only: grab the club's UPI setup (VPA / phone / uploaded QR) by
+  // slug — the event embed may not select the upi_* columns.
+  useEffect(() => {
+    const slug = event?.organizations?.slug
+    if (!slug) return
+    let cancelled = false
+    getOrganizationBySlug(slug)
+      .then(({ data }) => { if (!cancelled && data) setUpiFields(data) })
+      .catch(() => { /* fall back to whatever the event embed carries */ })
+    return () => { cancelled = true }
+  }, [event?.organizations?.slug])
+
   function getAnswer(questionId: string): string | string[] {
     return answers[questionId] ?? (questions.find(q => q.id === questionId)?.question_type === 'checkboxes' ? [] : '')
   }
@@ -155,13 +216,19 @@ export function PublicEventForm() {
 
   const isPaid = event?.payment_type === 'paid'
   const org = event?.organizations
-  const upiId = org?.upi_id || ''
-  const upiPhone = org?.upi_phone || ''
-  const upiQr = org?.upi_qr_url || ''
+  const upiVpa = upiFields?.upi_id || org?.upi_id || ''
+  const upiPhone = upiFields?.upi_phone || org?.upi_phone || ''
+  const orgQrUrl = upiFields?.upi_qr_url || org?.upi_qr_url || ''
   const price = event?.price || 0
-  const upiDeepLink = upiId
-    ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(org?.name || 'MakeYourPass')}&am=${encodeURIComponent(String(price))}&cu=INR`
-    : ''
+  const extras = (event ?? {}) as EventExtras
+
+  // Stable callbacks for PaymentPanel so its polling loops never re-run mid-flow.
+  const handleConfirmed = useCallback((info: { ticketImageUrl: string; uniqueCode: string }) => {
+    setTicketInfo({ ticketImageUrl: info.ticketImageUrl, uniqueCode: info.uniqueCode })
+    setPaidStage('success')
+  }, [])
+  const handleWaitlisted = useCallback(() => setPaidStage('waitlisted'), [])
+  const handleHoldExpired = useCallback(() => setPaidStage('holdExpired'), [])
 
   function validate(): boolean {
     const newErrors: Record<string, string> = {}
@@ -172,9 +239,6 @@ export function PublicEventForm() {
     const digits = respondentPhone.replace(/[^\d]/g, '')
     if (respondentPhone.trim() && (digits.length < 10 || digits.length > 15)) {
       newErrors.phone = 'Enter a valid phone number'
-    }
-    if (event?.payment_type === 'paid' && !paymentScreenshot) {
-      newErrors.payment = 'Payment screenshot is required'
     }
     for (const q of questions) {
       if (!q.required) continue
@@ -206,22 +270,10 @@ export function PublicEventForm() {
     setSubmitting(true)
     setError('')
     try {
-      let payment_proof_url = ''
-      if (event.payment_type === 'paid' && paymentScreenshot) {
-        const path = `payments/${event.id}/${Date.now()}-${paymentScreenshot.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-        const { error: upErr } = await uploadPaymentProof(paymentScreenshot, path)
-        if (upErr) {
-          setError('Failed to upload payment screenshot: ' + upErr.message)
-          return
-        }
-        payment_proof_url = getPaymentProofPublicUrl(path)
-      }
-
       const { data: responseData, error: responseError } = await submitEventResponse(event.id, {
         respondent_name: respondentName.trim(),
         respondent_email: respondentEmail.trim(),
         respondent_phone: respondentPhone.trim() || undefined,
-        payment_proof_url,
       })
       if (responseError || !responseData) {
         const msg = (responseError?.message || 'Failed to submit response').toLowerCase()
@@ -254,23 +306,56 @@ export function PublicEventForm() {
         setError(answersError.message || 'Failed to save answers')
         return
       }
-      // Free: email ticket now. Paid: host reviews screenshot then Send ticket.
+
+      // The RPC reply's shape varies (uuid string / row / { id, unique_code } object)
+      // — normalise it, and fall back onto whatever id the wrapper produced.
+      const reg = extractRegistration(responseData)
+      const registrationId = reg?.id ?? (isUuid(responseData.id) ? responseData.id : '')
+
+      // Free: email ticket now (unchanged). Paid: 15-minute seat hold, then
+      // the UPI payment + proof verification flow.
       if (event.payment_type !== 'paid') {
         fetch(`${import.meta.env.VITE_API_BASE || ''}/api/on-registration`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ registration_id: responseData.id }),
+          body: JSON.stringify({ registration_id: registrationId }),
         }).catch(() => {})
+        try { localStorage.setItem(`myp_reg_${event.id}`, String(Date.now())) } catch { /* ignore */ }
+        setSubmitted(true)
+        return
+      }
+      if (!registrationId) {
+        setError('Registration saved, but we could not start the payment step. Please visit this page again with the same email to continue.')
+        return
       }
       try { localStorage.setItem(`myp_reg_${event.id}`, String(Date.now())) } catch { /* ignore */ }
-      setSubmittedPaid(event.payment_type === 'paid')
-      setSubmitted(true)
+      setPaidRegId(registrationId)
+      setPaidCode(reg?.uniqueCode ?? '')
+      setHoldExpiresAt(Date.now() + HOLD_WINDOW_MS)
+      setPaidStage('payment')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
     }
   }
+
+  // Compute theme-aware style props. Falls back to the zine defaults.
+  const accent = theme?.suggestedAccent ?? '#FF4D2E'
+  const accentSoft = theme ? `${accent}1A` : 'rgba(255,77,46,0.1)'
+  const rootStyle: React.CSSProperties = theme
+    ? {
+        // Expose theme tokens as CSS variables; the form UI references them.
+        ['--event-accent' as string]: accent,
+        ['--event-accent-soft' as string]: accentSoft,
+        ['--event-secondary' as string]: theme.palette.secondary,
+        ['--event-bg' as string]: theme.palette.background,
+        ['--event-text' as string]: theme.palette.text,
+        background: theme.isDark
+          ? `linear-gradient(160deg, ${theme.palette.background} 0%, #0c0c0c 100%)`
+          : `linear-gradient(160deg, ${theme.palette.background} 0%, #F4EFE1 100%)`,
+      }
+    : {}
 
   if (loading) {
     return (
@@ -308,6 +393,155 @@ export function PublicEventForm() {
     )
   }
 
+  // ── Paid flow screens (step 2 payment + step 3 terminal states) ──
+
+  // Defensive: a stage is active but the event row vanished — show a spinner card.
+  if (paidStage && !event) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-text-secondary text-sm">Loading your registration…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (paidStage === 'payment' && event) {
+    return (
+      <div className="min-h-screen bg-background py-12 px-4 relative" style={rootStyle}>
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-secondary/5 rounded-full blur-[100px] pointer-events-none" />
+
+        <div className="relative">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-text-secondary hover:text-primary-hover transition-colors mb-8 text-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to events
+          </Link>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="payment"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6 max-w-3xl mx-auto"
+            >
+              <EventHeaderCard event={event} />
+              <PaymentPanel
+                eventId={event.id}
+                registrationId={paidRegId}
+                initialCode={paidCode}
+                amount={price}
+                orgName={org?.name || ''}
+                upiVpa={upiVpa}
+                upiPhone={upiPhone || undefined}
+                orgQrUrl={orgQrUrl || null}
+                holdExpiresAt={holdExpiresAt}
+                onExpired={handleHoldExpired}
+                onWaitlisted={handleWaitlisted}
+                onConfirmed={handleConfirmed}
+              />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    )
+  }
+
+  if (paidStage === 'success') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="relative w-full max-w-xl">
+          <TicketSuccess
+            uniqueCode={ticketInfo?.uniqueCode || paidCode}
+            ticketImageUrl={ticketInfo?.ticketImageUrl ?? null}
+            eventName={event?.title ?? ''}
+            attendeeName={respondentName.trim()}
+            email={respondentEmail.trim()}
+            message={(extras.post_register_message || '').trim()}
+            whatsappUrl={(extras.whatsapp_group_url || '').trim() || null}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (paidStage === 'waitlisted') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', duration: 0.6 }}
+          className="glass-strong rounded-2xl p-10 max-w-md w-full text-center"
+        >
+          <div className="h-16 w-16 rounded-2xl bg-warning/20 flex items-center justify-center mx-auto mb-6">
+            <Users className="h-8 w-8 text-text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#14110E] mb-3">Seats just filled — you're on the waiting list</h2>
+          <p className="text-text-secondary text-sm leading-relaxed mb-2">
+            Seats filled up just before your payment could be confirmed, so your registration moved to the waiting
+            list.
+          </p>
+          <p className="text-text-secondary text-sm leading-relaxed mb-6">
+            If you already paid, the club will contact you about a refund — or a seat opening up. If you haven't paid
+            yet, please don't send any payment unless the club asks you to.
+          </p>
+          <Link to="/">
+            <Button variant="primary" size="lg">
+              Back to Home
+            </Button>
+          </Link>
+        </motion.div>
+      </div>
+    )
+  }
+
+  if (paidStage === 'holdExpired') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', duration: 0.6 }}
+          className="glass-strong rounded-2xl p-10 max-w-md w-full text-center"
+        >
+          <div className="h-16 w-16 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto mb-6">
+            <Clock className="h-8 w-8 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#14110E] mb-3">Your hold expired — please re-register</h2>
+          <p className="text-text-secondary text-sm leading-relaxed mb-6">
+            We held your seat for 15 minutes and the hold lapsed without a confirmed payment, so the registration was
+            cancelled. Nothing was charged. Start below — your details are still filled in. If the form then says
+            you're already registered, use “Resend my ticket” instead.
+          </p>
+          <div className="flex flex-col items-center gap-3">
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => {
+                setPaidStage(null)
+                setTicketInfo(null)
+              }}
+            >
+              Re-register
+            </Button>
+            <Link to="/">
+              <Button variant="outline" size="lg">
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -332,7 +566,7 @@ export function PublicEventForm() {
             transition={{ delay: 0.4 }}
             className="text-2xl font-bold text-[#14110E] mb-3"
           >
-            {submittedPaid ? 'Payment under review' : 'Response Submitted!'}
+            Response Submitted!
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
@@ -348,9 +582,7 @@ export function PublicEventForm() {
             transition={{ delay: 0.6 }}
             className="text-text-muted text-sm mb-8"
           >
-            {submittedPaid
-              ? 'Host will verify your payment screenshot and send your ticket + UID to your email.'
-              : `You'll receive your ticket at ${respondentEmail || 'your email'}.`}
+            You'll receive your ticket at {respondentEmail || 'your email'}.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -367,23 +599,6 @@ export function PublicEventForm() {
       </div>
     )
   }
-
-  // Compute theme-aware style props. Falls back to the zine defaults.
-  const accent = theme?.suggestedAccent ?? '#FF4D2E'
-  const accentSoft = theme ? `${accent}1A` : 'rgba(255,77,46,0.1)'
-  const rootStyle: React.CSSProperties = theme
-    ? {
-        // Expose theme tokens as CSS variables; the form UI references them.
-        ['--event-accent' as string]: accent,
-        ['--event-accent-soft' as string]: accentSoft,
-        ['--event-secondary' as string]: theme.palette.secondary,
-        ['--event-bg' as string]: theme.palette.background,
-        ['--event-text' as string]: theme.palette.text,
-        background: theme.isDark
-          ? `linear-gradient(160deg, ${theme.palette.background} 0%, #0c0c0c 100%)`
-          : `linear-gradient(160deg, ${theme.palette.background} 0%, #F4EFE1 100%)`,
-      }
-    : {}
 
   return (
     <div className="min-h-screen bg-background py-12 px-4 relative" style={rootStyle}>
@@ -412,50 +627,8 @@ export function PublicEventForm() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="glass-strong rounded-2xl p-8 mb-6"
               >
-                <div className="flex items-start gap-4 mb-4">
-                  {event.organizations?.logo_url ? (
-                    <img
-                      src={event.organizations.logo_url}
-                      alt=""
-                      className="h-12 w-12 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                      <Building2 className="h-6 w-6 text-primary" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-[#14110E] mb-1">{event.title}</h1>
-                    {event.organizations?.name && (
-                      <p className="text-text-secondary text-sm">{event.organizations.name}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
-                  {event.date && (
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4 text-primary" />
-                      {new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </span>
-                  )}
-                  {event.time && (
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="h-4 w-4 text-primary" />
-                      {formatTime(event.time)}
-                    </span>
-                  )}
-                  {event.venue && (
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      {event.venue}
-                    </span>
-                  )}
-                </div>
-                {event.description && (
-                  <p className="mt-4 text-text-secondary text-sm leading-relaxed">{event.description}</p>
-                )}
+                <EventHeaderCard event={event} className="mb-6" />
               </motion.div>
             )}
 
@@ -537,92 +710,6 @@ export function PublicEventForm() {
                 </div>
               </div>
 
-              {/* UPI payment */}
-              {isPaid && (
-                <div className="rounded-2xl border border-border bg-surface/80 p-5 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <IndianRupee className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-semibold text-[#14110E]">Pay ₹{price} via UPI</h2>
-                  </div>
-                  <p className="text-sm text-text-secondary">
-                    Pay using the QR or UPI ID below, then upload a screenshot of the payment. Ticket is sent only after the host verifies.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-4 items-start">
-                    {upiQr ? (
-                      <a
-                        href={upiDeepLink || upiQr}
-                        className="block shrink-0 rounded-xl border border-border overflow-hidden bg-white p-2 hover:ring-2 hover:ring-primary transition"
-                        title="Open in UPI app"
-                      >
-                        <img src={upiQr} alt="UPI QR" className="h-40 w-40 object-contain" />
-                      </a>
-                    ) : (
-                      <div className="h-40 w-40 rounded-xl border border-dashed border-border flex items-center justify-center text-xs text-text-muted p-3 text-center">
-                        Host has not uploaded a UPI QR yet
-                      </div>
-                    )}
-                    <div className="space-y-2 text-sm flex-1">
-                      {upiId && (
-                        <p>
-                          <span className="text-text-muted">UPI ID: </span>
-                          <strong className="text-text-primary select-all">{upiId}</strong>
-                        </p>
-                      )}
-                      {upiPhone && (
-                        <p>
-                          <span className="text-text-muted">Phone: </span>
-                          <strong className="text-text-primary">{upiPhone}</strong>
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {upiDeepLink && (
-                          <a href={upiDeepLink}>
-                            <Button type="button" variant="primary" size="sm">Open UPI app</Button>
-                          </a>
-                        )}
-                        {upiQr && (
-                          <a href={upiQr} download="upi-qr.png">
-                            <Button type="button" variant="secondary" size="sm">
-                              <Download className="h-3.5 w-3.5" /> Download QR
-                            </Button>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-primary mb-2">
-                      Payment screenshot <span className="text-red-500">*</span>
-                    </label>
-                    <label className={cn(
-                      'flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed cursor-pointer transition',
-                      errors.payment ? 'border-red-500 bg-red-500/5' : 'border-border hover:border-primary/40 bg-surface'
-                    )}>
-                      <Upload className="h-6 w-6 text-text-muted" />
-                      <span className="text-sm text-text-secondary">
-                        {paymentScreenshot ? paymentScreenshot.name : 'Tap to upload screenshot (required)'}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0] || null
-                          setPaymentScreenshot(f)
-                          if (paymentPreview) URL.revokeObjectURL(paymentPreview)
-                          setPaymentPreview(f ? URL.createObjectURL(f) : null)
-                          if (errors.payment) setErrors((prev) => { const n = { ...prev }; delete n.payment; return n })
-                        }}
-                      />
-                    </label>
-                    {paymentPreview && (
-                      <img src={paymentPreview} alt="Payment proof" className="mt-3 max-h-48 rounded-lg border border-border" />
-                    )}
-                    {errors.payment && <p className="mt-1.5 text-sm text-red-400">{errors.payment}</p>}
-                  </div>
-                </div>
-              )}
-
               {/* Questions */}
               {questionsLoading ? (
                 <div className="flex items-center gap-2 text-sm text-[#4A4640]">
@@ -653,6 +740,18 @@ export function PublicEventForm() {
                 </div>
               )}
 
+              {/* Paid events: no payment here — the next step handles UPI + proof */}
+              {isPaid && (
+                <div className="rounded-xl border border-border bg-surface/80 p-4 flex items-start gap-3">
+                  <IndianRupee className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <p className="text-sm text-text-secondary">
+                    This is a paid event — <strong className="text-[#14110E]">₹{price}</strong>. After you continue,
+                    you'll be walked through the UPI payment and asked to upload a payment screenshot. Your seat is
+                    held for 15 minutes until the payment is confirmed.
+                  </p>
+                </div>
+              )}
+
               {error && (
                 <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
@@ -669,7 +768,7 @@ export function PublicEventForm() {
                 style={{ background: 'var(--event-accent, #FF4D2E)', borderColor: '#14110E' }}
               >
                 <Send className="h-4 w-4" />
-                Submit Registration
+                {isPaid ? 'Continue to payment' : 'Submit Registration'}
               </Button>
             </motion.form>
 
@@ -738,6 +837,61 @@ export function PublicEventForm() {
           </motion.div>
         </AnimatePresence>
       </div>
+    </div>
+  )
+}
+
+function EventHeaderCard({
+  event,
+  className,
+}: {
+  event: CampusEventWithOrg
+  className?: string
+}) {
+  return (
+    <div className={cn('glass-strong rounded-2xl p-8', className)}>
+      <div className="flex items-start gap-4 mb-4">
+        {event.organizations?.logo_url ? (
+          <img
+            src={event.organizations.logo_url}
+            alt=""
+            className="h-12 w-12 rounded-xl object-cover"
+          />
+        ) : (
+          <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+            <Building2 className="h-6 w-6 text-primary" />
+          </div>
+        )}
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-[#14110E] mb-1">{event.title}</h1>
+          {event.organizations?.name && (
+            <p className="text-text-secondary text-sm">{event.organizations.name}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
+        {event.date && (
+          <span className="flex items-center gap-1.5">
+            <Calendar className="h-4 w-4 text-primary" />
+            {new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+        )}
+        {event.time && (
+          <span className="flex items-center gap-1.5">
+            <Clock className="h-4 w-4 text-primary" />
+            {formatTime(event.time)}
+          </span>
+        )}
+        {event.venue && (
+          <span className="flex items-center gap-1.5">
+            <MapPin className="h-4 w-4 text-primary" />
+            {event.venue}
+          </span>
+        )}
+      </div>
+      {event.description && (
+        <p className="mt-4 text-text-secondary text-sm leading-relaxed">{event.description}</p>
+      )}
     </div>
   )
 }
