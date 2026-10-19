@@ -438,13 +438,16 @@ async function signTicketImage(sb: any, stored: unknown): Promise<string | null>
   try {
     const { data, error } = await sb.storage.from('tickets').createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
     if (error) {
-      console.error('[api] ticket sign failed:', JSON.stringify(error))
+      console.error('[api] ticket sign failed for', path, ':', JSON.stringify(error))
       return null
     }
-    if (!data?.signedUrl) return null
+    if (!data?.signedUrl) {
+      console.error('[api] ticket sign returned no URL for', path, '- payload keys:', data ? Object.keys(data).join(',') : 'data-null')
+      return null
+    }
     return String(data.signedUrl)
   } catch (e) {
-    console.error('[api] ticket sign threw:', e instanceof Error ? `${e.name}: ${e.message}` : String(e))
+    console.error('[api] ticket sign threw for', path, ':', e instanceof Error ? `${e.name}: ${e.message}` : String(e))
     return null
   }
 }
