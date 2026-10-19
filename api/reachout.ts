@@ -582,6 +582,57 @@ async function runRemindCron(ctx: {
   const sb = await serviceClient()
   if (!sb) return fail(res, 500, 'Server not configured')
 
+  // ── Mode B pre-step: promoted-ticket sweep ─────────────────────────────────
+  // Waitlisted registrations promoted to 'confirmed' by the DB cancel→promote
+  // trigger never had a ticket rendered or mailed (the trigger is SQL-side).
+  // Sweep a bounded batch of confirmed-but-ticketless rows and fire the
+  // standard on-registration send: it upserts the PNG and stamps
+  // email_sent_at (force=true only bypasses the already-sent guard; the
+  // internal secret suppresses the re-render).
+  const SWEEP_LIMIT = 30
+  try {
+    const host0 = req.headers['x-forwarded-host'] || req.headers.host
+    const proto0 = req.headers['x-forwarded-proto'] || 'https'
+    const base0 = host0 ? `${proto0}://${host0}` : ''
+    const secret0 = process.env.INTERNAL_API_SECRET || process.env.CRON_SECRET || ''
+    if (base0 && secret0) {
+      const { data: promoted } = await sb
+        .from('event_responses')
+        .select('id, respondent_email, ticket_url')
+        .eq('status', 'confirmed')
+        .or('ticket_url.is.null,ticket_url.eq.""')
+        .limit(SWEEP_LIMIT)
+      if (promoted?.length) {
+        console.log(`[reachout] promoted sweep: ${promoted.length} rows`)
+        for (const reg of promoted) {
+          if (!reg?.id) continue
+          try {
+            const rr = await fetch(`${base0}/api/on-registration`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-internal-secret': secret0,
+                Authorization: `Bearer ${secret0}`,
+              },
+              body: JSON.stringify({
+                registration_id: reg.id,
+                // Bypass the "already emailed" guard (a waitlist email may
+                // have gone out earlier) WITHOUT re-rendering existing PNGs.
+                force: true,
+                internal_skip_regen: true,
+              }),
+            })
+            if (!rr.ok) console.error(`[reachout] promoted send ${reg.id} → ${rr.status}`)
+          } catch (sendErr) {
+            console.error('[reachout] promoted send failed (tolerated):', sendErr)
+          }
+        }
+      }
+    }
+  } catch (sweepErr) {
+    console.error('[reachout] promoted sweep skipped:', sweepErr)
+  }
+
   const tz = process.env.EVENT_TIMEZONE || DEFAULT_EVENT_TIMEZONE
   const tomorrowStr = tomorrowInTz(tz)
 

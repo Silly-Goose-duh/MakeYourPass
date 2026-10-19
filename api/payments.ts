@@ -692,6 +692,26 @@ async function handleStatus(req: any, res: any, params: URLSearchParams): Promis
 
   const view = await buildPaymentView(sb, reg)
 
+  // The DB cancel→promote trigger flips waitlisted→confirmed SQL-side only —
+  // no PNG, no email. The buyer's own poll is the trigger point: render + mail
+  // once here (generate-ticket upserts; the internal send enforces
+  // already-sent), then reflect the fresh ticket in THIS response.
+  if (view.registrationStatus === 'confirmed' && view.ticketState !== 'generated') {
+    await kickTicketGeneration(req, String(reg.id))
+    await kickTicketEmail(req, String(reg.id))
+    try {
+      const { data: fresh } = await sb.from('event_responses').select('ticket_url').eq('id', reg.id).maybeSingle()
+      const stored = String((fresh as any)?.ticket_url || '')
+      if (stored) {
+        view.ticketState = 'generated'
+        view.ticketImageUrl = await signTicketImage(sb, stored)
+        view.message = GENERATED_MESSAGE
+      }
+    } catch (err) {
+      console.error('[payments] post-promotion refresh failed (tolerated):', err)
+    }
+  }
+
   return res.status(200).json({
     ok: true,
     payment_state: view.paymentState,
