@@ -60,6 +60,7 @@ Status: ❌ = pending, 🟡 = in progress, ✅ = done, ⏸️ = needs user/accou
 - ✅ Redeploy + HTTP smoke tests (deployed commit dea5556; 12/12 functions preserved; vercel.json razorpay entry replaced by payments)
 - ✅ REST-level smoke tests passed
 - 🟡 e2e on real event, own phone: pay → screenshot → upload → ticket in seconds; seats decrement; fill to 0 → gray → waitlist capture → free seat → auto-promote — REST-verified end-to-end incl. dedupe + promotion; phone UX walk left to user (pilot `pilot-payments-test` live at https://makeyourpass.vercel.app/events)
+- Note: fix (commit 45d0424) — first phone walk exposed a real flow bug: capacity-gated holds land the new row `waitlisted`, but the form still opened the payment panel for it → UPI intent + proof upload that could never pass the storage policy (user hit "Upload failed"). Now the submit path reads the registration status back and routes `waitlisted` buyers straight to the waitlist screen; the panel's boot poll routes terminal states (`waitlisted`/`rejected`/cancelled hold) instead of dead-ending; proof-upload failures with a storage-policy denial now say the hold is inactive instead of blaming the connection. Pilot event capacity bumped 4 → 6 (user's runbook SQL was skipped) so the retest has 2 free slots; PILOT-0010/0011 (user's waitlist visits) remain as valid capture rows. Retest on phone still pending; use a fresh email (tjj5279 / gooseisback4u are taken).
 - Mention: payments code commit 238b683
 
 ## 🔀 Later (agreed)
