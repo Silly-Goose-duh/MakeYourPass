@@ -269,6 +269,21 @@ export function PaymentPanel({
           const res = await fetchWithTimeout(statusUrl(registrationId, ''), {}, STATUS_TIMEOUT_MS)
           const payload = readPaymentStatus(await readJson(res))
           if (res.ok) {
+            // The row can already be terminal when the panel mounts (the
+            // capacity-gated hold landed waitlisted, or the hold was voided/
+            // expired) — route it instead of dead-ending on a payment UI
+            // whose proof upload could never succeed.
+            const bootState = payloadState(payload)
+            if (bootState === 'waitlisted') {
+              if (cancelled) return
+              callbacksRef.current.onWaitlisted()
+              return
+            }
+            if (bootState === 'cancelled' || bootState === 'rejected') {
+              if (cancelled) return
+              callbacksRef.current.onExpired()
+              return
+            }
             const found = pickCode(payload)
             if (found) {
               setPolledCode(found)
@@ -449,12 +464,15 @@ export function PaymentPanel({
       if (!aliveRef.current) return
       if (upload.error || !upload.data) {
         setUploadPhase('error')
-        const message = upload.error instanceof Error ? upload.error.message : ''
-        setUploadError(
-          message.toLowerCase().includes('size') || message.toLowerCase().includes('maximum')
-            ? 'The club\u2019s storage refused this file (it may be too large). Try a smaller screenshot or a JPG.'
-            : 'Upload failed \u2014 check your connection and try again.',
-        )
+        const raw = (upload.error instanceof Error ? upload.error.message : String(upload.error || '')).toLowerCase()
+        let message = 'Upload failed \u2014 check your connection and try again.'
+        if (raw.includes('size') || raw.includes('maximum')) {
+          message = 'The club\u2019s storage refused this file (it may be too large). Try a smaller screenshot or a JPG.'
+        } else if (raw.includes('row-level security') || raw.includes('violates')) {
+          // Storage policy denial = no live hold behind this registration.
+          message = 'This registration isn\u2019t on an active payment hold, so the proof was rejected. Go back and start the payment step again.'
+        }
+        setUploadError(message)
         return
       }
       const data = upload.data as { path?: unknown }

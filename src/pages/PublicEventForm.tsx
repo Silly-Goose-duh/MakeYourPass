@@ -329,6 +329,27 @@ export function PublicEventForm() {
         return
       }
       try { localStorage.setItem(`myp_reg_${event.id}`, String(Date.now())) } catch { /* ignore */ }
+
+      // The paid hold is capacity-gated, so a full event leaves the new row
+      // `waitlisted` (no 15-min hold) instead of `pending`. Read the status
+      // back and route those buyers straight to the waitlist screen instead
+      // of a payment panel whose proof upload could never succeed.
+      try {
+        const apiBase = import.meta.env.VITE_API_BASE || ''
+        const stRes = await fetch(
+          `${apiBase}/api/payments?action=status&registration_id=${encodeURIComponent(registrationId)}`,
+        )
+        if (stRes.ok) {
+          const stPayload = (await stRes.json()) as { ticket_state?: unknown; registration_status?: unknown }
+          const stState = String(stPayload?.ticket_state ?? '').toLowerCase()
+          const stRow = String(stPayload?.registration_status ?? '').toLowerCase()
+          if (stState === 'waitlisted' || stRow === 'waitlisted') {
+            setPaidStage('waitlisted')
+            return
+          }
+        }
+      } catch { /* transient — the payment panel's own poll still guards */ }
+
       setPaidRegId(registrationId)
       setPaidCode(reg?.uniqueCode ?? '')
       setHoldExpiresAt(Date.now() + HOLD_WINDOW_MS)
