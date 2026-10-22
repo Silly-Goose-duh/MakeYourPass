@@ -43,7 +43,9 @@ Status: ❌ = pending, 🟡 = in progress, ✅ = done, ⏸️ = needs user/accou
 
 ## 5. Seats & waitlist
 - ✅ Event cards: seats-left counter; 0 → gray-out "SEATS FILLED" (visual) — evidence: gate test, 4th hold → waitlisted at submit
-- ✅ Filled-event click → /event/:slug/full waiting-list page (email capture, anon insert) — evidence: anon insert 201 + duplicate 409
+- ✅ Filled-event click → waiting-list email-capture page — now at the dedicated `/waiting-list?event=:slug` route (plus legacy `/event/:slug/full`); evidence: anon insert 201 + duplicate 409 (re-verified after the grant fix, see note)
+- ✅ About-event page shipped: clicking any card (or ticket-status links) opens `/event/:slug` with poster/title/when/where/price/seats-left and a Register now button → `/event/:slug/register` (form pipeline unchanged); full events show "Add me to the waiting list" instead; past events disable registration. New AboutEventPage + route rewire + EventsPage filled-card redirect.
+- 🟡→✅ Seat-open alerts for event_waitlist captures (built): reachout daily cron sweeps published upcoming events with seats_left>0, emails the first unalerted captures (≤30/run) via new internal `waitlist-alert` action on /api/on-registration (x-internal-secret gated, 401 verified in prod); `event_waitlist.alerted_at` column stamps only on clean send so failures retry. First real run due 02:30 UTC; gooseisback4u capture pre-planted on the pilot event as the deliverable demo.
 - ✅ Seat freed → promote_from_waitlist + "your seat opened" email — evidence: cancel → trigger promoted PILOT-0008 → confirmed; daily reachout sweep (≤30 rows) covers offline promoted buyers
 - 🟡 Registrant dashboard: proof thumbnail, duplicate badge, Verify/Delete actions — code done; needs a real admin session to visualize
 - 🟡 Export: CSV/Excel download (Sheets-compatible) — code done; needs a real admin session to visualize

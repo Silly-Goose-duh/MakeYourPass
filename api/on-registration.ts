@@ -5,6 +5,10 @@
  *  A) { registration_id, force?, kind?: 'ticket'|'reminder' }  — send ticket email
  *  B) { action:'resend', event_id, email }                     — public self-serve resend
  *  C) webhook shape { record: { id } }                         (same as A)
+ *  D) { action:'waitlist-alert', waitlist_id }                 — INTERNAL ONLY
+ *     (x-internal-secret): seat-open alert for an event_waitlist capture; used
+ *     by the reachout cron sweep. The sweep stamps event_waitlist.alerted_at
+ *     after a clean send; failures retry next cron.
  *
  * Internal-only extra: { internal_skip_regen: true } is honoured ONLY when the
  * caller presented the internal secret; it lets the T-24h cron use `force`
@@ -758,6 +762,70 @@ export default async function handler(req: any, res: any) {
         return res.status(429).json({ error: 'Too many requests. Please try again in a few minutes.' })
       }
       return await publicResend({ req, res, body, sb, isEmail, isUuid })
+    }
+
+    if (action === 'waitlist-alert') {
+      // Internal-only seat-open alert for email-only captures from the
+      // /waiting-list page (reachout sweep calls it). Body: { action,
+      // waitlist_id }. Sends the "a seat just opened" mail; the SWEEP stamps
+      // event_waitlist.alerted_at after a clean send so the next cron run
+      // retries failures instead of skipping them.
+      if (!hasInternalSecret(req)) return fail(res, 401, 'Authentication required')
+      const waitlistId = String(body?.waitlist_id || '').trim()
+      if (!isUuid(waitlistId)) return fail(res, 400, 'waitlist_id required')
+
+      const { data: entry, error: wlErr } = await sb
+        .from('event_waitlist')
+        .select('id, event_id, email, alerted_at')
+        .eq('id', waitlistId)
+        .maybeSingle()
+      if (wlErr) return fail(res, 500, 'Internal error', wlErr)
+      if (!entry) return res.status(404).json({ error: 'Unknown waitlist entry' })
+      if (entry.alerted_at) return res.status(200).json({ ok: true, skipped: 'already_alerted' })
+
+      const { data: ev, error: evErr } = await sb
+        .from('events')
+        .select('id, slug, title, date, time, venue, whatsapp_group_url, post_register_message')
+        .eq('id', entry.event_id)
+        .maybeSingle()
+      if (evErr) return fail(res, 500, 'Internal error', evErr)
+      if (!ev) return res.status(404).json({ error: 'Unknown event' })
+
+      const RESEND_API_KEY = process.env.RESEND_API_KEY
+      const RESEND_FROM = process.env.RESEND_FROM || 'MakeYourPass <onboarding@resend.dev>'
+      if (!RESEND_API_KEY) throw new Error('Resend not configured')
+
+      const title = esc(ev.title || 'the event')
+      const when = [ev.date, ev.time].filter(Boolean).join(' · ')
+      const where = esc(ev.venue || 'TBD')
+      const host = req.headers['x-forwarded-host'] || req.headers.host
+      const proto = req.headers['x-forwarded-proto'] || 'https'
+      const base = host ? `${proto}://${host}` : ''
+      const registerLink = base && ev.slug ? `${base}/event/${ev.slug}/register` : `${base}/events`
+
+      const subject = `A seat just opened for ${safeSubjectPart(ev.title || 'event')} 🎉`
+      const html = emailShell({
+        title: 'A seat just opened!',
+        preheader: `A spot opened for ${ev.title || 'the event'} — register before it's gone`,
+        bodyHtml: `<p style="margin:0 0 12px;font-size:15px;line-height:1.55">Good news — a seat just opened up for <b>${title}</b> (you're on its waiting list).</p>
+          <p style="margin:0 0 16px"><a href="${esc(registerLink)}" style="display:inline-block;background:#FF4D2E;color:#FFFFFF;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px;font-weight:700">Register now →</a></p>
+          <p style="margin:0;font-size:14px;color:#4A4640"><b>When:</b> ${esc(when || 'TBD')}<br/><b>Where:</b> ${where}</p>${clubFooter(ev)}`,
+      })
+
+      const { Resend } = await import('resend')
+      const resend = new Resend(RESEND_API_KEY)
+      const { error: sendErr } = await resend.emails.send({
+        from: RESEND_FROM,
+        to: entry.email,
+        subject,
+        html,
+      })
+      // Same contract as deliverEmail: a failed send is data, not a 500.
+      if (sendErr) {
+        console.error('[on-registration] waitlist alert send failed:', sendErr.message)
+        return res.status(200).json({ ok: true, email_sent: false, email_error: String(sendErr.message || 'send failed') })
+      }
+      return res.status(200).json({ ok: true, email_sent: true })
     }
 
     if (action) return fail(res, 400, 'Unsupported action')

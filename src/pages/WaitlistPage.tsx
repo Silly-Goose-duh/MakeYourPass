@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Calendar, CheckCircle, Clock, MapPin, UserPlus, AlertCircle } from 'lucide-react'
 import { getEventBySlug, getSeatStatus, subscribeToResponses, supabase, type SeatStatus } from '@/lib/supabase'
 import { isSoldOut } from '@/components/event/eventUtils'
@@ -9,12 +9,13 @@ import type { CampusEvent, Organization } from '@/types'
 /**
  * WaitlistPage — the seats-filled waiting-list form.
  *
- * Route (App.tsx wiring handled separately by the main session):
+ * Route:
  *   /event/:eventSlug/full        → URL: /event/<slug>/full
- *   • param name matches the existing `event/:eventSlug` convention in App.tsx.
+ *   /waiting-list?event=:slug     → dedicated route (same component; slug via
+ *                                   the ?event= query param)
  *
- * Reached from EventsPage when the event_seat_status view reports seats_left
- * <= 0 for a non-past event. Anonymous-only flow: it reads the event by slug
+ * Reached from EventsPage (and the About page) when the event_seat_status view
+ * reports seats_left <= 0 for a non-past event. Anonymous-only flow: it reads the event by slug
  * (same fetch pattern as PublicEventForm) and inserts into `event_waitlist`
  * with the anon INSERT policy from migration 002.
  *
@@ -41,6 +42,9 @@ const prefersReducedMotion =
 
 export default function WaitlistPage() {
   const { eventSlug } = useParams<{ eventSlug: string }>()
+  // Slug comes either from the route (/event/:eventSlug/full) or, on the
+  // dedicated /waiting-list route, from the ?event= query param.
+  const [searchParams] = useSearchParams()
   const [event, setEvent] = useState<LoadedEvent | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -57,7 +61,7 @@ export default function WaitlistPage() {
   const [joined, setJoined] = useState(false)
   // Guard against realtime callbacks flipping the UI away after a successful join.
   const joinedRef = useRef(false)
-  const slug = eventSlug ?? ''
+  const slug = eventSlug || searchParams.get('event') || ''
 
   // ─── Load the event by slug (same pattern/anon policy as PublicEventForm) ───
   useEffect(() => {

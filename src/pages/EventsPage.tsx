@@ -264,9 +264,6 @@ export default function EventsPage() {
                       // treatment, a "SEATS FILLED" chip, not-allowed cursor on
                       // the card's register CTA (its only anchor), and route to
                       // the waiting-list page on click.
-                      // INTERNAL REPORT: clicking a greyed card navigates to
-                      // `/event/:slug/full` — a NEW route whose App.tsx wiring
-                      // is handled separately (main session).
                       return (
                         <motion.div
                           key={event.id}
@@ -277,7 +274,7 @@ export default function EventsPage() {
                             if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
                             e.preventDefault()
                             e.stopPropagation()
-                            navigate(`/event/${event.slug}/full`)
+                            navigate(`/waiting-list?event=${event.slug}`)
                           }}
                         >
                           <motion.div

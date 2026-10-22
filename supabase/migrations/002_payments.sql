@@ -1024,7 +1024,12 @@ CREATE TABLE IF NOT EXISTS public.event_waitlist (
   user_agent text
              CONSTRAINT event_waitlist_user_agent_len_check
              CHECK (user_agent IS NULL OR length(user_agent) <= 512),
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- Seat-open alert bookkeeping (added post-002 via ALTER): NULL = never
+  -- alerted. The reachout cron sweep (≤30/run) emails pending captures once
+  -- event_seat_status reports seats_left > 0 for a published upcoming event,
+  -- then stamps alerted_at ONLY on a clean send so failures retry.
+  alerted_at timestamptz
 );
 
 -- One entry per email per event, case-insensitive (same pattern as

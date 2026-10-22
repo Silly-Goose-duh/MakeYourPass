@@ -633,6 +633,85 @@ async function runRemindCron(ctx: {
     console.error('[reachout] promoted sweep skipped:', sweepErr)
   }
 
+  // ── Mode B pre-step 2: seat-open alerts for event_waitlist captures ─────────
+  // The DB cancel→promote trigger only flips waitlisted REGISTRATIONS. Email-
+  // only captures from the /waiting-list page live in event_waitlist and would
+  // never hear that a seat opened. Sweep events with seats_left > 0 (upcoming,
+  // published) and email the FIRST unalerted capture per entry, bounded to 30
+  // per run. The /on-registration waitlist-alert action sends and reports
+  // { email_sent }; we stamp alerted_at ONLY on a clean send so permanent
+  // failures (e.g. Resend sandbox) retry the next day instead of dropping.
+  const ALERT_LIMIT = 30
+  try {
+    const hostW = req.headers['x-forwarded-host'] || req.headers.host
+    const protoW = req.headers['x-forwarded-proto'] || 'https'
+    const baseW = hostW ? `${protoW}://${hostW}` : ''
+    const secretW = process.env.INTERNAL_API_SECRET || process.env.CRON_SECRET || ''
+    if (baseW && secretW) {
+      const { data: openSeatV, error: seatErr } = await sb
+        .from('event_seat_status')
+        .select('id')
+        .gt('seats_left', 0)
+      if (seatErr) throw seatErr
+      const openIds = (openSeatV || []).map((r: any) => r.id)
+      if (openIds.length) {
+        const tzW = process.env.EVENT_TIMEZONE || DEFAULT_EVENT_TIMEZONE
+        const todayW = dateInTz(tzW)
+        const { data: openEvents, error: openErr } = await sb
+          .from('events')
+          .select('id')
+          .in('id', openIds)
+          .eq('status', 'published')
+          .gte('date', todayW)
+        if (openErr) throw openErr
+        const alertableIds = (openEvents || []).map((e: any) => e.id)
+        if (alertableIds.length) {
+          const { data: captures, error: capErr } = await sb
+            .from('event_waitlist')
+            .select('id, event_id')
+            .in('event_id', alertableIds)
+            .is('alerted_at', null)
+            .order('created_at', { ascending: true })
+            .limit(ALERT_LIMIT)
+          if (capErr) throw capErr
+          if (captures?.length) {
+            console.log(`[reachout] seat-open alert sweep: ${captures.length} entries`)
+            for (const entry of captures) {
+              try {
+                const rr = await fetch(`${baseW}/api/on-registration`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-internal-secret': secretW,
+                    Authorization: `Bearer ${secretW}`,
+                  },
+                  body: JSON.stringify({ action: 'waitlist-alert', waitlist_id: entry.id }),
+                })
+                const j = await rr.json().catch(() => ({}))
+                if (rr.ok && j?.email_sent) {
+                  const { error: stampErr } = await sb
+                    .from('event_waitlist')
+                    .update({ alerted_at: new Date().toISOString() })
+                    .eq('id', entry.id)
+                  if (stampErr) console.error(`[reachout] alerted_at stamp failed for ${entry.id}:`, stampErr)
+                } else if (rr.ok && j?.skipped === 'already_alerted') {
+                  // Self-heal a lost stamp so the entry stops being re-picked.
+                  await sb.from('event_waitlist').update({ alerted_at: new Date().toISOString() }).eq('id', entry.id)
+                } else {
+                  console.error(`[reachout] seat-open alert ${entry.id} → ${rr.status}`)
+                }
+              } catch (sendErr) {
+                console.error('[reachout] seat-open alert failed (tolerated):', sendErr)
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (alertErr) {
+    console.error('[reachout] seat-open alert sweep skipped:', alertErr)
+  }
+
   const tz = process.env.EVENT_TIMEZONE || DEFAULT_EVENT_TIMEZONE
   const tomorrowStr = tomorrowInTz(tz)
 
