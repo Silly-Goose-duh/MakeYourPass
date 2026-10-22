@@ -499,10 +499,13 @@ GRANT  EXECUTE ON FUNCTION public._promote_waitlist_locked(uuid) TO service_role
 -- original columns (id, capacity, confirmed_count, seats_left) keep their
 -- names, order, and semantics; the hold counts are appended so existing
 -- readers are untouched. seats_left now subtracts LIVE holds - the public
--- form greys out while 15-minute holds are outstanding. security_invoker is
--- preserved from phase1-seat-view-rls.sql so anon still cannot read counts.
-CREATE OR REPLACE VIEW public.event_seat_status
-WITH (security_invoker = on) AS
+-- form greys out while 15-minute holds are outstanding.
+-- security_invoker=off on purpose: the owner (postgres) counts rows inside
+-- the view so the PUBLIC cards show true seat counts; anon RLS on
+-- event_responses would otherwise zero them (PII stays hidden - the view
+-- exposes aggregates only, no attendee columns). Without this the cards
+-- never grey out and the phone flow dead-ends on full events.
+CREATE OR REPLACE VIEW public.event_seat_status AS
 SELECT
   e.id,
   e.capacity,
@@ -1298,7 +1301,8 @@ CREATE INDEX IF NOT EXISTS idx_event_waitlist_event_created
 --   9. _promote_waitlist_locked(uuid) replaced (hold-aware occupancy)
 --  10. event_seat_status           replaced (holds counted; original four
 --                                  columns unchanged; appended hold columns;
---                                  security_invoker preserved)
+--                                  aggregates-only view: security_invoker=off
+--                                  so public cards see true seat counts)
 --  11. submit_event_response(uuid,text,text[,text[,text]]) - recreated:
 --                                  FREE = 001 behaviour; PAID (price > 0) =
 --                                  insert as status='pending' + hold; both
