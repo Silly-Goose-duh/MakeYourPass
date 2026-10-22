@@ -31,7 +31,8 @@ Status: ❌ = pending, 🟡 = in progress, ✅ = done, ⏸️ = needs user/accou
 - ✅ Download PDF + PNG buttons — code complete, typecheck/lint green
 - ✅ Success screen: club-editable message + WhatsApp group button + "check your email" copy — code complete, typecheck/lint green
 - ✅ FREE events unchanged (instant ticket, no proof) — code complete, typecheck/lint green
-- 🟡 Phone-based UI walk (QR intent, upload, animation, downloads) — user test pending
+- Note: fix (commits after 45d0424) — user's free walk exposed that the free "thank you" screen showed NOTHING (ticket was generated server-side but only visible if the email arrived, which the Resend sandbox blocks for most addresses). Now the FREE flow: (1) awaits the on-registration kick before mounting the success screen, (2) new `FreeTicketSuccess` polls `/api/payments status` for the generated PNG and reuses `TicketSuccess` — same ticket image, code, PNG/PDF downloads, club message + WhatsApp button as paid buyers; (3) if the poll reveals `waitlisted` (full event), it routes to the same waitlist screen as the paid flow; (4) `/api/on-registration` no longer 500s when the Resend send fails — returns `email_error` as data (PNG generation unaffected, `email_sent_at` only stamps on successful send). Live e2e in prod: free submit → kick 200 `{ok:true}` → status `generated` + signed URL; full-capacity free submit → `waitlisted` status route verified. Test rows (freewalk1/2) deleted; vest1244 (user's real free registration, PILOT-0014) kept with ticket.
+- 🟡 Phone-based UI walk (QR intent, upload, animation, downloads, free-flow ticket screen) — user test pending
 
 ## 4. Ticket engine
 - ✅ Default ticket template starter file (safe-zones for name / unique code / QR), in repo + uploaded to `ticket-templates` — code complete

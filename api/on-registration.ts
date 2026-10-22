@@ -497,7 +497,7 @@ async function deliverEmail(opts: {
   regenerate: boolean
   /** Apply the 60s self-serve cooldown (public flows only). */
   cooldown: boolean
-}): Promise<{ ticketUrl: string | null; ticketError: string | null }> {
+}): Promise<{ ticketUrl: string | null; ticketError: string | null; emailError: string | null }> {
   const { sb, req, reg, kind } = opts
   const ev = reg.events || {}
 
@@ -505,7 +505,7 @@ async function deliverEmail(opts: {
   if (opts.cooldown && reg.email_sent_at) {
     const last = new Date(reg.email_sent_at).getTime()
     if (Number.isFinite(last) && Date.now() - last < RESEND_COOLDOWN_MS) {
-      return { ticketUrl: reg.ticket_url || null, ticketError: 'cooldown' }
+      return { ticketUrl: reg.ticket_url || null, ticketError: 'cooldown', emailError: null }
     }
   }
 
@@ -601,6 +601,10 @@ async function deliverEmail(opts: {
     if (png) attachments.push({ filename: 'ticket.png', content: png })
   }
 
+  // A failed send is NOT a failed ticket: the PNG is already rendered (or
+  // queued for self-heal). Sandbox/domain limits reject most recipients
+  // until the club verifies a sending domain — surface that as data (the
+  // caller answers with `email_error`) instead of a 500.
   const { error: sendErr } = await resend.emails.send({
     from: RESEND_FROM,
     to: reg.respondent_email,
@@ -608,16 +612,19 @@ async function deliverEmail(opts: {
     html,
     attachments,
   })
-  if (sendErr) throw new Error(`Resend failed: ${sendErr.message}`)
+  if (sendErr) console.error('[on-registration] Resend send failed:', sendErr.message)
+  const emailError = sendErr ? String(sendErr.message || 'Resend send failed') : null
 
-  const { error: stampErr } = await sb
-    .from('event_responses')
-    .update({ email_sent_at: new Date().toISOString() })
-    .eq('id', reg.id)
-  // Log only: the mail is already out, and the per-registration cooldown is
-  // backed by the per-IP rate limit if this write fails.
-  if (stampErr) console.error('[on-registration] email_sent_at stamp failed:', stampErr.message || stampErr)
-  return { ticketUrl, ticketError }
+  if (!sendErr) {
+    const { error: stampErr } = await sb
+      .from('event_responses')
+      .update({ email_sent_at: new Date().toISOString() })
+      .eq('id', reg.id)
+    // Log only: the mail is already out, and the per-registration cooldown is
+    // backed by the per-IP rate limit if this write fails.
+    if (stampErr) console.error('[on-registration] email_sent_at stamp failed:', stampErr.message || stampErr)
+  }
+  return { ticketUrl, ticketError, emailError }
 }
 
 /** Anonymous self-serve resend — fixed answer, silent send. */
@@ -700,7 +707,7 @@ async function sendForRegistration(ctx: {
     return res.status(409).json({ error: 'This registration was cancelled.' })
   }
 
-  const { ticketUrl, ticketError } = await deliverEmail({
+  const { ticketUrl, ticketError, emailError } = await deliverEmail({
     sb,
     req,
     reg,
@@ -715,7 +722,7 @@ async function sendForRegistration(ctx: {
   }
   return res
     .status(200)
-    .json({ ok: true, ticket_url: ticketUrl, kind, ticket_error: ticketError })
+    .json({ ok: true, ticket_url: ticketUrl, kind, ticket_error: ticketError, email_error: emailError })
 }
 
 /** Anonymous sends are only allowed seconds after the public form insert. */

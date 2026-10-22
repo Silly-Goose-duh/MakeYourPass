@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Send, CheckCircle, Calendar, MapPin, Clock, Building2, AlertCircle, Palette, IndianRupee, Users } from 'lucide-react'
+import { ArrowLeft, Send, Calendar, MapPin, Clock, Building2, AlertCircle, Palette, IndianRupee, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { formatTime, cn } from '@/lib/utils'
 import {
@@ -13,6 +13,7 @@ import {
 } from '@/lib/supabase'
 import { PaymentPanel } from '@/components/event/PaymentPanel'
 import { TicketSuccess } from '@/components/event/TicketSuccess'
+import { FreeTicketSuccess } from '@/components/event/FreeTicketSuccess'
 import type { CampusEvent, Organization, EventQuestion } from '@/types'
 
 interface PosterTheme {
@@ -93,6 +94,8 @@ export function PublicEventForm() {
   // Paid flow (events.price > 0): registration id/code from the first submit,
   // the 15-minute seat hold, and the step the user is on.
   const [paidStage, setPaidStage] = useState<PaidStage | null>(null)
+  const [freeReg, setFreeReg] = useState('')
+  const [freeCode, setFreeCode] = useState('')
   const [paidRegId, setPaidRegId] = useState('')
   const [paidCode, setPaidCode] = useState('')
   const [holdExpiresAt, setHoldExpiresAt] = useState(0)
@@ -312,15 +315,23 @@ export function PublicEventForm() {
       const reg = extractRegistration(responseData)
       const registrationId = reg?.id ?? (isUuid(responseData.id) ? responseData.id : '')
 
-      // Free: email ticket now (unchanged). Paid: 15-minute seat hold, then
-      // the UPI payment + proof verification flow.
+      // Free: generate the ticket PNG and send the ticket email BEFORE the
+      // success screen mounts, so the ticket is visible and downloadable
+      // on-screen — not "email-only". The anonymous kick is honoured inside
+      // the public send window; failures self-heal via the status endpoint
+      // and the daily sweep.
       if (event.payment_type !== 'paid') {
-        fetch(`${import.meta.env.VITE_API_BASE || ''}/api/on-registration`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ registration_id: registrationId }),
-        }).catch(() => {})
+        try {
+          const apiBase = import.meta.env.VITE_API_BASE || ''
+          await fetch(`${apiBase}/api/on-registration`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ registration_id: registrationId }),
+          })
+        } catch { /* status self-heal + daily sweep retry generation/emails */ }
         try { localStorage.setItem(`myp_reg_${event.id}`, String(Date.now())) } catch { /* ignore */ }
+        setFreeReg(registrationId)
+        setFreeCode(reg?.uniqueCode ?? '')
         setSubmitted(true)
         return
       }
@@ -565,58 +576,20 @@ export function PublicEventForm() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', duration: 0.6 }}
-          className="glass-strong rounded-2xl p-10 max-w-lg w-full text-center relative"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', delay: 0.2, duration: 0.5 }}
-            className="h-20 w-20 rounded-2xl bg-success/20 flex items-center justify-center mx-auto mb-6"
-          >
-            <CheckCircle className="h-10 w-10 text-success" />
-          </motion.div>
-          <motion.h2
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-2xl font-bold text-[#14110E] mb-3"
-          >
-            Response Submitted!
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="text-text-secondary mb-2"
-          >
-            Thank you for registering for <strong className="text-[#14110E]">{event?.title}</strong>.
-          </motion.p>
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="text-text-muted text-sm mb-8"
-          >
-            You'll receive your ticket at {respondentEmail || 'your email'}.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-          >
-            <Link to="/">
-              <Button variant="primary" size="lg">
-                Back to Home
-              </Button>
-            </Link>
-          </motion.div>
-        </motion.div>
+        <div className="relative w-full max-w-xl">
+          <FreeTicketSuccess
+            registrationId={freeReg}
+            fallbackCode={freeCode}
+            eventName={event?.title ?? ''}
+            attendeeName={respondentName.trim()}
+            email={respondentEmail.trim()}
+            message={(extras.post_register_message || '').trim()}
+            whatsappUrl={(extras.whatsapp_group_url || '').trim() || null}
+            onWaitlisted={handleWaitlisted}
+          />
+        </div>
       </div>
     )
   }
