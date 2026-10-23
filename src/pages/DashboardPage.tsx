@@ -14,18 +14,22 @@ import {
   getEventResponses,
   getSeatStatus,
   subscribeToResponses,
+  subscribeToCancellationRequests,
   admitByQrToken,
   verifyPayment,
   markEventEnded,
   getAccessToken,
+  listEventCancellationRequests,
+  reviewEventCancellation,
   type SeatStatus,
 } from '@/lib/supabase'
-import type { CampusEvent, EventResponse } from '@/types'
+import type { CampusEvent, EventResponse, EventCancellationRequest } from '@/types'
 
 function DashboardInner({ eventId }: { eventId: string }) {
   const [event, setEvent] = useState<CampusEvent | null>(null)
   const [eventTitle, setEventTitle] = useState('')
   const [responses, setResponses] = useState<EventResponse[]>([])
+  const [cancellationRequests, setCancellationRequests] = useState<EventCancellationRequest[]>([])
   const [seat, setSeat] = useState<SeatStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
@@ -38,10 +42,11 @@ function DashboardInner({ eventId }: { eventId: string }) {
   const [toast, setToast] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const [{ data: ev }, { data: res }, { data: st }] = await Promise.all([
+    const [{ data: ev }, { data: res }, { data: st }, { data: cancellations }] = await Promise.all([
       getEventById(eventId),
       getEventResponses(eventId),
       getSeatStatus(eventId),
+      listEventCancellationRequests(eventId),
     ])
     if (ev) {
       setEvent(ev as CampusEvent)
@@ -49,6 +54,7 @@ function DashboardInner({ eventId }: { eventId: string }) {
     }
     if (res) setResponses(res)
     if (st) setSeat(st)
+    setCancellationRequests(cancellations || [])
     setLoading(false)
   }, [eventId])
 
@@ -59,7 +65,8 @@ function DashboardInner({ eventId }: { eventId: string }) {
 
   useEffect(() => {
     const unsub = subscribeToResponses(eventId, () => { void load() })
-    return unsub
+    const unsubCancellations = subscribeToCancellationRequests(eventId, () => { void load() })
+    return () => { unsub(); unsubCancellations() }
   }, [eventId, load])
 
   const filtered = useMemo(() => {
@@ -145,6 +152,24 @@ function DashboardInner({ eventId }: { eventId: string }) {
       flash(`Ticket sent to ${r.respondent_email}`)
     } catch (e) {
       flash(e instanceof Error ? e.message : 'Send failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const reviewCancellation = async (request: EventCancellationRequest, approve: boolean) => {
+    setBusyId(request.id)
+    try {
+      const { data, error } = await reviewEventCancellation(request.id, approve)
+      if (error) throw error
+      if (approve) {
+        flash(data?.promoted_registration_id ? 'Cancellation approved — the next waitlisted attendee was promoted.' : 'Cancellation approved.')
+      } else {
+        flash('Cancellation request rejected. The ticket remains active.')
+      }
+      await load()
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Could not review cancellation')
     } finally {
       setBusyId(null)
     }
@@ -284,6 +309,31 @@ function DashboardInner({ eventId }: { eventId: string }) {
               {reachBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Send to all
             </Button>
+          </Card>
+        )}
+
+        {cancellationRequests.some((r) => r.status === 'requested') && (
+          <Card className="p-4 mb-6 space-y-3">
+            <div>
+              <h3 className="font-semibold text-text-primary">Cancellation requests</h3>
+              <p className="text-xs text-text-muted">Review requests before releasing a seat to the next person.</p>
+            </div>
+            {cancellationRequests.filter((r) => r.status === 'requested').map((request) => {
+              const attendee = responses.find((r) => r.id === request.registration_id)
+              return (
+                <div key={request.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 border border-border bg-surface">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-text-primary truncate">{attendee?.respondent_name || 'Attendee'}</p>
+                    <p className="text-xs text-text-muted truncate">{attendee?.respondent_email || 'Registration'} · requested {new Date(request.requested_at).toLocaleString()}</p>
+                    {request.reason && <p className="text-xs text-text-secondary mt-1">Reason: {request.reason}</p>}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" variant="success" onClick={() => void reviewCancellation(request, true)} loading={busyId === request.id}>Approve</Button>
+                    <Button size="sm" variant="danger" onClick={() => void reviewCancellation(request, false)} disabled={busyId === request.id}>Reject</Button>
+                  </div>
+                </div>
+              )
+            })}
           </Card>
         )}
 

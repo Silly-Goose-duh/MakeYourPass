@@ -80,22 +80,26 @@ function isDatabaseUnreachable(err: unknown): boolean {
 }
 type AdminClient = any
 
-/**
- * Addresses auto-granted platform superadmin on signup.
- *
- * Configured via the server env var `SUPERADMIN_EMAILS` (comma-separated,
- * case-insensitive). Falls back to the original hardcoded owner address so
- * existing behaviour is preserved — but see the note at the call site: email
- * confirmation is currently off, so this list effectively acts as a set of
- * shared secrets and belongs in the environment, not in source.
- */
+/** Addresses auto-granted platform superadmin on signup. */
 function isSuperadminEmail(email: string): boolean {
   const configured = (process.env.SUPERADMIN_EMAILS || '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean)
-  const list = configured.length ? configured : ['gooseisback4u@gmail.com']
-  return list.includes((email || '').trim().toLowerCase())
+  return configured.includes((email || '').trim().toLowerCase())
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function safeSubjectPart(value: unknown): string {
+  return String(value ?? '').replace(/[\r\n]+/g, ' ').trim()
 }
 
 async function findUserByEmail(admin: AdminClient, email: string) {
@@ -131,28 +135,32 @@ async function sendVerifyEmail(opts: {
   const { Resend } = await import('resend')
   const resend = new Resend(RESEND_API_KEY)
   const portalPreview = `${opts.origin}/${opts.orgSlug}`
+  const safeFullName = escapeHtml(opts.fullName || 'there')
+  const safeOrgName = escapeHtml(opts.orgName)
+  const safeActionLink = escapeHtml(opts.actionLink)
+  const safePortalPreview = escapeHtml(portalPreview)
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#F4EFE1;color:#14110E">
       <h1 style="font-size:22px;margin:0 0 12px">Verify your email</h1>
-      <p>Hi ${opts.fullName || 'there'},</p>
-      <p>Thanks for registering <strong>${opts.orgName}</strong> on MakeYourPass.</p>
+      <p>Hi ${safeFullName},</p>
+      <p>Thanks for registering <strong>${safeOrgName}</strong> on MakeYourPass.</p>
       <p>Confirm your email, then wait for superadmin approval of your organization.</p>
       <p style="margin:24px 0">
-        <a href="${opts.actionLink}"
+        <a href="${safeActionLink}"
            style="display:inline-block;background:#FF4D2E;color:#fff;padding:14px 20px;text-decoration:none;font-weight:700;border:2px solid #14110E">
           Confirm email address
         </a>
       </p>
       <p style="font-size:13px;color:#4A4640">
-        Once approved, your portal opens at<br/><strong>${portalPreview}</strong>
+        Once approved, your portal opens at<br/><strong>${safePortalPreview}</strong>
       </p>
-      <p style="font-size:11px;color:#7A756B;word-break:break-all;margin-top:16px">${opts.actionLink}</p>
+      <p style="font-size:11px;color:#7A756B;word-break:break-all;margin-top:16px">${safeActionLink}</p>
     </div>
   `
   const { error } = await resend.emails.send({
     from: RESEND_FROM,
     to: opts.email,
-    subject: `Verify your email — ${opts.orgName} on MakeYourPass`,
+    subject: `Verify your email — ${safeSubjectPart(opts.orgName)} on MakeYourPass`,
     html,
   })
   if (error) return { sent: false, error: error.message || 'send failed' }
@@ -370,13 +378,8 @@ export default async function handler(req: any, res: any) {
           // it would strip /mc access from any OTHER existing superadmin who
           // re-runs signup (the column already holds their true value).
           //
-          // The list is env-driven (`SUPERADMIN_EMAILS`, comma-separated) rather
-          // than a literal, because signup email confirmation is currently OFF:
-          // with the address hardcoded in source, anyone who knew it could
-          // register with it and be granted full platform admin. The legacy
-          // address is kept as the default so the existing owner is not locked
-          // out, but it should be moved into the env var and email
-          // confirmation should be turned on in Supabase.
+          // The list is env-driven (`SUPERADMIN_EMAILS`, comma-separated) and
+          // fails closed when the variable is unset.
           ...(isSuperadminEmail(email) ? { is_superadmin: true } : {}),
         },
         { onConflict: 'id' }
@@ -426,6 +429,58 @@ export default async function handler(req: any, res: any) {
       status: 'pending',
     })
     if (reqErr) {
+      // The pre-checks above are intentionally only a fast path. The partial
+      // unique indexes in 004-org-onboarding-race-protection.sql are the
+      // authority when two signups arrive at the same time.
+      const conflictText = [
+        (reqErr as { code?: string }).code || '',
+        reqErr.message || '',
+        (reqErr as { details?: string }).details || '',
+        (reqErr as { hint?: string }).hint || '',
+      ].join(' ')
+      if ((reqErr as { code?: string }).code === '23505') {
+        const { data: slugConflict } = await admin
+          .from('organization_registration_requests')
+          .select('id, organization_name, organization_slug')
+          .ilike('organization_slug', organization_slug)
+          .eq('status', 'pending')
+          .limit(1)
+          .maybeSingle()
+
+        if (slugConflict && /pending_slug_key/i.test(conflictText)) {
+          return res.status(400).json({
+            error: `“/${organization_slug}” already has a pending request (${slugConflict.organization_name}). Choose another URL or wait for that review to finish.`,
+            code: 'SLUG_PENDING',
+            slug: organization_slug,
+          })
+        }
+
+        const { data: userConflict } = await admin
+          .from('organization_registration_requests')
+          .select('id, organization_name, organization_slug')
+          .eq('user_id', userId)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (userConflict && /pending_user_key/i.test(conflictText)) {
+          if (!emailConfirmed) {
+            await admin.auth.admin.updateUserById(userId, { email_confirm: true })
+            emailConfirmed = true
+          }
+          return res.status(200).json({
+            ok: true,
+            already_pending: true,
+            user_id: userId,
+            email,
+            organization_slug: userConflict.organization_slug,
+            needs_verify: false,
+            can_sign_in: true,
+            message: `You already have a pending request for ${userConflict.organization_name}. Sign in and open /dashboard.`,
+          })
+        }
+      }
       return res.status(500).json({ error: 'Org request failed: ' + reqErr.message })
     }
 

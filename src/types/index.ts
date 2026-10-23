@@ -6,6 +6,7 @@ export interface Profile {
   id: string
   full_name: string
   email: string
+  phone?: string
   is_superadmin: boolean
   created_at: string
   updated_at: string
@@ -107,13 +108,14 @@ export type PaymentStatus = 'na' | 'pending' | 'verified' | 'rejected'
 export interface EventResponse {
   id: string
   event_id: string
+  user_id?: string | null
   respondent_name: string
   respondent_email: string
   respondent_phone: string
   submitted_at: string
   unique_code: string | null
   qr_token: string
-  status: 'confirmed' | 'waitlisted' | 'cancelled'
+  status: 'confirmed' | 'waitlisted' | 'cancelled' | 'pending'
   admitted_at: string | null
   admitted_by: string | null
   ticket_url: string | null
@@ -121,9 +123,23 @@ export interface EventResponse {
   payment_proof_url?: string
   payment_status?: PaymentStatus
   payment_verified_at?: string | null
+  refund_status?: 'not_applicable' | 'pending' | 'completed' | 'rejected'
   certificate_url?: string | null
   certificate_sent_at?: string | null
   reminder_sent_at?: string | null
+}
+
+export interface EventCancellationRequest {
+  id: string
+  registration_id: string
+  event_id: string
+  user_id: string
+  reason: string
+  status: 'requested' | 'approved' | 'rejected'
+  club_note: string
+  reviewed_by: string | null
+  requested_at: string
+  reviewed_at: string | null
 }
 
 export interface ResponseAnswer {

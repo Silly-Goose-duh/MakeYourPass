@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -26,33 +26,89 @@ export function OrgDashboard() {
   const [pending, setPending] = useState<OrgRegistrationRequest | null>(null)
   const [rejected, setRejected] = useState<OrgRegistrationRequest | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const loadAttempt = useRef(0)
 
-  useEffect(() => {
+  const loadDashboard = useCallback(async () => {
     if (!user) return
-    let alive = true
-    ;(async () => {
-      const [{ data: profileData }, { data: memberships }, { data: requests }] = await Promise.all([
+    const attempt = ++loadAttempt.current
+    setLoading(true)
+    setLoadError(null)
+
+    try {
+      const [profileResult, membershipResult, requestResult] = await Promise.all([
         getProfile(user.id),
         getUserOrganizations(),
         getUserRequests(),
       ])
-      if (!alive) return
-      if (profileData) setProfile(profileData)
-      const rows = (memberships || []) as (OrganizationMember & { organizations: Organization | null })[]
+
+      if (attempt !== loadAttempt.current) return
+      const failed = [profileResult, membershipResult, requestResult].find((result) => result.error)
+      if (failed?.error) {
+        const message = failed.error instanceof Error
+          ? failed.error.message
+          : typeof failed.error === 'object' && failed.error !== null && 'message' in failed.error
+            ? String((failed.error as { message: unknown }).message)
+            : 'The dashboard data could not be loaded.'
+        setLoadError(message)
+        return
+      }
+
+      if (profileResult.data) setProfile(profileResult.data)
+      const rows = (membershipResult.data || []) as (OrganizationMember & { organizations: Organization | null })[]
       setMemberRows(rows)
       setOrgs(rows.map((m) => m.organizations).filter(Boolean) as Organization[])
-      const reqs = requests || []
+      const reqs = requestResult.data || []
       setPending(reqs.find((r) => r.status === 'pending') || null)
       setRejected(reqs.find((r) => r.status === 'rejected') || null)
-      setLoading(false)
-    })()
-    return () => { alive = false }
+    } catch (error) {
+      if (attempt !== loadAttempt.current) return
+      setLoadError(error instanceof Error ? error.message : 'The dashboard data could not be loaded.')
+    } finally {
+      if (attempt === loadAttempt.current) setLoading(false)
+    }
   }, [user])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadDashboard()
+    return () => { loadAttempt.current += 1 }
+  }, [loadDashboard])
 
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#F4EFE1' }}>
         <div className="h-8 w-8 border-[3px] border-[#14110E] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#F4EFE1' }}>
+        <div
+          className="max-w-lg w-full p-8 sm:p-10 text-center"
+          style={{ background: '#fff', border: '2.5px solid #14110E', boxShadow: '7px 7px 0 #14110E' }}
+        >
+          <div
+            className="h-16 w-16 flex items-center justify-center mx-auto mb-6"
+            style={{ background: '#FFE9E3', border: '2.5px solid #14110E' }}
+          >
+            <RefreshCw className="h-8 w-8" strokeWidth={2.5} style={{ color: '#FF4D2E' }} />
+          </div>
+          <h1 className="text-2xl font-extrabold mb-3" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
+            Dashboard unavailable
+          </h1>
+          <p className="text-sm font-semibold mb-3" style={{ color: '#4A4640' }}>
+            We couldn&apos;t load your organizations and requests. Your dashboard has not been treated as empty.
+          </p>
+          <p className="text-xs font-semibold mb-6" style={{ color: '#FF4D2E' }} role="alert">
+            {loadError}
+          </p>
+          <Button variant="primary" size="lg" onClick={() => void loadDashboard()}>
+            <RefreshCw className="h-5 w-5" /> Try again
+          </Button>
+        </div>
       </div>
     )
   }

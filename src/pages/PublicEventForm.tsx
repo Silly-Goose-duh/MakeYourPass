@@ -8,13 +8,16 @@ import {
   getEventBySlug,
   getEventQuestions,
   submitEventResponse,
+  submitAuthenticatedEventResponse,
   submitResponseAnswers,
+  getCurrentProfile,
   getOrganizationBySlug,
 } from '@/lib/supabase'
 import { PaymentPanel } from '@/components/event/PaymentPanel'
 import { TicketSuccess } from '@/components/event/TicketSuccess'
 import { FreeTicketSuccess } from '@/components/event/FreeTicketSuccess'
 import type { CampusEvent, Organization, EventQuestion } from '@/types'
+import { useAuth } from '@/hooks/useAuth'
 
 interface PosterTheme {
   palette: {
@@ -69,6 +72,7 @@ function extractRegistration(data: unknown): { id: string; uniqueCode: string } 
 
 export function PublicEventForm() {
   const { eventSlug } = useParams<{ eventSlug: string }>()
+  const { user, loading: authLoading } = useAuth()
   const [event, setEvent] = useState<CampusEventWithOrg | null>(null)
   const [questions, setQuestions] = useState<EventQuestion[]>([])
   const [loading, setLoading] = useState(true)
@@ -105,6 +109,17 @@ export function PublicEventForm() {
   // fetch the club row the same way the page already loads data and merge
   // it with whatever the embed carries.
   const [upiFields, setUpiFields] = useState<Organization | null>(null)
+
+  // Attendee details are collected once and reused for every event.
+  useEffect(() => {
+    if (!user) return
+    getCurrentProfile().then(({ data }) => {
+      if (!data) return
+      setRespondentName((current) => current || data.full_name || '')
+      setRespondentEmail((current) => current || data.email || user.email || '')
+      setRespondentPhone((current) => current || data.phone || '')
+    }).catch(() => {})
+  }, [user])
 
   // Load the event itself first (fast) so the page renders immediately.
   useEffect(() => {
@@ -273,12 +288,44 @@ export function PublicEventForm() {
     setSubmitting(true)
     setError('')
     try {
-      const { data: responseData, error: responseError } = await submitEventResponse(event.id, {
-        respondent_name: respondentName.trim(),
-        respondent_email: respondentEmail.trim(),
-        respondent_phone: respondentPhone.trim() || undefined,
-      })
-      if (responseError || !responseData) {
+      const formattedAnswers = questions
+        .filter(q => {
+          const val = getAnswer(q.id)
+          if (q.question_type === 'checkboxes') return (val as string[]).length > 0
+          return (val as string)?.trim()
+        })
+        .map(q => ({
+          question_id: q.id,
+          value: q.question_type === 'checkboxes' ? (getAnswer(q.id) as string[]).join(', ') : (getAnswer(q.id) as string),
+        }))
+
+      let registrationId = ''
+      let uniqueCode = ''
+      let responseError: Error | null = null
+      if (user) {
+        const result = await submitAuthenticatedEventResponse(event.id, {
+          respondent_name: respondentName.trim(),
+          respondent_email: respondentEmail.trim(),
+          respondent_phone: respondentPhone.trim() || undefined,
+        }, formattedAnswers)
+        registrationId = typeof result.data === 'string' ? result.data : ''
+        responseError = result.error
+      } else {
+        const result = await submitEventResponse(event.id, {
+          respondent_name: respondentName.trim(),
+          respondent_email: respondentEmail.trim(),
+          respondent_phone: respondentPhone.trim() || undefined,
+        })
+        responseError = result.error
+        const reg = extractRegistration(result.data)
+        registrationId = reg?.id ?? (isUuid(result.data?.id) ? result.data.id : '')
+        uniqueCode = reg?.uniqueCode ?? ''
+        if (!responseError && registrationId) {
+          const { error: answersError } = await submitResponseAnswers(registrationId, formattedAnswers)
+          responseError = answersError
+        }
+      }
+      if (responseError || !registrationId) {
         const msg = (responseError?.message || 'Failed to submit response').toLowerCase()
         if (msg.includes('rls_recursion')) {
           setError('Registration is temporarily unavailable while the database is being configured. Please try again later.')
@@ -294,27 +341,6 @@ export function PublicEventForm() {
         }
         return
       }
-      const formattedAnswers = questions
-        .filter(q => {
-          const val = getAnswer(q.id)
-          if (q.question_type === 'checkboxes') return (val as string[]).length > 0
-          return (val as string)?.trim()
-        })
-        .map(q => ({
-          question_id: q.id,
-          value: q.question_type === 'checkboxes' ? (getAnswer(q.id) as string[]).join(', ') : (getAnswer(q.id) as string),
-        }))
-      const { error: answersError } = await submitResponseAnswers(responseData.id, formattedAnswers)
-      if (answersError) {
-        setError(answersError.message || 'Failed to save answers')
-        return
-      }
-
-      // The RPC reply's shape varies (uuid string / row / { id, unique_code } object)
-      // — normalise it, and fall back onto whatever id the wrapper produced.
-      const reg = extractRegistration(responseData)
-      const registrationId = reg?.id ?? (isUuid(responseData.id) ? responseData.id : '')
-
       // Free: generate the ticket PNG and send the ticket email BEFORE the
       // success screen mounts, so the ticket is visible and downloadable
       // on-screen — not "email-only". The anonymous kick is honoured inside
@@ -331,7 +357,7 @@ export function PublicEventForm() {
         } catch { /* status self-heal + daily sweep retry generation/emails */ }
         try { localStorage.setItem(`myp_reg_${event.id}`, String(Date.now())) } catch { /* ignore */ }
         setFreeReg(registrationId)
-        setFreeCode(reg?.uniqueCode ?? '')
+        setFreeCode(uniqueCode)
         setSubmitted(true)
         return
       }
@@ -362,7 +388,7 @@ export function PublicEventForm() {
       } catch { /* transient — the payment panel's own poll still guards */ }
 
       setPaidRegId(registrationId)
-      setPaidCode(reg?.uniqueCode ?? '')
+      setPaidCode(uniqueCode)
       setHoldExpiresAt(Date.now() + HOLD_WINDOW_MS)
       setPaidStage('payment')
     } catch (err) {
@@ -644,7 +670,9 @@ export function PublicEventForm() {
             )}
 
             {/* Form */}
-            <motion.form
+            {!authLoading && !user ? (
+              <AccountRequired eventSlug={event?.slug || eventSlug || ''} />
+            ) : <motion.form
               onSubmit={handleSubmit}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -764,7 +792,7 @@ export function PublicEventForm() {
                 <Send className="h-4 w-4" />
                 {isPaid ? 'Continue to payment' : 'Submit Registration'}
               </Button>
-            </motion.form>
+            </motion.form>}
 
             {/* Public resend-my-ticket */}
             {event && (
@@ -886,6 +914,29 @@ function EventHeaderCard({
       {event.description && (
         <p className="mt-4 text-text-secondary text-sm leading-relaxed">{event.description}</p>
       )}
+    </div>
+  )
+}
+
+function AccountRequired({ eventSlug }: { eventSlug: string }) {
+  const next = `/event/${eventSlug}/register`
+  return (
+    <div className="glass-strong rounded-2xl p-8 sm:p-10 text-center">
+      <div className="h-14 w-14 mx-auto mb-5 flex items-center justify-center" style={{ background: '#FFD23F', border: '2.5px solid #14110E' }}>
+        <Send className="h-6 w-6" style={{ color: '#14110E' }} />
+      </div>
+      <h2 className="text-2xl font-extrabold text-[#14110E] mb-3" style={{ fontFamily: 'Syne, sans-serif' }}>Create an account to register</h2>
+      <p className="text-sm text-text-secondary leading-relaxed mb-6">
+        Register once with MakeYourPass, then join this and future events without filling in your details again.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Link to={`/account/signup?next=${encodeURIComponent(next)}`} className="flex-1">
+          <Button variant="primary" size="lg" fullWidth>Create account</Button>
+        </Link>
+        <Link to={`/login?next=${encodeURIComponent(next)}`} className="flex-1">
+          <Button variant="outline" size="lg" fullWidth>Sign in</Button>
+        </Link>
+      </div>
     </div>
   )
 }

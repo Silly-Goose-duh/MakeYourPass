@@ -49,7 +49,7 @@ export function AuthCallbackPage() {
         }
 
         setMessage('Email verified! Redirecting…')
-        const path = await resolvePostLoginPath()
+        const path = await resolvePostLoginPath({ next: url.searchParams.get('next') })
         navigate(path, { replace: true })
       } catch (e) {
         if (!alive) return

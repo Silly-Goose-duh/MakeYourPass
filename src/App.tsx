@@ -5,6 +5,8 @@ import { Layout } from '@/components/layout/Layout'
 import HomePage from '@/pages/Home'
 import { LoginPage } from '@/pages/Login'
 import { SignupPage } from '@/pages/Signup'
+import AttendeeSignupPage from '@/pages/AttendeeSignup'
+import ResendVerificationPage from '@/pages/ResendVerification'
 import { AuthProvider } from '@/hooks/useAuth'
 import { ProtectedRoute, OrgAdminRoute, SuperAdminRoute, HostRoute } from '@/components/auth/RouteGuards'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -67,7 +69,9 @@ function AppRoutes() {
           <Route path="event/:eventSlug/full" element={<PageSuspense><WaitlistPage /></PageSuspense>} />
           <Route path="waiting-list" element={<PageSuspense><WaitlistPage /></PageSuspense>} />
           <Route path="login" element={<PageSuspense><LoginPage /></PageSuspense>} />
+          <Route path="resend-verification" element={<PageSuspense><ResendVerificationPage /></PageSuspense>} />
           <Route path="signup" element={<PageSuspense><SignupPage /></PageSuspense>} />
+          <Route path="account/signup" element={<PageSuspense><AttendeeSignupPage /></PageSuspense>} />
           <Route path="forgot-password" element={<PageSuspense><ForgotPasswordPage /></PageSuspense>} />
           <Route path="reset-password" element={<PageSuspense><ResetPasswordPage /></PageSuspense>} />
           <Route path="invite/:token" element={<PageSuspense><AcceptInvitePage /></PageSuspense>} />

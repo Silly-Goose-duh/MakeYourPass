@@ -164,7 +164,7 @@ export function Navbar() {
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <Link to="/signup" className="text-sm font-extrabold uppercase tracking-wide" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
+                <Link to="/account/signup" className="text-sm font-extrabold uppercase tracking-wide" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>
                   Sign Up
                 </Link>
                 <Link to="/login" className="zine-btn zine-btn-accent text-sm uppercase">

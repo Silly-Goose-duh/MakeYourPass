@@ -76,6 +76,19 @@ function isDatabaseUnreachable(err: unknown): boolean {
   ].join(' ')
   return /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|fetch failed|getaddrinfo|socket hang up/i.test(text)
 }
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function safeSubjectPart(value: unknown): string {
+  return String(value ?? '').replace(/[\r\n]+/g, ' ').trim()
+}
 async function findUserByEmail(admin: any, email: string) {
   const target = email.toLowerCase()
   const { data: prof } = await admin.from('profiles').select('id').ilike('email', target).maybeSingle()
@@ -147,6 +160,8 @@ export default async function handler(req: any, res: any) {
 
       const { Resend } = await import('resend')
       const resend = new Resend(RESEND_API_KEY)
+      const safeEmail = escapeHtml(email)
+      const safeActionLink = escapeHtml(actionLink)
       const { error: mailErr, data: mailData } = await resend.emails.send({
         from: RESEND_FROM,
         to: email,
@@ -154,15 +169,15 @@ export default async function handler(req: any, res: any) {
         html: `
           <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#F4EFE1;color:#14110E">
             <h1 style="font-size:22px;margin:0 0 12px">Reset your password</h1>
-            <p>We got a request to reset the password for <strong>${email}</strong>.</p>
+            <p>We got a request to reset the password for <strong>${safeEmail}</strong>.</p>
             <p style="margin:24px 0">
-              <a href="${actionLink}"
+               <a href="${safeActionLink}"
                  style="display:inline-block;background:#FF4D2E;color:#fff;padding:14px 20px;text-decoration:none;font-weight:700;border:2px solid #14110E">
                 Set new password
               </a>
             </p>
             <p style="font-size:13px;color:#4A4640">This link expires soon. If you didn’t ask for this, ignore this email.</p>
-            <p style="font-size:11px;color:#7A756B;word-break:break-all;margin-top:16px">${actionLink}</p>
+             <p style="font-size:11px;color:#7A756B;word-break:break-all;margin-top:16px">${safeActionLink}</p>
             <p style="font-size:12px;color:#7A756B;margin-top:20px">— MakeYourPass</p>
           </div>
         `,
@@ -225,23 +240,24 @@ export default async function handler(req: any, res: any) {
     const RESEND_API_KEY = process.env.RESEND_API_KEY
     const RESEND_FROM = process.env.RESEND_FROM || 'MakeYourPass <onboarding@resend.dev>'
 
-    if (actionLink && RESEND_API_KEY) {
-      const { Resend } = await import('resend')
-      const resend = new Resend(RESEND_API_KEY)
-      const { error: mailErr } = await resend.emails.send({
+      if (actionLink && RESEND_API_KEY) {
+        const { Resend } = await import('resend')
+        const resend = new Resend(RESEND_API_KEY)
+        const safeActionLink = escapeHtml(actionLink)
+        const { error: mailErr } = await resend.emails.send({
         from: RESEND_FROM,
         to: email,
-        subject: 'Verify your email — MakeYourPass',
+          subject: `Verify your email — ${safeSubjectPart(email)}`,
         html: `
           <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;background:#F4EFE1;color:#14110E">
             <h1 style="font-size:22px">Verify your email</h1>
             <p>Click below to confirm your MakeYourPass account:</p>
             <p style="margin:24px 0">
-              <a href="${actionLink}" style="display:inline-block;background:#FF4D2E;color:#fff;padding:14px 20px;text-decoration:none;font-weight:700;border:2px solid #14110E">
+               <a href="${safeActionLink}" style="display:inline-block;background:#FF4D2E;color:#fff;padding:14px 20px;text-decoration:none;font-weight:700;border:2px solid #14110E">
                 Confirm email
               </a>
             </p>
-            <p style="font-size:12px;word-break:break-all;color:#7A756B">${actionLink}</p>
+             <p style="font-size:12px;word-break:break-all;color:#7A756B">${safeActionLink}</p>
           </div>
         `,
       })

@@ -30,7 +30,7 @@ export function CTASection() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-start gap-4 mb-12">
-            <Link to="/signup">
+            <Link to="/account/signup">
               <Button variant="primary" size="lg" className="group">
                 Create Your First Event
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />

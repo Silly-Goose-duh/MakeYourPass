@@ -3,9 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Calendar, Clock, IndianRupee, MapPin, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { getEventBySlug, getSeatStatus, type SeatStatus } from '@/lib/supabase'
+import { getEventBySlug, getSeatStatus, getMyEventRegistration, getMyCancellationRequest, requestEventCancellation, type SeatStatus } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { isPast } from '@/components/event/eventUtils'
-import type { CampusEvent, Organization } from '@/types'
+import type { CampusEvent, Organization, EventCancellationRequest, EventResponse } from '@/types'
 
 /**
  * AboutEventPage — the STOP page between the events list and the form.
@@ -25,12 +26,17 @@ type LoadedEvent = CampusEvent & { organizations: Organization }
 export default function AboutEventPage() {
   const { eventSlug } = useParams<{ eventSlug: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [event, setEvent] = useState<LoadedEvent | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notFound, setNotFound] = useState(false)
 
   const [seat, setSeat] = useState<SeatStatus | null>(null)
+  const [registration, setRegistration] = useState<EventResponse | null>(null)
+  const [cancellation, setCancellation] = useState<EventCancellationRequest | null>(null)
+  const [cancellationBusy, setCancellationBusy] = useState(false)
+  const [cancellationMessage, setCancellationMessage] = useState('')
 
   const slug = eventSlug ?? ''
 
@@ -55,6 +61,17 @@ export default function AboutEventPage() {
           return
         }
         setEvent(data as LoadedEvent)
+        if (user) {
+          const { data: mine } = await getMyEventRegistration(data.id)
+          if (!cancelled && mine) {
+            setRegistration(mine)
+            const { data: request } = await getMyCancellationRequest(mine.id)
+            if (!cancelled && request) setCancellation(request)
+          }
+        } else {
+          setRegistration(null)
+          setCancellation(null)
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load event')
       } finally {
@@ -63,7 +80,7 @@ export default function AboutEventPage() {
     }
     void loadEvent()
     return () => { cancelled = true }
-  }, [slug])
+  }, [slug, user])
 
   // Live seats: initial rollup + re-check when the tab becomes visible again.
   useEffect(() => {
@@ -130,6 +147,23 @@ export default function AboutEventPage() {
 
   const goRegister = () => navigate(`/event/${event.slug}/register`)
   const goWaitlist = () => navigate(`/waiting-list?event=${event.slug}`)
+  const requestCancel = async () => {
+    if (!registration) return
+    setCancellationBusy(true)
+    setCancellationMessage('')
+    const { error: requestError } = await requestEventCancellation(registration.id)
+    if (requestError) {
+      setCancellationMessage(requestError.message || 'Could not submit cancellation request')
+    } else {
+      setCancellation({
+        id: 'pending', registration_id: registration.id, event_id: event.id, user_id: user?.id || '',
+        reason: '', status: 'requested', club_note: '', reviewed_by: null,
+        requested_at: new Date().toISOString(), reviewed_at: null,
+      })
+      setCancellationMessage('Cancellation request sent to the club. Your ticket remains active until they review it.')
+    }
+    setCancellationBusy(false)
+  }
 
   return (
     <div className="min-h-screen bg-background py-12 px-4 relative">
@@ -213,7 +247,29 @@ export default function AboutEventPage() {
             )}
 
             <div className="border-t-2 border-dashed border-border pt-8">
-              {past ? (
+              {registration ? (
+                <div className="space-y-4">
+                  <div className="p-4 text-center" style={{ background: registration.status === 'cancelled' ? '#FFE9E3' : '#E8F8F0', border: '2px solid #14110E' }}>
+                    <p className="font-extrabold" style={{ fontFamily: 'Syne, sans-serif' }}>
+                      {registration.status === 'cancelled' ? 'This registration was cancelled' : registration.status === 'waitlisted' ? 'You are on the waiting list' : registration.status === 'pending' ? 'Payment is still pending' : 'You are already registered'}
+                    </p>
+                    <p className="text-sm font-semibold mt-1" style={{ color: '#4A4640' }}>
+                      {registration.unique_code ? `Registration code: ${registration.unique_code}` : 'Your registration is saved to your account.'}
+                    </p>
+                  </div>
+                  {registration.status !== 'cancelled' && cancellation?.status === 'requested' && (
+                    <p className="text-sm font-bold text-center" style={{ color: '#7A756B' }}>
+                      Cancellation request pending — the club will review it.
+                    </p>
+                  )}
+                  {registration.status !== 'cancelled' && !cancellation && (
+                    <Button variant="danger" size="lg" fullWidth onClick={() => void requestCancel()} loading={cancellationBusy}>
+                      Request cancellation
+                    </Button>
+                  )}
+                  {cancellationMessage && <p className="text-sm font-bold text-center" style={{ color: cancellationMessage.startsWith('Cancellation request sent') ? '#0A7A4F' : '#FF4D2E' }}>{cancellationMessage}</p>}
+                </div>
+              ) : past ? (
                 <div className="text-center">
                   <p className="text-text-muted text-sm mb-4">This event has already happened.</p>
                   <Link to="/events"><Button variant="outline" size="lg">See other events</Button></Link>

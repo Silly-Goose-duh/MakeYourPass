@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Calendar, CheckCircle, Clock, MapPin, UserPlus, AlertCircle } from 'lucide-react'
-import { getEventBySlug, getSeatStatus, subscribeToResponses, supabase, type SeatStatus } from '@/lib/supabase'
+import { getEventBySlug, getSeatStatus, subscribeToResponses, supabase, getCurrentProfile, type SeatStatus } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { isSoldOut } from '@/components/event/eventUtils'
 import type { CampusEvent, Organization } from '@/types'
 
@@ -42,6 +43,7 @@ const prefersReducedMotion =
 
 export default function WaitlistPage() {
   const { eventSlug } = useParams<{ eventSlug: string }>()
+  const { user, loading: authLoading } = useAuth()
   // Slug comes either from the route (/event/:eventSlug/full) or, on the
   // dedicated /waiting-list route, from the ?event= query param.
   const [searchParams] = useSearchParams()
@@ -62,6 +64,13 @@ export default function WaitlistPage() {
   // Guard against realtime callbacks flipping the UI away after a successful join.
   const joinedRef = useRef(false)
   const slug = eventSlug || searchParams.get('event') || ''
+
+  useEffect(() => {
+    if (!user) return
+    getCurrentProfile().then(({ data }) => {
+      if (data?.email) setEmail(data.email)
+    }).catch(() => {})
+  }, [user])
 
   // ─── Load the event by slug (same pattern/anon policy as PublicEventForm) ───
   useEffect(() => {
@@ -220,6 +229,22 @@ export default function WaitlistPage() {
           <div className="h-8 w-8 rounded-full animate-spin" style={{ border: '2.5px solid #14110E', borderTopColor: 'transparent' }} />
           <p className="text-sm font-semibold" style={{ color: 'var(--color-cp-text-muted)' }}>Loading event…</p>
         </div>
+      </div>
+    )
+  }
+
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ background: 'var(--color-cp-bg-base)' }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-strong w-full max-w-md p-8 text-center">
+          <UserPlus className="h-10 w-10 mx-auto mb-4" style={{ color: '#FF4D2E' }} />
+          <h1 className="text-2xl font-extrabold mb-3" style={{ fontFamily: 'Syne, sans-serif', color: '#14110E' }}>Create an account to join the waitlist</h1>
+          <p className="text-sm font-semibold mb-6" style={{ color: '#4A4640' }}>Your account keeps your event registrations and waitlist status together.</p>
+          <div className="flex flex-col gap-2">
+            <Link to={`/account/signup?next=${encodeURIComponent(window.location.pathname + window.location.search)}`} className="zine-btn zine-btn-accent">Create account</Link>
+            <Link to={`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`} className="zine-btn" style={{ background: '#fff' }}>Sign in</Link>
+          </div>
+        </motion.div>
       </div>
     )
   }

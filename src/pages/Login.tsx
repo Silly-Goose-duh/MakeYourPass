@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Sparkles, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -9,12 +9,20 @@ import { useAuth } from '@/hooks/useAuth'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [unverified, setUnverified] = useState(false)
+
+  const next = params.get('next')
+  const resendQuery = new URLSearchParams()
+  if (email.trim()) resendQuery.set('email', email.trim())
+  if (next && next.startsWith('/') && !next.startsWith('//')) resendQuery.set('next', next)
+  const resendPath = `/resend-verification${resendQuery.toString() ? `?${resendQuery.toString()}` : ''}`
 
   // If already signed in, skip the form and go to the right place.
   useEffect(() => {
@@ -28,15 +36,15 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setUnverified(false)
     setLoading(true)
 
     try {
       const { data, error: signErr } = await signIn(email, password)
       if (signErr) {
         if (/confirm|verified|verification/i.test(signErr.message)) {
-          setError(
-            'Email not verified yet. Open /signup and tap “Resend verification”, or try again in a moment.'
-          )
+          setError('Email not verified yet. Check your inbox, then try again.')
+          setUnverified(true)
         } else {
           setError(signErr.message)
         }
@@ -135,6 +143,13 @@ export function LoginPage() {
                 style={{ background: '#FFE9E3', border: '2px solid #FF4D2E', color: '#FF4D2E' }}
               >
                 {error}
+                {unverified && (
+                  <div className="mt-2">
+                    <Link to={resendPath} className="underline font-extrabold" style={{ color: '#14110E' }}>
+                      Resend verification email →
+                    </Link>
+                  </div>
+                )}
               </motion.div>
             )}
 

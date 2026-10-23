@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Profile, Organization, OrganizationMember, OrgRegistrationRequest, CampusEvent, EventQuestion, EventResponse, ResponseAnswer, OrgExecomMember } from '@/types'
+import type { Profile, Organization, OrganizationMember, OrgRegistrationRequest, CampusEvent, EventQuestion, EventResponse, ResponseAnswer, OrgExecomMember, EventCancellationRequest } from '@/types'
 
 // Helper to detect RLS recursion errors
 function isRlsRecursionError(error: unknown): boolean {
@@ -62,20 +62,53 @@ export const supabase = createSupabaseClient()
 
 // ==================== Auth ====================
 
-export async function signUp(email: string, password: string, fullName: string) {
+export async function signUp(email: string, password: string, fullName: string, phone = '', next = '') {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://makeyourpass.vercel.app'
+  const callback = next && next.startsWith('/') && !next.startsWith('//')
+    ? `${origin}/auth/callback?next=${encodeURIComponent(next)}`
+    : `${origin}/auth/callback`
   return supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { full_name: fullName },
-      emailRedirectTo: `${origin}/auth/callback`,
+      data: { full_name: fullName, phone },
+      emailRedirectTo: callback,
     },
   })
 }
 
 export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password })
+}
+
+/** Send a verification email without asking the user to create the account again. */
+export async function resendVerificationEmail(email: string) {
+  try {
+    const res = await fetch('/api/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    })
+    const payload = await res.json().catch(() => ({})) as {
+      message?: string
+      error?: string
+      already_verified?: boolean
+      auto_confirmed?: boolean
+    }
+    if (!res.ok) {
+      return { data: null, error: new Error(payload.error || 'Could not resend verification email') }
+    }
+    return {
+      data: {
+        message: payload.message || 'Verification email sent again. Check your inbox and spam folder.',
+        alreadyVerified: !!payload.already_verified,
+        autoConfirmed: !!payload.auto_confirmed,
+      },
+      error: null,
+    }
+  } catch {
+    return { data: null, error: new Error('Could not resend verification email. Please try again.') }
+  }
 }
 
 /** Send password-reset email via server (Resend + Supabase recovery link). */
@@ -393,9 +426,14 @@ export async function notifyOrgDecision(payload: {
   slug?: string
 }) {
   try {
+    const token = await getAccessToken()
+    if (!token) return { error: new Error('Authentication required') }
     const res = await fetch('/api/notify-org-decision', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(payload),
     })
     const j = await res.json().catch(() => ({}))
@@ -776,6 +814,69 @@ export async function submitEventResponse(
   return { data: result as EventResponse | null, error }
 }
 
+/** Authenticated attendee registration. Personal details are supplied from the
+ * saved profile and event answers are written in the same database operation. */
+export async function submitAuthenticatedEventResponse(
+  eventId: string,
+  data: {
+    respondent_name: string
+    respondent_email: string
+    respondent_phone?: string
+  },
+  answers: { question_id: string; value: string }[] = [],
+) {
+  const { data: result, error } = await supabase.rpc('submit_authenticated_event_response', {
+    p_event_id: eventId,
+    p_name: data.respondent_name,
+    p_email: data.respondent_email,
+    p_phone: data.respondent_phone ?? '',
+    p_answers: answers,
+  })
+  return { data: result as string | null, error }
+}
+
+export async function getMyEventRegistration(eventId: string) {
+  const { data, error } = await supabase.rpc('get_my_event_registration', { p_event_id: eventId })
+  const row = Array.isArray(data) ? data[0] : data
+  return { data: (row || null) as EventResponse | null, error }
+}
+
+export async function getMyCancellationRequest(registrationId: string) {
+  const { data, error } = await supabase.rpc('get_my_cancellation_request', {
+    p_registration_id: registrationId,
+  })
+  const row = Array.isArray(data) ? data[0] : data
+  return { data: (row || null) as EventCancellationRequest | null, error }
+}
+
+export async function requestEventCancellation(registrationId: string, reason = '') {
+  const { data, error } = await supabase.rpc('request_event_cancellation', {
+    p_registration_id: registrationId,
+    p_reason: reason,
+  })
+  return { data: data as string | null, error }
+}
+
+export async function listEventCancellationRequests(eventId: string) {
+  const { data, error } = await supabase.rpc('list_event_cancellation_requests', {
+    p_event_id: eventId,
+  })
+  return { data: (Array.isArray(data) ? data : []) as EventCancellationRequest[], error }
+}
+
+export async function reviewEventCancellation(requestId: string, approve: boolean, note = '') {
+  const { data, error } = await supabase.rpc('review_event_cancellation', {
+    p_request_id: requestId,
+    p_approve: approve,
+    p_note: note,
+  })
+  const row = Array.isArray(data) ? data[0] : data
+  return {
+    data: row as { request_status?: string; promoted_registration_id?: string | null } | null,
+    error,
+  }
+}
+
 export async function verifyPayment(responseId: string) {
   const { data, error } = await supabase.rpc('verify_payment', { p_response_id: responseId })
   return { data, error }
@@ -1037,4 +1138,20 @@ export function subscribeToResponses(
     )
     .subscribe()
   return () => { supabase.removeChannel(channel) }
+}
+
+/** Realtime notification for club cancellation-review queues. */
+export function subscribeToCancellationRequests(
+  eventId: string,
+  onChange: (payload: unknown) => void,
+) {
+  const channel = supabase
+    .channel(`event_cancellation_requests:${eventId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'event_cancellation_requests', filter: `event_id=eq.${eventId}` },
+      (payload) => onChange(payload),
+    )
+    .subscribe()
+  return () => { void supabase.removeChannel(channel) }
 }

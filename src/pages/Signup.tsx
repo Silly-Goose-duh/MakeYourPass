@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Building2, CheckCircle2, Pencil, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input, Textarea } from '@/components/ui/Input'
 import { generateSlug } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { getAccessToken, getCurrentProfile } from '@/lib/supabase'
+import { getAccessToken, getCurrentProfile, resendVerificationEmail } from '@/lib/supabase'
 
 type Step = 'account' | 'organization' | 'verify' | 'pending'
 
@@ -16,10 +16,12 @@ type Step = 'account' | 'organization' | 'verify' | 'pending'
  * - Existing / already signed-in: organization only → pending wait (/dashboard)
  */
 export function SignupPage() {
-  const navigate = useNavigate()
   const [params] = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const forceOrg = params.get('step') === 'organization'
+  const next = params.get('next') && params.get('next')!.startsWith('/') && !params.get('next')!.startsWith('//')
+    ? params.get('next')!
+    : ''
 
   const [step, setStep] = useState<Step>(forceOrg || user ? 'organization' : 'account')
   const [loggedInMode, setLoggedInMode] = useState(!!user)
@@ -36,6 +38,14 @@ export function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [resendMsg, setResendMsg] = useState('')
+
+  const loginPath = next ? `/login?next=${encodeURIComponent(next)}` : '/login'
+  const resendPath = (address = email) => {
+    const query = new URLSearchParams()
+    if (address.trim()) query.set('email', address.trim())
+    if (next) query.set('next', next)
+    return `/resend-verification${query.toString() ? `?${query.toString()}` : ''}`
+  }
 
   useEffect(() => {
     if (authLoading) return
@@ -139,11 +149,9 @@ export function SignupPage() {
         // their dashboard (pending wait), NOT be bounced to /login.
         if (loggedInMode) {
           setStep('pending')
-          setTimeout(() => navigate('/dashboard', { replace: true }), 1600)
           return
         }
         setStep('pending')
-        setTimeout(() => navigate('/login', { replace: true }), 1600)
         return
       }
 
@@ -160,17 +168,12 @@ export function SignupPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch('/api/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(j.error || 'Could not resend email')
+      const { data, error: resendError } = await resendVerificationEmail(email)
+      if (resendError) {
+        setError(resendError.message)
         return
       }
-      setResendMsg(j.message || 'Verification email sent again. Check inbox and spam.')
+      setResendMsg(data?.message || 'Verification email sent again. Check inbox and spam.')
     } catch {
       setError('Could not resend email.')
     } finally {
@@ -253,7 +256,7 @@ export function SignupPage() {
 
               <p className="text-center mt-6 text-sm font-semibold" style={{ color: '#4A4640' }}>
                 Already have an account?{' '}
-                <Link to="/login" className="font-extrabold" style={{ color: '#FF4D2E' }}>
+                <Link to={loginPath} className="font-extrabold" style={{ color: '#FF4D2E' }}>
                   Sign in
                 </Link>
               </p>
@@ -334,8 +337,12 @@ export function SignupPage() {
                     {error}
                     {/already exists|Sign in/i.test(error) && (
                       <div className="mt-2">
-                        <Link to="/login" className="underline font-extrabold">
+                        <Link to={loginPath} className="underline font-extrabold">
                           Go to sign in →
+                        </Link>
+                        <span className="mx-2">·</span>
+                        <Link to={resendPath()} className="underline font-extrabold">
+                          Resend verification
                         </Link>
                       </div>
                     )}
@@ -373,12 +380,14 @@ export function SignupPage() {
                 <strong>{orgName}</strong> is waiting for superadmin approval.
                 After approval your portal opens at <strong>/{orgSlug}</strong>.
               </p>
-              <p className="text-xs font-semibold mb-6" style={{ color: '#4A4640' }}>
-                Your account is ready — sign in with the email and password you just used.
-              </p>
-              <Link to="/login">
-                <Button variant="primary">Sign in now</Button>
-              </Link>
+               <p className="text-xs font-semibold mb-6" style={{ color: '#4A4640' }}>
+                 {loggedInMode
+                   ? 'Your request is saved. You can monitor its approval status from your dashboard.'
+                   : 'Your account is ready — sign in with the email and password you just used.'}
+               </p>
+               <Link to={loggedInMode ? '/dashboard' : loginPath}>
+                 <Button variant="primary">{loggedInMode ? 'Open dashboard' : 'Sign in now'}</Button>
+               </Link>
             </motion.div>
           )}
 
@@ -425,7 +434,7 @@ export function SignupPage() {
                 <Button type="button" variant="primary" size="lg" fullWidth loading={loading} onClick={() => void handleResend()}>
                   Resend verification email
                 </Button>
-                <Link to="/login">
+                <Link to={loginPath}>
                   <Button type="button" variant="secondary" size="lg" fullWidth>
                     I verified — sign in
                   </Button>
