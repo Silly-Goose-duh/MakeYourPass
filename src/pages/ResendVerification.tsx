@@ -38,7 +38,7 @@ export function ResendVerificationPage() {
     setInfo('')
     setLoading(true)
     try {
-      const { data, error: resendError } = await resendVerificationEmail(email)
+      const { data, error: resendError } = await resendVerificationEmail(email, next)
       if (resendError) {
         setError(resendError.message)
         return

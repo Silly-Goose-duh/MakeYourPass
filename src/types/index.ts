@@ -123,10 +123,31 @@ export interface EventResponse {
   payment_proof_url?: string
   payment_status?: PaymentStatus
   payment_verified_at?: string | null
+  hold_expires_at?: string | null
   refund_status?: 'not_applicable' | 'pending' | 'completed' | 'rejected'
   certificate_url?: string | null
   certificate_sent_at?: string | null
   reminder_sent_at?: string | null
+}
+
+/** One row from list_my_event_registrations() — the attendee's ticket list. */
+export interface MyEventRegistration {
+  registration_id: string
+  event_id: string
+  unique_code: string | null
+  status: EventResponse['status']
+  payment_status: PaymentStatus
+  refund_status: 'not_applicable' | 'pending' | 'completed' | 'rejected'
+  ticket_url: string | null
+  submitted_at: string
+  event_title: string
+  event_slug: string
+  event_date: string | null
+  event_time: string | null
+  event_venue: string | null
+  event_poster_url: string | null
+  org_name: string | null
+  org_slug: string | null
 }
 
 export interface EventCancellationRequest {

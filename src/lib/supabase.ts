@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Profile, Organization, OrganizationMember, OrgRegistrationRequest, CampusEvent, EventQuestion, EventResponse, ResponseAnswer, OrgExecomMember, EventCancellationRequest } from '@/types'
+import type { Profile, Organization, OrganizationMember, OrgRegistrationRequest, CampusEvent, EventQuestion, EventResponse, ResponseAnswer, OrgExecomMember, EventCancellationRequest, MyEventRegistration } from '@/types'
 
 // Helper to detect RLS recursion errors
 function isRlsRecursionError(error: unknown): boolean {
@@ -82,12 +82,12 @@ export async function signIn(email: string, password: string) {
 }
 
 /** Send a verification email without asking the user to create the account again. */
-export async function resendVerificationEmail(email: string) {
+export async function resendVerificationEmail(email: string, next = '') {
   try {
     const res = await fetch('/api/resend-verification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      body: JSON.stringify({ email: email.trim().toLowerCase(), next }),
     })
     const payload = await res.json().catch(() => ({})) as {
       message?: string
@@ -839,6 +839,12 @@ export async function getMyEventRegistration(eventId: string) {
   const { data, error } = await supabase.rpc('get_my_event_registration', { p_event_id: eventId })
   const row = Array.isArray(data) ? data[0] : data
   return { data: (row || null) as EventResponse | null, error }
+}
+
+/** Every registration tied to the signed-in attendee (account id or email). */
+export async function listMyEventRegistrations() {
+  const { data, error } = await supabase.rpc('list_my_event_registrations')
+  return { data: (Array.isArray(data) ? data : []) as MyEventRegistration[], error }
 }
 
 export async function getMyCancellationRequest(registrationId: string) {

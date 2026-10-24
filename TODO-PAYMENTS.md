@@ -69,3 +69,19 @@ Status: ❌ = pending, 🟡 = in progress, ✅ = done, ⏸️ = needs user/accou
 ## 🔀 Later (agreed)
 - ⏸️ Android SMS-observer auto-verification (v2)
 - ⏸️ Sentry DSN, Upstash vars, Groq rotation (user), Vercel Pro decision
+
+## 8. Attendee-account hardening (migration 005)
+- ✅ `supabase/migrations/005_attendee_account_hardening.sql` applied in production
+- ✅ Cancellation requests are RPC-only writes; broad anon/authenticated INSERT/UPDATE/DELETE/TRUNCATE grants revoked; staff SELECT policy added; ownership re-checked inside `review_event_cancellation` (cross-owner request returns “Registration not found”, verified)
+- ✅ Legacy anonymous registrations linked to accounts by email; `get_my_event_registration`, `request_event_cancellation`, and `list_my_event_registrations` fall back to the verified account email
+- ✅ Realtime enabled: `event_responses` + `event_cancellation_requests` added to `supabase_realtime` with `REPLICA IDENTITY FULL`
+- ✅ `events.response_count` maintained by trigger + backfilled (counts confirmed + pending only)
+- ✅ Registration RPC releases the attendee’s lapsed holds and refuses past-date events
+- ✅ Attendee UX: `/account/tickets` (My Tickets), Navbar links, About page “Complete payment” resume, “Register again” after cancellation, cancellation confirmation + optional reason, refund-pending note
+- ✅ Registration form resumes an existing pending paid registration into PaymentPanel and shows a status card for confirmed/waitlisted rows instead of the form
+- ✅ `resend-verification` now carries `?next=` and returns 400 (not 500) on malformed JSON; unknown email returns generic 200
+- ✅ Org dashboard polls every 20s while a request is pending (approval appears without a manual refresh)
+- ✅ Supabase Auth `mailer_autoconfirm=true` temporarily so attendee signups work while Resend is sandboxed. Re-enable confirmation + configure Resend SMTP once the domain is verified.
+- E2E in production: signup → register → My Tickets → cross-owner cancellation blocked → request → staff approval → waitlist promotion → response_count restored; test users/rows cleaned up.
+- ⏸️ Cancellation decision email (approve/reject) still not sent to the attendee
+- ⏸️ Refund completion UI still missing (`refund_status` is set but there is no staff action to mark it completed)

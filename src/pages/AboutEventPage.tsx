@@ -37,6 +37,9 @@ export default function AboutEventPage() {
   const [cancellation, setCancellation] = useState<EventCancellationRequest | null>(null)
   const [cancellationBusy, setCancellationBusy] = useState(false)
   const [cancellationMessage, setCancellationMessage] = useState('')
+  const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [holdNow, setHoldNow] = useState(0)
 
   const slug = eventSlug ?? ''
 
@@ -65,6 +68,7 @@ export default function AboutEventPage() {
           const { data: mine } = await getMyEventRegistration(data.id)
           if (!cancelled && mine) {
             setRegistration(mine)
+            setHoldNow(Date.now())
             const { data: request } = await getMyCancellationRequest(mine.id)
             if (!cancelled && request) setCancellation(request)
           }
@@ -147,11 +151,17 @@ export default function AboutEventPage() {
 
   const goRegister = () => navigate(`/event/${event.slug}/register`)
   const goWaitlist = () => navigate(`/waiting-list?event=${event.slug}`)
+  const pendingPayment = registration?.status === 'pending'
+  const holdAt = registration?.hold_expires_at ? Date.parse(registration.hold_expires_at) : 0
+  const holdLive = !holdAt || holdNow === 0 || holdAt > holdNow
+  const holdLabel = holdAt
+    ? new Date(holdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : ''
   const requestCancel = async () => {
     if (!registration) return
     setCancellationBusy(true)
     setCancellationMessage('')
-    const { error: requestError } = await requestEventCancellation(registration.id)
+    const { error: requestError } = await requestEventCancellation(registration.id, cancelReason.trim())
     if (requestError) {
       setCancellationMessage(requestError.message || 'Could not submit cancellation request')
     } else {
@@ -161,6 +171,8 @@ export default function AboutEventPage() {
         requested_at: new Date().toISOString(), reviewed_at: null,
       })
       setCancellationMessage('Cancellation request sent to the club. Your ticket remains active until they review it.')
+      setCancelConfirm(false)
+      setCancelReason('')
     }
     setCancellationBusy(false)
   }
@@ -249,7 +261,16 @@ export default function AboutEventPage() {
             <div className="border-t-2 border-dashed border-border pt-8">
               {registration ? (
                 <div className="space-y-4">
-                  <div className="p-4 text-center" style={{ background: registration.status === 'cancelled' ? '#FFE9E3' : '#E8F8F0', border: '2px solid #14110E' }}>
+                  <div
+                    className="p-4 text-center"
+                    style={{
+                      background: registration.status === 'cancelled' ? '#FFE9E3'
+                        : registration.status === 'pending' ? '#FFF6D6'
+                          : registration.status === 'waitlisted' ? '#E8EEFF'
+                            : '#E8F8F0',
+                      border: '2px solid #14110E',
+                    }}
+                  >
                     <p className="font-extrabold" style={{ fontFamily: 'Syne, sans-serif' }}>
                       {registration.status === 'cancelled' ? 'This registration was cancelled' : registration.status === 'waitlisted' ? 'You are on the waiting list' : registration.status === 'pending' ? 'Payment is still pending' : 'You are already registered'}
                     </p>
@@ -257,16 +278,95 @@ export default function AboutEventPage() {
                       {registration.unique_code ? `Registration code: ${registration.unique_code}` : 'Your registration is saved to your account.'}
                     </p>
                   </div>
-                  {registration.status !== 'cancelled' && cancellation?.status === 'requested' && (
-                    <p className="text-sm font-bold text-center" style={{ color: '#7A756B' }}>
-                      Cancellation request pending — the club will review it.
-                    </p>
+
+                  {registration.status === 'cancelled' ? (
+                    <div className="space-y-3 text-center">
+                      {registration.refund_status === 'pending' && (
+                        <p className="text-sm font-bold px-3 py-2" style={{ background: '#FFF6D6', border: '2px solid #14110E', color: '#8A5A00' }}>
+                          Refund pending — the club will contact you about your payment.
+                        </p>
+                      )}
+                      {!past && (
+                        <>
+                          <p className="text-sm font-semibold" style={{ color: '#4A4640' }}>
+                            Changed your mind? You can register again while seats last.
+                          </p>
+                          <Button variant="primary" size="lg" onClick={goRegister}>Register again</Button>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {pendingPayment && (
+                        <div className="p-4 space-y-3" style={{ background: '#FFF6D6', border: '2px solid #14110E' }}>
+                          <p className="text-sm font-bold" style={{ color: '#14110E' }}>
+                            {holdLive
+                              ? `Your seat is held${holdLabel ? ` until ${holdLabel}` : ''}. Finish the payment to confirm your ticket.`
+                              : 'Your payment window has passed. Restart registration to hold a seat again.'}
+                          </p>
+                          <Button variant="primary" size="lg" fullWidth onClick={goRegister}>
+                            {holdLive ? 'Complete payment' : 'Restart registration'}
+                          </Button>
+                        </div>
+                      )}
+
+                      {registration.status === 'confirmed' && (
+                        <Link to="/account/tickets" className="block">
+                          <Button variant="success" size="lg" fullWidth>View my ticket</Button>
+                        </Link>
+                      )}
+
+                      {registration.status === 'waitlisted' && (
+                        <Button variant="secondary" size="lg" fullWidth onClick={goWaitlist}>
+                          Waitlist details
+                        </Button>
+                      )}
+
+                      {cancellation?.status === 'requested' && (
+                        <p className="text-sm font-bold text-center" style={{ color: '#7A756B' }}>
+                          Cancellation request pending — the club will review it.
+                        </p>
+                      )}
+
+                      {!cancellation && !cancelConfirm && (
+                        <Button variant="danger" size="lg" fullWidth onClick={() => setCancelConfirm(true)}>
+                          Request cancellation
+                        </Button>
+                      )}
+
+                      {!cancellation && cancelConfirm && (
+                        <div className="p-4 space-y-3" style={{ background: '#FFF6D6', border: '2px solid #14110E' }}>
+                          <p className="text-sm font-bold" style={{ color: '#14110E' }}>
+                            Ask the club to cancel this registration? Your seat is only released after the club approves.
+                          </p>
+                          <textarea
+                            value={cancelReason}
+                            onChange={(event) => setCancelReason(event.target.value)}
+                            rows={2}
+                            maxLength={500}
+                            placeholder="Reason (optional)"
+                            className="w-full px-3 py-2 text-sm font-semibold"
+                            style={{ border: '2px solid #14110E', background: '#fff', color: '#14110E', outline: 'none' }}
+                          />
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button variant="danger" size="lg" fullWidth onClick={() => void requestCancel()} loading={cancellationBusy}>
+                              Yes, request cancellation
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="lg"
+                              fullWidth
+                              disabled={cancellationBusy}
+                              onClick={() => { setCancelConfirm(false); setCancelReason('') }}
+                            >
+                              Never mind
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
-                  {registration.status !== 'cancelled' && !cancellation && (
-                    <Button variant="danger" size="lg" fullWidth onClick={() => void requestCancel()} loading={cancellationBusy}>
-                      Request cancellation
-                    </Button>
-                  )}
+
                   {cancellationMessage && <p className="text-sm font-bold text-center" style={{ color: cancellationMessage.startsWith('Cancellation request sent') ? '#0A7A4F' : '#FF4D2E' }}>{cancellationMessage}</p>}
                 </div>
               ) : past ? (

@@ -29,10 +29,10 @@ export function OrgDashboard() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const loadAttempt = useRef(0)
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(async (silent = false) => {
     if (!user) return
     const attempt = ++loadAttempt.current
-    setLoading(true)
+    if (!silent) setLoading(true)
     setLoadError(null)
 
     try {
@@ -74,6 +74,21 @@ export function OrgDashboard() {
     void loadDashboard()
     return () => { loadAttempt.current += 1 }
   }, [loadDashboard])
+
+  // While a request is pending, poll quietly so an approved club sees its
+  // portal go live without a manual refresh (this page has no realtime hook).
+  useEffect(() => {
+    if (!user || !pending) return
+    const tick = () => {
+      if (document.visibilityState === 'visible') void loadDashboard(true)
+    }
+    const timer = window.setInterval(tick, 20_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [user, pending, loadDashboard])
 
   if (authLoading || loading) {
     return (

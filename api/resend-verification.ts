@@ -109,9 +109,16 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    let body: any
+    try {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+    } catch {
+      return res.status(400).json({ error: 'Invalid JSON body' })
+    }
     const email = String(body?.email || '').trim().toLowerCase()
     const action = String(body?.action || 'verify').toLowerCase()
+    const rawNext = String(body?.next || '')
+    const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : ''
     if (!email) return res.status(400).json({ error: 'email required' })
 
     const supabaseMod = await import('@supabase/supabase-js')
@@ -221,7 +228,9 @@ export default async function handler(req: any, res: any) {
       })
     }
 
-    const redirectTo = `${origin}/auth/callback`
+    const redirectTo = next
+      ? `${origin}/auth/callback?next=${encodeURIComponent(next)}`
+      : `${origin}/auth/callback`
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: 'magiclink',
       email,

@@ -12,11 +12,12 @@ import {
   submitResponseAnswers,
   getCurrentProfile,
   getOrganizationBySlug,
+  getMyEventRegistration,
 } from '@/lib/supabase'
 import { PaymentPanel } from '@/components/event/PaymentPanel'
 import { TicketSuccess } from '@/components/event/TicketSuccess'
 import { FreeTicketSuccess } from '@/components/event/FreeTicketSuccess'
-import type { CampusEvent, Organization, EventQuestion } from '@/types'
+import type { CampusEvent, Organization, EventQuestion, EventResponse } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
 
 interface PosterTheme {
@@ -105,6 +106,11 @@ export function PublicEventForm() {
   const [holdExpiresAt, setHoldExpiresAt] = useState(0)
   const [ticketInfo, setTicketInfo] = useState<{ ticketImageUrl: string; uniqueCode: string } | null>(null)
 
+  // Existing registration for this attendee (loaded before showing the form so
+  // a pending paid registration can resume straight into PaymentPanel).
+  const [existing, setExisting] = useState<EventResponse | null>(null)
+  const [existingChecked, setExistingChecked] = useState(false)
+
   // UPI fields are not always present in the event→org embed select, so
   // fetch the club row the same way the page already loads data and merge
   // it with whatever the embed carries.
@@ -180,6 +186,41 @@ export function PublicEventForm() {
       .finally(() => { if (!cancelled) setQuestionsLoading(false) })
     return () => { cancelled = true }
   }, [event?.id])
+
+  // Resume an existing registration: a pending paid row reopens the payment
+  // panel, while confirmed/waitlisted rows get a status card instead of the
+  // form (previously they only found out after submitting again).
+  useEffect(() => {
+    if (!event?.id || !user) return
+    let cancelled = false
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setExisting(null)
+    setExistingChecked(false)
+    /* eslint-enable react-hooks/set-state-in-effect */
+    getMyEventRegistration(event.id)
+      .then(({ data }) => {
+        if (cancelled) return
+        setExisting(data)
+        if (!data) return
+        setRespondentName((current) => current || data.respondent_name || '')
+        setRespondentEmail((current) => current || data.respondent_email || user.email || '')
+        setRespondentPhone((current) => current || data.respondent_phone || '')
+        if (data.status === 'pending' && event.payment_type === 'paid') {
+          const expires = data.hold_expires_at ? Date.parse(data.hold_expires_at) : 0
+          if (!expires || expires > Date.now()) {
+            setPaidRegId(data.id)
+            setPaidCode(data.unique_code || '')
+            setHoldExpiresAt(expires)
+            setPaidStage('payment')
+          } else {
+            setPaidStage('holdExpired')
+          }
+        }
+      })
+      .catch(() => { /* the submit path still guards duplicates */ })
+      .finally(() => { if (!cancelled) setExistingChecked(true) })
+    return () => { cancelled = true }
+  }, [event?.id, event?.payment_type, user])
 
   // When the event has a poster, analyze it with Groq to auto-theme the form.
   useEffect(() => {
@@ -415,7 +456,7 @@ export function PublicEventForm() {
       }
     : {}
 
-  if (loading) {
+  if (loading || (!!user && !!event && !existingChecked)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -615,6 +656,55 @@ export function PublicEventForm() {
             whatsappUrl={(extras.whatsapp_group_url || '').trim() || null}
             onWaitlisted={handleWaitlisted}
           />
+        </div>
+      </div>
+    )
+  }
+
+  if (user && event && existing && (existing.status === 'confirmed' || existing.status === 'waitlisted') && !paidStage) {
+    const waitlisted = existing.status === 'waitlisted'
+    return (
+      <div className="min-h-screen bg-background py-12 px-4">
+        <div className="max-w-xl mx-auto">
+          <Link
+            to={`/event/${event.slug}`}
+            className="inline-flex items-center gap-2 text-text-secondary hover:text-primary-hover transition-colors mb-8 text-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to event
+          </Link>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-strong rounded-2xl p-10 text-center"
+          >
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <Users className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold text-[#14110E] mb-3">
+              {waitlisted ? "You're on the waiting list" : "You're already registered"}
+            </h2>
+            <p className="text-text-secondary text-sm leading-relaxed mb-2">
+              {waitlisted
+                ? 'Seats are full right now. The club will email you the moment one opens up — you do not need to register again.'
+                : 'Your seat is confirmed. Your ticket and any club instructions are in My Tickets.'}
+            </p>
+            {existing.unique_code && (
+              <p className="text-sm font-bold text-text-muted mb-6">
+                Registration code: <span className="text-text-primary">{existing.unique_code}</span>
+              </p>
+            )}
+            <div className="flex flex-col gap-3 mt-6">
+              {!waitlisted && (
+                <Link to="/account/tickets" className="block">
+                  <Button variant="success" size="lg" fullWidth>View my ticket</Button>
+                </Link>
+              )}
+              <Link to={`/event/${event.slug}`} className="block">
+                <Button variant="outline" size="lg" fullWidth>Event page</Button>
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </div>
     )

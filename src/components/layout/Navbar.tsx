@@ -111,6 +111,9 @@ export function Navbar() {
                 <Link to={dashboardHref} className="zine-sticker" style={{ background: '#2D5BFF', color: '#fff', borderColor: '#14110E' }}>
                   <LayoutDashboard className="h-3 w-3" strokeWidth={2.5} /> Dashboard
                 </Link>
+                <Link to="/account/tickets" className="zine-sticker" style={{ background: '#FFD23F' }}>
+                  <Ticket className="h-3 w-3" strokeWidth={2.5} /> My Tickets
+                </Link>
                 <div className="relative profile-dropdown-area">
                   <button
                     onClick={() => setProfileMenuOpen(!profileMenuOpen)}
@@ -147,6 +150,9 @@ export function Navbar() {
                           </div>
                           <Link to={dashboardHref} onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 px-2 py-2 text-sm font-bold" style={{ color: '#14110E' }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FFD23F'} onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                             <LayoutDashboard className="h-4 w-4" strokeWidth={2.5} /> Dashboard
+                          </Link>
+                          <Link to="/account/tickets" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 px-2 py-2 text-sm font-bold" style={{ color: '#14110E' }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FFD23F'} onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                            <Ticket className="h-4 w-4" strokeWidth={2.5} /> My Tickets
                           </Link>
                           {profile?.is_superadmin && (
                             <Link to="/mc" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 px-2 py-2 text-sm font-bold" style={{ color: '#14110E' }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FFD23F'} onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
@@ -210,6 +216,9 @@ export function Navbar() {
                   )}
                   <Link to={dashboardHref} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 text-sm font-bold" style={{ color: '#14110E' }}>
                     <LayoutDashboard className="h-4 w-4" strokeWidth={2.5} /> Dashboard
+                  </Link>
+                  <Link to="/account/tickets" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 text-sm font-bold" style={{ color: '#14110E' }}>
+                    <Ticket className="h-4 w-4" strokeWidth={2.5} /> My Tickets
                   </Link>
                   <button onClick={handleSignOut} className="flex items-center gap-2 text-sm font-bold" style={{ color: '#FF4D2E' }}>
                     <LogOut className="h-4 w-4" strokeWidth={2.5} /> Sign Out

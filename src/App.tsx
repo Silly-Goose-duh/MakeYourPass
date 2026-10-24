@@ -28,6 +28,7 @@ const ResetPasswordPage = lazy(() => import('@/pages/ResetPassword').then(m => (
 const AcceptInvitePage = lazy(() => import('@/pages/AcceptInvite').then(m => ({ default: m.AcceptInvitePage })))
 const WaitlistPage = lazy(() => import('@/pages/WaitlistPage').then(m => ({ default: m.default })))
 const AboutEventPage = lazy(() => import('@/pages/AboutEventPage'))
+const MyTicketsPage = lazy(() => import('@/pages/MyTicketsPage'))
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -72,6 +73,7 @@ function AppRoutes() {
           <Route path="resend-verification" element={<PageSuspense><ResendVerificationPage /></PageSuspense>} />
           <Route path="signup" element={<PageSuspense><SignupPage /></PageSuspense>} />
           <Route path="account/signup" element={<PageSuspense><AttendeeSignupPage /></PageSuspense>} />
+          <Route path="account/tickets" element={<PageSuspense><MyTicketsPage /></PageSuspense>} />
           <Route path="forgot-password" element={<PageSuspense><ForgotPasswordPage /></PageSuspense>} />
           <Route path="reset-password" element={<PageSuspense><ResetPasswordPage /></PageSuspense>} />
           <Route path="invite/:token" element={<PageSuspense><AcceptInvitePage /></PageSuspense>} />
