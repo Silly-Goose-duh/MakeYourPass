@@ -596,6 +596,28 @@ export function MCPanel() {
                                       {request.description}
                                     </p>
                                   )}
+                                  {(request.logo_url || request.short_name || request.contact_email || request.representative_name || request.upi_id) && (
+                                    <div className="mb-3 flex flex-wrap items-start gap-3 rounded-lg border border-border bg-surface/60 p-3 text-xs text-text-secondary">
+                                      {request.logo_url && (
+                                        <img
+                                          src={request.logo_url}
+                                          alt=""
+                                          className="h-12 w-12 rounded-lg object-cover border border-border"
+                                        />
+                                      )}
+                                      <div className="grid gap-1 sm:grid-cols-2">
+                                        {request.short_name && <span><strong>Short:</strong> {request.short_name}</span>}
+                                        {request.contact_email && <span><strong>Club email:</strong> {request.contact_email}</span>}
+                                        {request.representative_name && (
+                                          <span>
+                                            <strong>Rep:</strong> {request.representative_name}
+                                            {request.representative_contact ? ` · ${request.representative_contact}` : ''}
+                                          </span>
+                                        )}
+                                        {request.upi_id && <span><strong>UPI:</strong> {request.upi_id}</span>}
+                                      </div>
+                                    </div>
+                                  )}
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
                                     <span className="flex items-center gap-1.5">
                                       <Users className="h-3.5 w-3.5" />

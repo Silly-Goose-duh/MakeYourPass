@@ -85,3 +85,19 @@ Status: ❌ = pending, 🟡 = in progress, ✅ = done, ⏸️ = needs user/accou
 - E2E in production: signup → register → My Tickets → cross-owner cancellation blocked → request → staff approval → waitlist promotion → response_count restored; test users/rows cleaned up.
 - ⏸️ Cancellation decision email (approve/reject) still not sent to the attendee
 - ⏸️ Refund completion UI still missing (`refund_status` is set but there is no staff action to mark it completed)
+
+## 9. Student + club signup split (migration 006)
+- ✅ `supabase/migrations/006_student_and_club_profiles.sql` applied in production
+- ✅ `profiles` now stores `age`, `semester` (S1–S8), `department` (CSE R1 … MCA), and `account_type` (`student` / `club`); `handle_new_user` copies these from auth metadata
+- ✅ `event_responses` snapshots `age`, `semester`, `department` at registration; `submit_authenticated_event_response` reads them from the attendee profile
+- ✅ Unified `/signup` and `/account/signup` first ask **student or club**. Student form collects name, age, email, phone, semester, department, password
+- ✅ Club form collects full org name, short form, club email, representative name/contact, logo (PNG/JPG/WebP/GIF ≤2 MB), vision, and optional UPI ID; logo uploads to the public `event-posters` bucket under `org-logos/`
+- ✅ Club signup shows a “Creating your organization dashboard” provisioning animation before the pending-approval screen
+- ✅ `organization_registration_requests` stores the new club profile fields; `approve_organization_request` copies them onto `organizations` (`short_name`, `representative_name`, `contact_email`, `contact_phone`, `logo_url`, `upi_id`, `description`)
+- ✅ MC approval queue shows the club logo, short name, club email, representative, and UPI ID
+- ✅ Event registration form asks for age/semester/department when missing, prefills them for existing accounts, and updates the profile before creating the ticket
+- ✅ Registrants CSV includes age, semester, and department
+- ✅ `npm run verify` green (typecheck, API typecheck, lint, 65 tests)
+- ✅ Production smoke test: student signup stored `age`/`semester`/`department`/`account_type` on `profiles`; registration snapshotted the same fields onto `event_responses` (`PILOT-0006`); test rows removed
+- ✅ Production smoke test: club signup uploaded a real logo, created the pending request with short name, club email, representative, UPI, and vision; approval copied every field into `organizations` and made the requester an admin; test user/org/request/logo removed
+- ⏸️ Live visual walk of the new signup fork + club animation still pending (deployed build)

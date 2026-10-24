@@ -271,10 +271,13 @@ export function RegistrantsReport({ event }: { event: CampusEvent }) {
     const code = (event.id_prefix || event.slug || 'event').replace(/[^A-Za-z0-9._-]+/g, '')
     exportCsv(
       `makeyourpass-registrants-${code}.csv`,
-      ['name', 'email', 'code', 'status', 'payment_state', 'created_at', 'event title'],
+      ['name', 'email', 'age', 'semester', 'department', 'code', 'status', 'payment_state', 'created_at', 'event title'],
       filtered.map((r) => [
         r.respondent_name,
         r.respondent_email,
+        r.age ?? '',
+        r.semester ?? '',
+        r.department ?? '',
         r.unique_code || '',
         r.status,
         paymentStateOf(r, paidEvent),
@@ -380,6 +383,11 @@ export function RegistrantsReport({ event }: { event: CampusEvent }) {
                     <td className="px-3 py-2 min-w-[180px]">
                       <p className="text-sm font-bold" style={{ color: INK }}>{r.respondent_name}</p>
                       <p className="text-[11px] font-semibold" style={{ color: MUTED }}>{r.respondent_email}</p>
+                      {(r.age || r.semester || r.department) && (
+                        <p className="text-[11px] font-semibold" style={{ color: MUTED }}>
+                          {[r.age ? `${r.age} yrs` : '', r.semester || '', r.department || ''].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-sm font-extrabold whitespace-nowrap" style={{ color: INK }}>
                       {r.unique_code || '—'}

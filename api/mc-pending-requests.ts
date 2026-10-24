@@ -83,6 +83,12 @@ interface MappedRequest {
   user_id: unknown
   organization_name: unknown
   organization_slug: unknown
+  short_name?: unknown
+  contact_email?: unknown
+  representative_name?: unknown
+  representative_contact?: unknown
+  logo_url?: unknown
+  upi_id?: unknown
   description: unknown
   status: string
   created_at: string
@@ -158,6 +164,12 @@ export default async function handler(req: any, res: any) {
         user_id: r.user_id,
         organization_name: r.organization_name,
         organization_slug: r.organization_slug,
+        short_name: r.short_name || null,
+        contact_email: r.contact_email || null,
+        representative_name: r.representative_name || null,
+        representative_contact: r.representative_contact || null,
+        logo_url: r.logo_url || null,
+        upi_id: r.upi_id || null,
         description: r.description || null,
         // Coerced to string so the pending filter and the queue sort below
         // have a concrete type to work against (raw `unknown` made the

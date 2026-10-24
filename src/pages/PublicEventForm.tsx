@@ -13,7 +13,9 @@ import {
   getCurrentProfile,
   getOrganizationBySlug,
   getMyEventRegistration,
+  updateProfile,
 } from '@/lib/supabase'
+import { DEPARTMENTS, SEMESTERS, isDepartment, isSemester, isValidAge } from '@/lib/studentProfile'
 import { PaymentPanel } from '@/components/event/PaymentPanel'
 import { TicketSuccess } from '@/components/event/TicketSuccess'
 import { FreeTicketSuccess } from '@/components/event/FreeTicketSuccess'
@@ -87,6 +89,9 @@ export function PublicEventForm() {
   const [respondentName, setRespondentName] = useState('')
   const [respondentEmail, setRespondentEmail] = useState('')
   const [respondentPhone, setRespondentPhone] = useState('')
+  const [respondentAge, setRespondentAge] = useState('')
+  const [respondentSemester, setRespondentSemester] = useState('')
+  const [respondentDepartment, setRespondentDepartment] = useState('')
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -124,6 +129,9 @@ export function PublicEventForm() {
       setRespondentName((current) => current || data.full_name || '')
       setRespondentEmail((current) => current || data.email || user.email || '')
       setRespondentPhone((current) => current || data.phone || '')
+      setRespondentAge((current) => current || (data.age ? String(data.age) : ''))
+      setRespondentSemester((current) => current || data.semester || '')
+      setRespondentDepartment((current) => current || data.department || '')
     }).catch(() => {})
   }, [user])
 
@@ -205,6 +213,9 @@ export function PublicEventForm() {
         setRespondentName((current) => current || data.respondent_name || '')
         setRespondentEmail((current) => current || data.respondent_email || user.email || '')
         setRespondentPhone((current) => current || data.respondent_phone || '')
+        setRespondentAge((current) => current || (data.age ? String(data.age) : ''))
+        setRespondentSemester((current) => current || data.semester || '')
+        setRespondentDepartment((current) => current || data.department || '')
         if (data.status === 'pending' && event.payment_type === 'paid') {
           const expires = data.hold_expires_at ? Date.parse(data.hold_expires_at) : 0
           if (!expires || expires > Date.now()) {
@@ -296,9 +307,13 @@ export function PublicEventForm() {
     if (!respondentEmail.trim()) newErrors.email = 'Email is required'
     else if (!emailRe.test(respondentEmail.trim())) newErrors.email = 'Enter a valid email address'
     const digits = respondentPhone.replace(/[^\d]/g, '')
-    if (respondentPhone.trim() && (digits.length < 10 || digits.length > 15)) {
+    if (!respondentPhone.trim()) newErrors.phone = 'Phone is required'
+    else if (digits.length < 10 || digits.length > 15) {
       newErrors.phone = 'Enter a valid phone number'
     }
+    if (!isValidAge(respondentAge)) newErrors.age = 'Enter an age between 10 and 100'
+    if (!isSemester(respondentSemester)) newErrors.semester = 'Select your semester'
+    if (!isDepartment(respondentDepartment)) newErrors.department = 'Select your department'
     for (const q of questions) {
       if (!q.required) continue
       const val = getAnswer(q.id)
@@ -344,6 +359,19 @@ export function PublicEventForm() {
       let uniqueCode = ''
       let responseError: Error | null = null
       if (user) {
+        // The registration RPC snapshots the attendee's academic details from
+        // their profile, so save any edits here before creating the ticket.
+        const { error: profileError } = await updateProfile(user.id, {
+          full_name: respondentName.trim(),
+          phone: respondentPhone.trim(),
+          age: Number(respondentAge),
+          semester: respondentSemester,
+          department: respondentDepartment,
+        })
+        if (profileError) {
+          setError('Could not save your details. Please check your connection and try again.')
+          return
+        }
         const result = await submitAuthenticatedEventResponse(event.id, {
           respondent_name: respondentName.trim(),
           respondent_email: respondentEmail.trim(),
@@ -818,6 +846,60 @@ export function PublicEventForm() {
                       )}
                     />
                     {errors.phone && <p className="mt-1.5 text-sm text-red-400">{errors.phone}</p>}
+                  </div>
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">
+                        Age <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min={10}
+                        max={100}
+                        value={respondentAge}
+                        onChange={e => { setRespondentAge(e.target.value); if (errors.age) setErrors(prev => { const n = { ...prev }; delete n.age; return n }) }}
+                        placeholder="19"
+                        className={cn(
+                          'w-full px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary placeholder:text-text-muted transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary',
+                          errors.age && 'border-red-500 focus-visible:ring-red-500'
+                        )}
+                      />
+                      {errors.age && <p className="mt-1.5 text-sm text-red-400">{errors.age}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">
+                        Semester <span className="text-red-400">*</span>
+                      </label>
+                      <select
+                        value={respondentSemester}
+                        onChange={e => { setRespondentSemester(e.target.value); if (errors.semester) setErrors(prev => { const n = { ...prev }; delete n.semester; return n }) }}
+                        className={cn(
+                          'w-full px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary',
+                          errors.semester && 'border-red-500 focus-visible:ring-red-500'
+                        )}
+                      >
+                        <option value="">Select</option>
+                        {SEMESTERS.map((value) => <option key={value} value={value}>{value}</option>)}
+                      </select>
+                      {errors.semester && <p className="mt-1.5 text-sm text-red-400">{errors.semester}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">
+                        Department <span className="text-red-400">*</span>
+                      </label>
+                      <select
+                        value={respondentDepartment}
+                        onChange={e => { setRespondentDepartment(e.target.value); if (errors.department) setErrors(prev => { const n = { ...prev }; delete n.department; return n }) }}
+                        className={cn(
+                          'w-full px-4 py-3 bg-primary/50 border border-border rounded-xl text-text-primary transition-all duration-200 hover:border-border-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary focus-visible:bg-primary',
+                          errors.department && 'border-red-500 focus-visible:ring-red-500'
+                        )}
+                      >
+                        <option value="">Select</option>
+                        {DEPARTMENTS.map((value) => <option key={value} value={value}>{value}</option>)}
+                      </select>
+                      {errors.department && <p className="mt-1.5 text-sm text-red-400">{errors.department}</p>}
+                    </div>
                   </div>
                 </div>
               </div>

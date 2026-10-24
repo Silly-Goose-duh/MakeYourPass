@@ -7,6 +7,10 @@ export interface Profile {
   full_name: string
   email: string
   phone?: string
+  age?: number | null
+  semester?: string | null
+  department?: string | null
+  account_type?: 'student' | 'club' | null
   is_superadmin: boolean
   created_at: string
   updated_at: string
@@ -16,6 +20,8 @@ export interface Organization {
   id: string
   name: string
   slug: string
+  short_name?: string
+  representative_name?: string
   description: string
   logo_url: string
   is_approved: boolean
@@ -56,6 +62,12 @@ export interface OrgRegistrationRequest {
   user_id: string
   organization_name: string
   organization_slug: string
+  short_name?: string | null
+  contact_email?: string | null
+  representative_name?: string | null
+  representative_contact?: string | null
+  logo_url?: string | null
+  upi_id?: string | null
   description: string
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
@@ -112,6 +124,9 @@ export interface EventResponse {
   respondent_name: string
   respondent_email: string
   respondent_phone: string
+  age?: number | null
+  semester?: string | null
+  department?: string | null
   submitted_at: string
   unique_code: string | null
   qr_token: string

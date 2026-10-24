@@ -1,4 +1,4 @@
-import { forwardRef, InputHTMLAttributes, TextareaHTMLAttributes, LabelHTMLAttributes } from 'react'
+import { forwardRef, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes, LabelHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -100,6 +100,58 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
 )
 
 Textarea.displayName = 'Textarea'
+
+export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string
+  error?: string
+  hint?: string
+}
+
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(
+  ({ className, label, error, hint, id, children, ...props }, ref) => {
+    const selectId = id || label?.toLowerCase().replace(/\s+/g, '-')
+
+    return (
+      <div className="w-full">
+        {label && (
+          <label htmlFor={selectId} className="block text-sm font-bold mb-1.5" style={{ color: '#14110E' }}>
+            {label}
+          </label>
+        )}
+        <select
+          ref={ref}
+          id={selectId}
+          className={cn(
+            'w-full px-3 py-2.5 border-2 text-sm',
+            'transition-all duration-200 outline-none',
+            'focus-visible:ring-2 focus-visible:ring-[#FF4D2E] focus-visible:border-[#FF4D2E]',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            error ? 'border-[#FF4D2E]' : 'border-[#14110E]',
+            className,
+          )}
+          style={{ background: '#fff', color: '#14110E', fontFamily: 'Space Grotesk, sans-serif' }}
+          aria-invalid={error ? 'true' : 'false'}
+          aria-describedby={error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined}
+          {...props}
+        >
+          {children}
+        </select>
+        {error && (
+          <p id={`${selectId}-error`} className="mt-1 text-xs font-bold" style={{ color: '#FF4D2E' }} role="alert">
+            {error}
+          </p>
+        )}
+        {hint && !error && (
+          <p id={`${selectId}-hint`} className="mt-1 text-xs" style={{ color: '#4A4640' }}>
+            {hint}
+          </p>
+        )}
+      </div>
+    )
+  },
+)
+
+Select.displayName = 'Select'
 
 export const Label = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLabelElement>>(
   ({ className, children, ...props }, ref) => (

@@ -102,6 +102,30 @@ function safeSubjectPart(value: unknown): string {
   return String(value ?? '').replace(/[\r\n]+/g, ' ').trim()
 }
 
+type ParsedLogo = { buffer: Buffer; contentType: string; extension: string }
+
+/**
+ * Accepts a FileReader data URL for a raster logo. Returns null when the
+ * payload is not an allowed image or is larger than 2 MB.
+ */
+function parseLogoDataUrl(value: string): ParsedLogo | null {
+  const match = /^data:(image\/(png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/i.exec(value.trim())
+  if (!match) return null
+  const contentType = match[1].toLowerCase().replace('image/jpg', 'image/jpeg')
+  const buffer = Buffer.from(match[3].replace(/\s/g, ''), 'base64')
+  if (!buffer.length || buffer.length > 2 * 1024 * 1024) return null
+  const extension = contentType === 'image/jpeg' ? 'jpg' : contentType.split('/')[1]
+  return { buffer, contentType, extension }
+}
+
+function isEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
 async function findUserByEmail(admin: AdminClient, email: string) {
   const target = email.toLowerCase()
   // Prefer profiles (fast)
@@ -183,6 +207,12 @@ export default async function handler(req: any, res: any) {
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
     const organization_description = String(body?.organization_description || '').trim()
+    const organization_short_name = String(body?.organization_short_name || '').trim()
+    const organization_email = String(body?.organization_email || '').trim().toLowerCase()
+    const representative_name = String(body?.representative_name || '').trim()
+    const representative_contact = String(body?.representative_contact || '').trim()
+    const organization_logo_data_url = String(body?.organization_logo_data_url || '')
+    const organization_upi_id = String(body?.organization_upi_id || '').trim()
     const existingOnly = !!body?.existing_only
 
     if (!organization_name || !organization_slug) {
@@ -190,6 +220,24 @@ export default async function handler(req: any, res: any) {
     }
     if (organization_slug.length < 2) {
       return res.status(400).json({ error: 'Organization URL slug is too short' })
+    }
+    if (!organization_short_name) {
+      return res.status(400).json({ error: 'Club short name is required' })
+    }
+    if (organization_short_name.length > 24) {
+      return res.status(400).json({ error: 'Club short name must be 24 characters or fewer' })
+    }
+    if (!isEmail(organization_email)) {
+      return res.status(400).json({ error: 'Enter a valid club email address' })
+    }
+    if (!representative_name) {
+      return res.status(400).json({ error: 'Representative name is required' })
+    }
+    if (digitsOnly(representative_contact).length < 10 || digitsOnly(representative_contact).length > 15) {
+      return res.status(400).json({ error: 'Enter a valid representative phone number' })
+    }
+    if (organization_upi_id && !/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(organization_upi_id)) {
+      return res.status(400).json({ error: 'Enter a valid UPI ID (for example club@oksbi)' })
     }
 
     const supabaseMod = await import('@supabase/supabase-js')
@@ -282,7 +330,11 @@ export default async function handler(req: any, res: any) {
         email,
         password,
         email_confirm: false,
-        user_metadata: { full_name },
+        user_metadata: {
+          full_name,
+          phone: representative_contact,
+          account_type: 'club',
+        },
       })
 
       if (!createErr && created?.user?.id) {
@@ -421,11 +473,41 @@ export default async function handler(req: any, res: any) {
       })
     }
 
+    // Logo is required for a new request. It is uploaded with the service role
+    // because the account may not have a session yet (email verification).
+    if (!organization_logo_data_url) {
+      return res.status(400).json({ error: 'Club logo is required (PNG, JPG, or WebP, max 2 MB)' })
+    }
+    const parsedLogo = parseLogoDataUrl(organization_logo_data_url)
+    if (!parsedLogo) {
+      return res.status(400).json({ error: 'Logo must be a PNG, JPG, WebP, or GIF image under 2 MB' })
+    }
+    const logoPath = `org-logos/${userId}-${Date.now()}.${parsedLogo.extension}`
+    const { error: logoUploadError } = await admin.storage
+      .from('event-posters')
+      .upload(logoPath, parsedLogo.buffer, {
+        contentType: parsedLogo.contentType,
+        cacheControl: '31536000',
+        upsert: false,
+      })
+    if (logoUploadError) {
+      console.error('complete-signup logo upload', logoUploadError)
+      return res.status(500).json({ error: 'Could not upload the club logo. Please try again.' })
+    }
+    const { data: logoPublic } = admin.storage.from('event-posters').getPublicUrl(logoPath)
+    const organization_logo_url = logoPublic?.publicUrl || ''
+
     const { error: reqErr } = await admin.from('organization_registration_requests').insert({
       user_id: userId,
       organization_name,
       organization_slug,
       description: organization_description,
+      short_name: organization_short_name,
+      contact_email: organization_email,
+      representative_name,
+      representative_contact,
+      logo_url: organization_logo_url,
+      upi_id: organization_upi_id,
       status: 'pending',
     })
     if (reqErr) {

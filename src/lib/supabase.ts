@@ -62,7 +62,14 @@ export const supabase = createSupabaseClient()
 
 // ==================== Auth ====================
 
-export async function signUp(email: string, password: string, fullName: string, phone = '', next = '') {
+export async function signUp(
+  email: string,
+  password: string,
+  fullName: string,
+  phone = '',
+  next = '',
+  extraMetadata: Record<string, unknown> = {},
+) {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://makeyourpass.vercel.app'
   const callback = next && next.startsWith('/') && !next.startsWith('//')
     ? `${origin}/auth/callback?next=${encodeURIComponent(next)}`
@@ -71,7 +78,7 @@ export async function signUp(email: string, password: string, fullName: string, 
     email,
     password,
     options: {
-      data: { full_name: fullName, phone },
+      data: { full_name: fullName, phone, ...extraMetadata },
       emailRedirectTo: callback,
     },
   })
@@ -296,6 +303,12 @@ export type PendingOrgRequest = {
   user_id: string
   organization_name: string
   organization_slug: string
+  short_name?: string | null
+  contact_email?: string | null
+  representative_name?: string | null
+  representative_contact?: string | null
+  logo_url?: string | null
+  upi_id?: string | null
   description: string | null
   status: string
   created_at: string
