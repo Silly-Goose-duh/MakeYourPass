@@ -100,4 +100,5 @@ Status: ❌ = pending, 🟡 = in progress, ✅ = done, ⏸️ = needs user/accou
 - ✅ `npm run verify` green (typecheck, API typecheck, lint, 65 tests)
 - ✅ Production smoke test: student signup stored `age`/`semester`/`department`/`account_type` on `profiles`; registration snapshotted the same fields onto `event_responses` (`PILOT-0006`); test rows removed
 - ✅ Production smoke test: club signup uploaded a real logo, created the pending request with short name, club email, representative, UPI, and vision; approval copied every field into `organizations` and made the requester an admin; test user/org/request/logo removed
-- ⏸️ Live visual walk of the new signup fork + club animation still pending (deployed build)
+- ✅ Live visual check (headless browser): role chooser, student details form, and club details form render correctly on the production deployment
+- ⏸️ Provisioning animation has not been visually captured; its text/screen is present in the deployed bundle
